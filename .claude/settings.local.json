@@ -4,7 +4,15 @@
       "PowerShell(php --version)",
       "PowerShell(node --version)",
       "PowerShell(npm --version)",
-      "PowerShell(composer --version)"
+      "PowerShell(composer --version)",
+      "Bash(php \"C:/wamp64/www/BuildSyntax/POS/storage/app/_e2e.php\")",
+      "Bash(php \"C:/wamp64/www/BuildSyntax/POS/storage/app/_login_test.php\")",
+      "Bash(php \"C:/wamp64/www/BuildSyntax/POS/storage/app/_ui_e2e.php\")",
+      "Bash(npm run *)",
+      "Bash(php artisan *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
