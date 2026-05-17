@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\InsufficientStockException;
 use App\Models\InventoryAdjustment;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,7 @@ class InventoryService
     /**
      * Deduct stock for a sold product. Returns the resulting stock_qty.
      * Bundle products recursively deduct each component's qty.
+     * Throws InsufficientStockException if a tracked product would go negative.
      */
     public function deductForSale(Product $product, float $qty, int $userId, int $saleId): float
     {
@@ -36,6 +38,7 @@ class InventoryService
                 $userId,
                 referenceType: 'sale',
                 referenceId: $saleId,
+                allowNegative: false,
             );
         });
     }
@@ -51,6 +54,7 @@ class InventoryService
             referenceId: $poId,
             batchNumber: $batch,
             expiryDate: $expiry,
+            allowNegative: true,
         );
     }
 
@@ -63,6 +67,7 @@ class InventoryService
             $userId,
             referenceType: 'return',
             referenceId: $returnId,
+            allowNegative: true,
         );
     }
 
@@ -77,11 +82,22 @@ class InventoryService
         ?string $batchNumber = null,
         ?string $expiryDate = null,
         ?string $notes = null,
+        bool $allowNegative = true,
     ): float {
-        return DB::transaction(function () use ($product, $delta, $type, $userId, $reason, $referenceType, $referenceId, $batchNumber, $expiryDate, $notes) {
+        return DB::transaction(function () use ($product, $delta, $type, $userId, $reason, $referenceType, $referenceId, $batchNumber, $expiryDate, $notes, $allowNegative) {
             $locked = Product::where('id', $product->id)->lockForUpdate()->first();
             $before = (float) $locked->stock_qty;
             $after = $before + $delta;
+
+            // Reject oversell: tracked products may not go negative on sale deductions.
+            if (!$allowNegative && $locked->track_stock && $after < 0) {
+                throw new InsufficientStockException(
+                    productId: $locked->id,
+                    productName: $locked->name,
+                    available: $before,
+                    requested: abs($delta),
+                );
+            }
 
             $locked->stock_qty = $after;
             $locked->save();
@@ -108,6 +124,6 @@ class InventoryService
     public function setStock(Product $product, float $newQty, int $userId, ?string $reason = null): float
     {
         $delta = $newQty - (float) $product->stock_qty;
-        return $this->adjust($product, $delta, InventoryAdjustment::TYPE_SET, $userId, reason: $reason);
+        return $this->adjust($product, $delta, InventoryAdjustment::TYPE_SET, $userId, reason: $reason, allowNegative: true);
     }
 }

@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schema;
 use Native\Laravel\Contracts\ProvidesPhpIni;
 use Native\Laravel\Facades\GlobalShortcut;
 use Native\Laravel\Facades\Menu;
@@ -13,21 +16,27 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 {
     public function boot(): void
     {
+        $this->bootstrapDatabase();
+
+        // The bundled PHP server runs on a random port; request() carries the
+        // live host:port. APP_URL from .env points at Apache and is wrong here.
+        $base = request()->getSchemeAndHttpHost();
+
         Window::open()
             ->title('POS Pro')
             ->width(1400)
             ->height(900)
             ->minWidth(1280)
             ->minHeight(768)
-            ->url(config('app.url') . '/pos')
+            ->url($base . '/pos')
             ->resizable(true);
 
         Menu::new()
             ->appMenu()
             ->submenu('File', Menu::new()
-                ->link(url('/pos'), 'New Sale')
-                ->link(url('/pos?action=hold'), 'Hold Sale')
-                ->link(url('/shifts/close'), 'Close Shift')
+                ->link($base . '/pos', 'New Sale')
+                ->link($base . '/pos?action=hold', 'Hold Sale')
+                ->link($base . '/shifts/close', 'Close Shift')
                 ->separator()
                 ->quit('Exit')
             )
@@ -38,17 +47,17 @@ class NativeAppServiceProvider implements ProvidesPhpIni
                 ->item(MenuItem::make('Zoom Out')->accelerator('CmdOrCtrl+-'))
             )
             ->submenu('Reports', Menu::new()
-                ->link(url('/reports/sales/daily'), 'Daily Summary')
-                ->link(url('/reports/shifts/z'), 'Z-Report')
-                ->link(url('/reports/inventory/levels'), 'Inventory Report')
+                ->link($base . '/reports', 'Daily Summary')
+                ->link($base . '/reports/shifts/z', 'Z-Report')
+                ->link($base . '/reports/inventory/levels', 'Inventory Report')
             )
             ->submenu('Tools', Menu::new()
-                ->link(url('/settings/backups'), 'Backup Now')
-                ->link(url('/settings'), 'Settings')
-                ->link(url('/users'), 'User Management')
+                ->link($base . '/settings/backups', 'Backup Now')
+                ->link($base . '/settings', 'Settings')
+                ->link($base . '/users', 'User Management')
             )
             ->submenu('Help', Menu::new()
-                ->link(url('/about'), 'About')
+                ->link($base . '/about', 'About')
                 ->link('https://nativephp.com/docs/desktop/2/getting-started/introduction', 'Documentation')
             )
             ->register();
@@ -56,8 +65,8 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         MenuBar::create()
             ->onlyShowContextMenu()
             ->withContextMenu(
-                MenuItem::make('Open POS')->link(url('/pos')),
-                MenuItem::make('Open Reports')->link(url('/reports/sales/daily')),
+                MenuItem::make('Open POS')->link($base . '/pos'),
+                MenuItem::make('Open Reports')->link($base . '/reports'),
                 MenuItem::separator(),
                 MenuItem::quit('Quit'),
             );
@@ -82,5 +91,29 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             'max_execution_time' => '120',
             'display_errors' => '0',
         ];
+    }
+
+    /**
+     * On first launch (and after a fresh NativePHP install), the runtime DB at
+     * %APPDATA%/<app>/database/database.sqlite is empty. Run migrations + seeders
+     * once so the user has an admin account and sample data ready to go.
+     */
+    private function bootstrapDatabase(): void
+    {
+        try {
+            $needsMigrate = !Schema::hasTable('users') || !Schema::hasTable('settings');
+            if ($needsMigrate) {
+                Artisan::call('migrate', ['--force' => true]);
+            }
+
+            if (User::query()->count() === 0) {
+                Artisan::call('db:seed', ['--force' => true]);
+                Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\SampleProductsSeeder', '--force' => true]);
+            }
+        } catch (\Throwable $e) {
+            // Swallow — we don't want a seed failure to prevent the window from opening.
+            // The user can run `php artisan native:migrate` and `php artisan db:seed` manually.
+            logger()->error('NativePHP DB bootstrap failed: ' . $e->getMessage());
+        }
     }
 }

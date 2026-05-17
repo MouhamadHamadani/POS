@@ -58,6 +58,30 @@ class SaleService
             $exchangeRate = $this->currency->getRate();
             $totals = $this->totalsFromCart($cart, $customer);
 
+            // Pre-flight stock check: reject the whole sale before any DB write
+            // if any tracked product would be oversold (including duplicate cart lines).
+            $requested = [];
+            foreach ($totals['lines'] as $line) {
+                $p = $line['product'];
+                if (!$p->track_stock || $p->type === Product::TYPE_BUNDLE) {
+                    continue;
+                }
+                $requested[$p->id] = ($requested[$p->id] ?? 0) + (float) $line['qty'];
+            }
+            foreach ($requested as $pid => $needed) {
+                $product = Product::find($pid);
+                if ($product && (float) $product->stock_qty < $needed) {
+                    throw ValidationException::withMessages([
+                        'stock' => sprintf(
+                            'Insufficient stock for "%s": %s available, %s requested.',
+                            $product->name,
+                            rtrim(rtrim(number_format((float) $product->stock_qty, 4, '.', ''), '0'), '.'),
+                            rtrim(rtrim(number_format($needed, 4, '.', ''), '0'), '.'),
+                        ),
+                    ]);
+                }
+            }
+
             $loyaltyRedeemDiscount = $this->loyalty->redeemValue((int) ($payment['loyalty_points_redeemed'] ?? 0));
             $grandTotal = max(0, $totals['total'] - $loyaltyRedeemDiscount);
 
