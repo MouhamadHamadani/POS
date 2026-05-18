@@ -7,6 +7,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ShiftController;
@@ -32,6 +33,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pos', [PosController::class, 'sell'])->name('pos.sell');
         Route::get('/pos/api/products', [PosController::class, 'products'])->name('pos.api.products');
         Route::get('/pos/api/barcode', [PosController::class, 'lookupBarcode'])->name('pos.api.barcode');
+        Route::post('/pos/api/preview-change', [PosController::class, 'previewChange'])->name('pos.api.preview-change');
         Route::get('/pos/api/customers/search', [CustomerController::class, 'search'])->name('pos.api.customers.search');
         Route::post('/pos/api/customers/quick-add', [CustomerController::class, 'quickAdd'])->name('pos.api.customers.quick-add');
         Route::post('/pos/api/sales', [SaleController::class, 'store'])->name('pos.api.sales');
@@ -71,6 +73,18 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/purchase-orders/{purchase}', [PurchaseOrderController::class, 'update'])->name('purchases.update');
         Route::post('/purchase-orders/{purchase}/transition', [PurchaseOrderController::class, 'transition'])->name('purchases.transition');
         Route::post('/purchase-orders/{purchase}/receive', [PurchaseOrderController::class, 'receive'])->name('purchases.receive');
+    });
+
+    // Returns — cashiers can initiate (pending), managers/admins auto-approve.
+    Route::get('/returns', [ReturnController::class, 'index'])->name('returns.index');
+    Route::get('/returns/search', [ReturnController::class, 'searchSale'])->name('returns.search');
+    Route::post('/returns/find-sale', [ReturnController::class, 'findSale'])->name('returns.find-sale');
+    Route::get('/returns/create/{sale}', [ReturnController::class, 'create'])->name('returns.create');
+    Route::post('/returns/sale/{sale}', [ReturnController::class, 'store'])->name('returns.store');
+    Route::get('/returns/{return}', [ReturnController::class, 'show'])->name('returns.show');
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::post('/returns/{return}/approve', [ReturnController::class, 'approve'])->name('returns.approve');
+        Route::post('/returns/{return}/reject', [ReturnController::class, 'reject'])->name('returns.reject');
     });
 
     // Customers + Reports — admin/manager

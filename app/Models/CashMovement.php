@@ -15,12 +15,13 @@ class CashMovement extends Model
 
     protected $fillable = [
         'shift_id', 'type', 'currency',
-        'amount_usd', 'amount_lbp', 'note', 'created_by',
+        'amount_usd', 'amount_lbp', 'note', 'denominations', 'created_by',
     ];
 
     protected $casts = [
         'amount_usd' => 'decimal:4',
         'amount_lbp' => 'decimal:2',
+        'denominations' => 'array',
     ];
 
     public function shift(): BelongsTo

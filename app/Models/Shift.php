@@ -18,6 +18,7 @@ class Shift extends Model
     protected $fillable = [
         'uuid', 'user_id', 'opened_at', 'closed_at',
         'opening_cash_usd', 'opening_cash_lbp',
+        'opening_denominations', 'closing_denominations',
         'closing_cash_usd', 'closing_cash_lbp',
         'expected_cash_usd', 'expected_cash_lbp',
         'variance_usd', 'variance_lbp',
@@ -35,6 +36,8 @@ class Shift extends Model
         'expected_cash_lbp' => 'decimal:2',
         'variance_usd' => 'decimal:4',
         'variance_lbp' => 'decimal:2',
+        'opening_denominations' => 'array',
+        'closing_denominations' => 'array',
     ];
 
     public function user(): BelongsTo

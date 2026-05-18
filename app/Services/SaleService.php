@@ -106,7 +106,12 @@ class SaleService
                 }
             }
 
-            $change = $this->currency->calculateChange($grandTotal - $card - $credit, $tendUsd, $tendLbp);
+            $changeUsdOut = array_key_exists('change_usd_out', $payment) && $payment['change_usd_out'] !== null
+                ? (float) $payment['change_usd_out']
+                : null;
+            $change = $this->currency->calculateChange(
+                $grandTotal - $card - $credit, $tendUsd, $tendLbp, $changeUsdOut
+            );
 
             $sale = Sale::create([
                 'receipt_number' => $this->nextReceiptNumber(),

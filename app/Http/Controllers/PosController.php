@@ -63,6 +63,32 @@ class PosController extends Controller
         return response()->json($q->orderBy('name')->limit(100)->get());
     }
 
+    /**
+     * Live change-split preview + denomination breakdown for the payment modal.
+     */
+    public function previewChange(Request $request, \App\Services\CurrencyService $currency): JsonResponse
+    {
+        $data = $request->validate([
+            'total_usd' => 'required|numeric|min:0',
+            'paid_usd' => 'nullable|numeric|min:0',
+            'paid_lbp' => 'nullable|numeric|min:0',
+            'change_usd_out' => 'nullable|numeric|min:0',
+        ]);
+
+        $change = $currency->calculateChange(
+            (float) $data['total_usd'],
+            (float) ($data['paid_usd'] ?? 0),
+            (float) ($data['paid_lbp'] ?? 0),
+            isset($data['change_usd_out']) ? (float) $data['change_usd_out'] : null,
+        );
+
+        return response()->json([
+            'change' => $change,
+            'usd_denoms' => $currency->suggestUsdDenominations($change['change_usd']),
+            'lbp_denoms' => $currency->suggestLbpDenominations($change['change_lbp']),
+        ]);
+    }
+
     public function lookupBarcode(Request $request): JsonResponse
     {
         $code = trim((string) $request->query('code'));

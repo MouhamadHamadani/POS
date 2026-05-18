@@ -32,6 +32,7 @@ class SaleController extends Controller
             'payment.card_type' => 'nullable|string|max:50',
             'payment.card_reference' => 'nullable|string|max:100',
             'payment.loyalty_points_redeemed' => 'nullable|integer|min:0',
+            'payment.change_usd_out' => 'nullable|numeric|min:0',
 
             'customer_id' => 'nullable|integer|exists:customers,id',
             'notes' => 'nullable|string|max:1000',

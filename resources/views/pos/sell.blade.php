@@ -140,11 +140,11 @@
 
                         <div x-show="['cash_usd','mixed'].includes(payment.method)">
                             <label class="block text-xs font-medium text-gray-600">Cash USD tendered</label>
-                            <input type="number" step="0.01" min="0" x-model.number="payment.amount_usd"
+                            <input type="number" step="0.01" min="0" x-model.number="payment.amount_usd" @input="refreshChangePreview()"
                                    class="w-full border-gray-300 rounded mt-1 text-sm" />
                             <div class="flex gap-1 mt-1">
                                 <template x-for="d in [1,5,10,20,50,100]">
-                                    <button type="button" @click="payment.amount_usd = (payment.amount_usd||0) + d"
+                                    <button type="button" @click="payment.amount_usd = (payment.amount_usd||0) + d; refreshChangePreview()"
                                             class="text-xs px-2 py-1 bg-gray-100 rounded">+$<span x-text="d"></span></button>
                                 </template>
                             </div>
@@ -152,11 +152,11 @@
 
                         <div x-show="['cash_lbp','mixed'].includes(payment.method)">
                             <label class="block text-xs font-medium text-gray-600">Cash LBP tendered</label>
-                            <input type="number" step="1000" min="0" x-model.number="payment.amount_lbp"
+                            <input type="number" step="1000" min="0" x-model.number="payment.amount_lbp" @input="refreshChangePreview()"
                                    class="w-full border-gray-300 rounded mt-1 text-sm" />
                             <div class="flex gap-1 mt-1 flex-wrap">
                                 <template x-for="d in [50000, 100000, 250000, 500000, 1000000]">
-                                    <button type="button" @click="payment.amount_lbp = (payment.amount_lbp||0) + d"
+                                    <button type="button" @click="payment.amount_lbp = (payment.amount_lbp||0) + d; refreshChangePreview()"
                                             class="text-xs px-2 py-1 bg-gray-100 rounded" x-text="`+${(d/1000).toFixed(0)}k`"></button>
                                 </template>
                             </div>
@@ -180,12 +180,44 @@
                         <div class="bg-gray-50 p-2 rounded text-xs space-y-1">
                             <div class="flex justify-between"><span>Tendered (USD eq.)</span><span>$<span x-text="tenderedUsd().toFixed(2)"></span></span></div>
                             <div class="flex justify-between font-semibold" :class="changeUsd() >= 0 ? 'text-green-700' : 'text-red-600'">
-                                <span x-text="changeUsd() >= 0 ? 'Change' : 'Short'"></span>
+                                <span x-text="changeUsd() >= 0 ? 'Total change owed' : 'Short'"></span>
                                 <span>$<span x-text="Math.abs(changeUsd()).toFixed(2)"></span></span>
                             </div>
-                            <div class="flex justify-between text-gray-500" x-show="changeUsd() > 0">
-                                <span>Change in LBP</span><span x-text="formatLbp(changeUsd() * exchangeRate)"></span>
+                        </div>
+
+                        {{-- Split-change section: cashier decides how much USD to give back --}}
+                        <div x-show="changeUsd() > 0.005" class="border border-blue-200 bg-blue-50 p-2 rounded text-xs space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="font-semibold text-blue-800">Change to return</span>
+                                <div class="flex gap-1">
+                                    <button type="button" @click="setSplit('all_usd')" class="px-2 py-0.5 bg-white border rounded text-[10px]">All USD</button>
+                                    <button type="button" @click="setSplit('all_lbp')" class="px-2 py-0.5 bg-white border rounded text-[10px]">All LBP</button>
+                                </div>
                             </div>
+                            <div>
+                                <label class="block text-[11px] text-gray-600">Give USD</label>
+                                <input type="number" step="0.01" min="0" :max="changeUsd().toFixed(2)"
+                                       x-model.number="payment.change_usd_out" @input="refreshChangePreview()"
+                                       class="w-full border-gray-300 rounded text-sm" />
+                            </div>
+                            <template x-if="changePreview">
+                                <div class="space-y-1">
+                                    <div class="flex justify-between">
+                                        <span>USD portion</span>
+                                        <span class="font-medium">$<span x-text="Number(changePreview.change.change_usd).toFixed(2)"></span></span>
+                                    </div>
+                                    <template x-if="changePreview.usd_denoms.length">
+                                        <div class="text-[10px] text-gray-500 pl-3" x-text="changePreview.usd_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
+                                    </template>
+                                    <div class="flex justify-between">
+                                        <span>LBP balance</span>
+                                        <span class="font-medium" x-text="formatLbp(Number(changePreview.change.change_lbp))"></span>
+                                    </div>
+                                    <template x-if="changePreview.lbp_denoms.length">
+                                        <div class="text-[10px] text-gray-500 pl-3" x-text="changePreview.lbp_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
+                                    </template>
+                                </div>
+                            </template>
                         </div>
 
                         <div x-show="errorMsg" x-cloak class="text-sm text-red-600 bg-red-50 p-2 rounded" x-text="errorMsg"></div>
@@ -233,7 +265,9 @@
                 processing: false,
                 errorMsg: '',
                 lastSale: null,
-                payment: { method: 'cash_usd', amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '' },
+                payment: { method: 'cash_usd', amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', change_usd_out: null },
+                changePreview: null,
+                _previewTimer: null,
 
                 init() {
                     this.filter();
@@ -352,7 +386,8 @@
 
                 openPayment() {
                     if (!this.cart.length) return;
-                    this.payment = { method: 'cash_usd', amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '' };
+                    this.payment = { method: 'cash_usd', amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', change_usd_out: null };
+                    this.changePreview = null;
                     this.errorMsg = '';
                     this.showPayment = true;
                 },
@@ -364,6 +399,44 @@
                 },
 
                 changeUsd() { return this.tenderedUsd() - this.totals.total; },
+
+                setSplit(mode) {
+                    if (mode === 'all_usd') {
+                        this.payment.change_usd_out = Number(this.changeUsd().toFixed(2));
+                    } else if (mode === 'all_lbp') {
+                        this.payment.change_usd_out = 0;
+                    }
+                    this.refreshChangePreview();
+                },
+
+                refreshChangePreview() {
+                    if (this._previewTimer) clearTimeout(this._previewTimer);
+                    this._previewTimer = setTimeout(() => this._fetchChangePreview(), 150);
+                },
+
+                async _fetchChangePreview() {
+                    if (this.changeUsd() <= 0.005) {
+                        this.changePreview = null;
+                        return;
+                    }
+                    try {
+                        const res = await fetch('/pos/api/preview-change', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            },
+                            body: JSON.stringify({
+                                total_usd: this.totals.total,
+                                paid_usd: this.payment.amount_usd || 0,
+                                paid_lbp: this.payment.amount_lbp || 0,
+                                change_usd_out: this.payment.change_usd_out,
+                            }),
+                        });
+                        if (res.ok) this.changePreview = await res.json();
+                    } catch (e) { /* preview is non-critical */ }
+                },
 
                 async submit() {
                     if (this.processing) return;

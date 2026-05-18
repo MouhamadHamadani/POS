@@ -101,10 +101,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     private function bootstrapDatabase(): void
     {
         try {
-            $needsMigrate = !Schema::hasTable('users') || !Schema::hasTable('settings');
-            if ($needsMigrate) {
-                Artisan::call('migrate', ['--force' => true]);
-            }
+            // Always run any pending migrations — this catches schema drift between
+            // the project DB and the runtime DB (e.g. when a new migration ships
+            // after the runtime DB was first created). `migrate` is idempotent:
+            // already-applied migrations are skipped.
+            Artisan::call('migrate', ['--force' => true]);
 
             if (User::query()->count() === 0) {
                 Artisan::call('db:seed', ['--force' => true]);

@@ -12,7 +12,9 @@
       "Bash(php artisan *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(DB_DATABASE=\"$\\(pwd\\)/database/nativephp.sqlite\" php artisan migrate --force --no-interaction)",
+      "Bash(php -r '$pdo = new PDO\\('\\\\''sqlite:database/nativephp.sqlite'\\\\''\\); foreach \\($pdo->query\\('\\\\''PRAGMA table_info\\(shifts\\)'\\\\''\\) as $r\\) if \\(str_contains\\($r['\\\\''name'\\\\''], '\\\\''denom'\\\\''\\)\\) echo $r['\\\\''name'\\\\''] . PHP_EOL;')"
     ]
   }
 }
