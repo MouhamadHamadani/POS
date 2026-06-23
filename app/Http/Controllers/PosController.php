@@ -36,6 +36,7 @@ class PosController extends Controller
             'products' => $products,
             'exchangeRate' => $exchangeRate,
             'lbpStep' => $lbpStep,
+            'autoPrint' => (bool) Setting::get('auto_print', false),
             'business' => [
                 'name' => Setting::get('business_name', 'POS Pro'),
             ],
@@ -95,7 +96,10 @@ class PosController extends Controller
         if (!$code) {
             return response()->json(['error' => 'No barcode'], 422);
         }
-        $product = Product::with('tax:id,rate,is_inclusive')->where('barcode', $code)->first();
+        $product = Product::with('tax:id,rate,is_inclusive')
+            ->where('barcode', $code)
+            ->where('is_active', true)
+            ->first();
         if (!$product) {
             return response()->json(['error' => 'Product not found'], 404);
         }

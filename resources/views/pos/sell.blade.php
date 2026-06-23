@@ -107,7 +107,83 @@
                                     class="w-full mt-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium">
                                 Pay (F4)
                             </button>
+
+                            <div class="flex gap-2 mt-2">
+                                <button type="button" @click="openHold()" :disabled="cart.length === 0"
+                                        class="flex-1 py-2 bg-amber-500 text-white rounded text-sm hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                    Hold (F5)
+                                </button>
+                                <button type="button" @click="openHeldList()"
+                                        class="flex-1 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
+                                    Recall <span x-show="heldCount > 0" class="text-xs bg-amber-400 text-slate-900 rounded px-1 ml-1" x-text="heldCount"></span> (F6)
+                                </button>
+                            </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Hold modal: optional label/notes before sending the cart to the held-sales bin --}}
+            <div x-show="showHoldModal" x-cloak @keydown.escape.window="showHoldModal=false"
+                 class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-bold">Hold this sale</h3>
+                        <button type="button" @click="showHoldModal=false" class="text-gray-400 hover:text-gray-700 text-xl">×</button>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">Give the cart a label so you can recall it. No stock is reserved.</p>
+                    <div class="space-y-3 text-sm">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Label (optional)</label>
+                            <input type="text" x-model="holdDraft.label" maxlength="80"
+                                   placeholder="e.g. Table 5, Mr. Khoury"
+                                   class="w-full border-gray-300 rounded mt-1 text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Notes (optional)</label>
+                            <textarea x-model="holdDraft.notes" rows="2" maxlength="500"
+                                      class="w-full border-gray-300 rounded mt-1 text-sm"></textarea>
+                        </div>
+                        <div x-show="errorMsg" x-cloak class="text-sm text-red-600 bg-red-50 p-2 rounded" x-text="errorMsg"></div>
+                        <button type="button" @click="submitHold()" :disabled="holdProcessing"
+                                class="w-full py-3 bg-amber-500 text-white rounded font-bold hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                            <span x-show="!holdProcessing">Hold Sale</span>
+                            <span x-show="holdProcessing">Holding…</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Held sales list (recall) --}}
+            <div x-show="showHeldList" x-cloak @keydown.escape.window="showHeldList=false"
+                 class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-5 max-h-[80vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-bold">Held sales</h3>
+                        <button type="button" @click="showHeldList=false" class="text-gray-400 hover:text-gray-700 text-xl">×</button>
+                    </div>
+                    <div x-show="heldList.length === 0" class="py-8 text-center text-sm text-gray-500">No held sales right now.</div>
+                    <div class="space-y-2">
+                        <template x-for="h in heldList" :key="h.id">
+                            <div class="border rounded p-3 flex items-center gap-3 text-sm">
+                                <div class="flex-1">
+                                    <div class="font-medium">
+                                        <span x-text="h.label || ('Hold #' + h.id)"></span>
+                                        <span x-show="h.customer" class="text-xs text-gray-500" x-text="'· ' + (h.customer?.name)"></span>
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        <span x-text="h.item_count + ' items'"></span>
+                                        · $<span x-text="Number(h.subtotal).toFixed(2)"></span>
+                                        · <span x-text="new Date(h.held_at).toLocaleTimeString()"></span>
+                                    </div>
+                                    <div x-show="h.notes" class="text-xs italic text-gray-500" x-text="h.notes"></div>
+                                </div>
+                                <button type="button" @click="recallHold(h.id)"
+                                        class="px-3 py-1.5 bg-green-600 text-white rounded text-xs hover:bg-green-700">Recall</button>
+                                <button type="button" @click="discardHold(h.id)"
+                                        class="px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">Discard</button>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -242,7 +318,12 @@
                     <template x-if="lastSale && Number(lastSale.change_usd) > 0">
                         <div class="text-sm text-gray-700 mt-2">Change: $<span x-text="Number(lastSale.change_usd).toFixed(2)"></span></div>
                     </template>
-                    <button type="button" @click="lastSale=null" class="mt-4 w-full py-2 bg-blue-600 text-white rounded">New Sale</button>
+                    <div class="flex gap-2 mt-4">
+                        <button type="button" @click="reprintLast()"
+                                class="flex-1 py-2 bg-slate-600 text-white rounded text-sm hover:bg-slate-700">Reprint</button>
+                        <button type="button" @click="lastSale=null"
+                                class="flex-1 py-2 bg-blue-600 text-white rounded">New Sale</button>
+                    </div>
                 </div>
             </div>
 
@@ -257,11 +338,18 @@
                 categories: @json($categories),
                 exchangeRate: {{ $exchangeRate }},
                 lbpStep: {{ $lbpStep }},
+                autoPrint: {{ $autoPrint ? 'true' : 'false' }},
                 search: '',
                 activeCategory: null,
                 filtered: [],
                 cart: [],
                 showPayment: false,
+                showHoldModal: false,
+                showHeldList: false,
+                holdProcessing: false,
+                holdDraft: { label: '', notes: '' },
+                heldList: [],
+                heldCount: 0,
                 processing: false,
                 errorMsg: '',
                 lastSale: null,
@@ -271,11 +359,141 @@
 
                 init() {
                     this.filter();
+                    this.refreshHeldCount();
                     window.addEventListener('keydown', (e) => {
                         if (e.key === 'F4') { e.preventDefault(); this.openPayment(); }
+                        if (e.key === 'F5') { e.preventDefault(); this.openHold(); }
+                        if (e.key === 'F6') { e.preventDefault(); this.openHeldList(); }
                         if (e.key === 'F9') { e.preventDefault(); this.clearCart(); }
                         if (e.key === 'F12' && this.showPayment) { e.preventDefault(); this.submit(); }
+                        if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P') && this.lastSale?.id) {
+                            e.preventDefault(); this._printReceipt(this.lastSale.id);
+                        }
                     });
+                },
+
+                _csrf() { return document.querySelector('meta[name="csrf-token"]')?.content || ''; },
+
+                async refreshHeldCount() {
+                    try {
+                        const res = await fetch('/pos/api/holds', { headers: { Accept: 'application/json' } });
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.heldList = data;
+                            this.heldCount = data.length;
+                        }
+                    } catch (e) { /* non-critical */ }
+                },
+
+                openHold() {
+                    if (!this.cart.length) return;
+                    this.holdDraft = { label: '', notes: '' };
+                    this.errorMsg = '';
+                    this.showHoldModal = true;
+                },
+
+                async submitHold() {
+                    if (this.holdProcessing) return;
+                    this.holdProcessing = true;
+                    this.errorMsg = '';
+                    try {
+                        const res = await fetch('/pos/api/holds', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': this._csrf(),
+                            },
+                            body: JSON.stringify({
+                                cart: this.cart.map(l => ({
+                                    product_id: l.product_id,
+                                    qty: l.qty,
+                                    unit_price: l.unit_price,
+                                    discount_pct: l.discount_pct,
+                                    discount_amount: l.discount_amount,
+                                    note: l.note,
+                                })),
+                                customer_id: this.customer?.id || null,
+                                label: this.holdDraft.label || null,
+                                notes: this.holdDraft.notes || null,
+                            }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            this.errorMsg = typeof data.error === 'string' ? data.error : 'Could not hold the sale.';
+                            return;
+                        }
+                        this.cart = [];
+                        this.customer = null;
+                        this.showHoldModal = false;
+                        await this.refreshHeldCount();
+                    } catch (e) {
+                        this.errorMsg = 'Network error: ' + e.message;
+                    } finally {
+                        this.holdProcessing = false;
+                    }
+                },
+
+                async openHeldList() {
+                    await this.refreshHeldCount();
+                    this.showHeldList = true;
+                },
+
+                async recallHold(id) {
+                    if (this.cart.length > 0 && !confirm('Current cart will be cleared. Continue?')) return;
+                    try {
+                        const res = await fetch(`/pos/api/holds/${id}/recall`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': this._csrf(),
+                            },
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            this.errorMsg = data.error || data.message || 'Could not recall.';
+                            return;
+                        }
+                        // Reconstitute cart from the held payload using current product data.
+                        const cart = [];
+                        for (const line of data.cart || []) {
+                            const p = this.allProducts.find(pp => pp.id === line.product_id);
+                            if (!p) continue;
+                            const taxRate = p.tax ? Number(p.tax.rate) : 0;
+                            cart.push({
+                                product_id: p.id,
+                                name: p.name,
+                                unit_price: Number(line.unit_price ?? p.price_usd),
+                                qty: Number(line.qty),
+                                discount_pct: Number(line.discount_pct ?? 0),
+                                discount_amount: Number(line.discount_amount ?? 0),
+                                tax_rate: taxRate,
+                                is_taxable: !!p.is_taxable,
+                                tax_inclusive: p.tax ? !!p.tax.is_inclusive : false,
+                                track_stock: !!p.track_stock,
+                                stock_available: Number(p.stock_qty),
+                                unit: p.unit || 'pcs',
+                                note: line.note || null,
+                            });
+                        }
+                        this.cart = cart;
+                        this.showHeldList = false;
+                        await this.refreshHeldCount();
+                    } catch (e) {
+                        this.errorMsg = 'Network error: ' + e.message;
+                    }
+                },
+
+                async discardHold(id) {
+                    if (!confirm('Discard this held sale?')) return;
+                    try {
+                        const res = await fetch(`/pos/api/holds/${id}`, {
+                            method: 'DELETE',
+                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this._csrf() },
+                        });
+                        if (res.ok) await this.refreshHeldCount();
+                    } catch (e) { /* ignore */ }
                 },
 
                 filter() {
@@ -291,13 +509,20 @@
                 },
 
                 onBarcodeEnter(e) {
-                    const code = this.search.trim();
-                    if (!code) return;
-                    const hit = this.allProducts.find(p => p.barcode === code);
-                    if (hit) { this.addToCart(hit); this.search = ''; this.filter(); }
-                    else { fetch(`/pos/api/barcode?code=${encodeURIComponent(code)}`, { headers: { Accept: 'application/json' }})
-                        .then(r => r.ok ? r.json() : Promise.reject()).then(p => { this.addToCart(p); this.search=''; this.filter(); })
-                        .catch(() => alert('Barcode not found')); }
+                    // Strip any non-printable/control prefix the scanner might inject
+                    // (some scanners are configured with STX/ENQ prefixes).
+                    const raw = (this.search || '').replace(/[\x00-\x1F\x7F]/g, '').trim();
+                    if (!raw) return;
+                    const hit = this.allProducts.find(p => p.barcode === raw);
+                    if (hit) { this.addToCart(hit); this.search = ''; this.filter(); return; }
+                    fetch(`/pos/api/barcode?code=${encodeURIComponent(raw)}`, { headers: { Accept: 'application/json' }})
+                        .then(r => r.ok ? r.json() : Promise.reject())
+                        .then(p => { this.addToCart(p); this.search = ''; this.filter(); })
+                        .catch(() => {
+                            this.errorMsg = `Barcode "${raw}" not found.`;
+                            setTimeout(() => { this.errorMsg = ''; }, 3000);
+                            this.search = '';
+                        });
                 },
 
                 addToCart(p) {
@@ -469,17 +694,48 @@
                         this.lastSale = data.sale;
                         this.showPayment = false;
                         this.cart = [];
+                        this.customer = null;
                         // decrement local stock so UI reflects reality without refresh
                         for (const item of data.items || []) {
                             const p = this.allProducts.find(pp => pp.id === item.product_id);
                             if (p && p.track_stock) p.stock_qty = Number(p.stock_qty) - Number(item.qty);
                         }
                         this.filter();
+                        if (this.autoPrint && this.lastSale?.id) {
+                            this._printReceipt(this.lastSale.id);
+                        }
                     } catch (e) {
                         this.errorMsg = 'Network error: ' + e.message;
                     } finally {
                         this.processing = false;
                     }
+                },
+
+                _printReceipt(saleId) {
+                    // Open the receipt in a hidden popup. The receipt view auto-calls
+                    // window.print() on load. A user-initiated event (the Pay click) is
+                    // the trigger, so popups are not blocked in Electron / modern browsers.
+                    const w = window.open(`/pos/receipts/${saleId}/print?auto=1`,
+                        'receipt-' + saleId, 'width=420,height=640');
+                    // Some browsers block; fall back to navigating an iframe.
+                    if (!w) {
+                        let iframe = document.getElementById('__receipt_iframe');
+                        if (!iframe) {
+                            iframe = document.createElement('iframe');
+                            iframe.id = '__receipt_iframe';
+                            iframe.style.position = 'fixed';
+                            iframe.style.left = '-9999px';
+                            iframe.style.width = '0';
+                            iframe.style.height = '0';
+                            iframe.style.border = '0';
+                            document.body.appendChild(iframe);
+                        }
+                        iframe.src = `/pos/receipts/${saleId}/print?auto=1`;
+                    }
+                },
+
+                reprintLast() {
+                    if (this.lastSale?.id) this._printReceipt(this.lastSale.id);
                 },
 
                 formatLbp(n) {

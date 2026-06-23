@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReturnController;
@@ -22,6 +24,10 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
     Route::view('/dashboard', 'dashboard')->name('dashboard');
 
+    // Receipt reprint — accessible outside the shift gate so cashier can
+    // print receipts for earlier sales after closing a shift.
+    Route::get('/pos/receipts/{sale}/print', [ReceiptController::class, 'show'])->name('receipts.print');
+
     // Shifts
     Route::get('/shifts/open', [ShiftController::class, 'showOpen'])->name('shifts.open');
     Route::post('/shifts/open', [ShiftController::class, 'open'])->name('shifts.open.store');
@@ -38,6 +44,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/pos/api/customers/quick-add', [CustomerController::class, 'quickAdd'])->name('pos.api.customers.quick-add');
         Route::post('/pos/api/sales', [SaleController::class, 'store'])->name('pos.api.sales');
         Route::get('/pos/api/sales/{sale}', [SaleController::class, 'show'])->name('pos.api.sales.show');
+
+        // Hold / recall (in-flight carts that survive serving other customers)
+        Route::get('/pos/api/holds', [HeldSaleController::class, 'index'])->name('pos.api.holds.index');
+        Route::post('/pos/api/holds', [HeldSaleController::class, 'store'])->name('pos.api.holds.store');
+        Route::post('/pos/api/holds/{heldSale}/recall', [HeldSaleController::class, 'recall'])->name('pos.api.holds.recall');
+        Route::delete('/pos/api/holds/{heldSale}', [HeldSaleController::class, 'destroy'])->name('pos.api.holds.destroy');
     });
 
     // Products & Categories — admin/manager/stock

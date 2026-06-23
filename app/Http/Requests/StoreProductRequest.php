@@ -51,14 +51,33 @@ class StoreProductRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        // Coerce checkboxes that weren't submitted to false so updates apply correctly.
-        $this->merge([
+        $merged = [
+            // Coerce checkboxes that weren't submitted to false so updates apply correctly.
             'is_active' => $this->boolean('is_active'),
             'is_taxable' => $this->boolean('is_taxable'),
             'allow_discount' => $this->boolean('allow_discount'),
             'track_stock' => $this->boolean('track_stock'),
             'force_lbp_price' => $this->boolean('force_lbp_price'),
             'remove_image' => $this->boolean('remove_image'),
-        ]);
+        ];
+
+        // Coerce blank-string numeric fields to their DB defaults. The browser
+        // submits empty inputs as "" → ConvertEmptyStringsToNull makes them null
+        // → Eloquent INSERTs NULL → NOT NULL constraint violation on columns
+        // like cost_usd, stock_qty, min_stock that have `->default(0)`.
+        foreach (['cost_usd', 'stock_qty', 'min_stock', 'max_stock',
+                  'wholesale_price_usd', 'vip_price_usd', 'price_lbp'] as $numeric) {
+            if ($this->input($numeric) === null && $this->has($numeric)) {
+                // Field was sent blank — clear it so it's not in validated().
+                $this->offsetUnset($numeric);
+            }
+        }
+
+        // Same for `unit` (NOT NULL default 'pcs'): drop if blank so the model default kicks in.
+        if ($this->input('unit') === null && $this->has('unit')) {
+            $this->offsetUnset('unit');
+        }
+
+        $this->merge($merged);
     }
 }
