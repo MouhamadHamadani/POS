@@ -68,4 +68,12 @@ class BarcodeLookupTest extends TestCase
         $this->actingAs($user)->getJson('/pos/api/barcode?code=SOFT-DEL')
             ->assertStatus(404);
     }
+
+    public function test_sell_screen_ships_the_quantity_shortcut(): void
+    {
+        $this->actingAs($this->userWithShift())->get('/pos')->assertOk()
+            ->assertSee('lastScannedIndex', false)
+            ->assertSee('setQty(this.lastScannedIndex, parseInt(raw, 10))', false)
+            ->assertSee('type a quantity and press Enter');
+    }
 }

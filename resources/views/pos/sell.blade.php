@@ -18,7 +18,7 @@
                 {{-- Left: products --}}
                 <div class="lg:col-span-7 space-y-3">
                     <div class="bg-white rounded-lg shadow-sm p-3">
-                        <div class="flex gap-2 mb-3">
+                        <div class="flex gap-2 mb-1">
                             <input type="text" x-model="search" @input.debounce.250ms="filter()"
                                    placeholder="Search by name, SKU, or scan barcode + Enter"
                                    @keydown.enter="onBarcodeEnter($event)"
@@ -26,6 +26,10 @@
                             <button type="button" @click="activeCategory=null;filter()"
                                     class="px-3 py-1 text-xs bg-gray-100 rounded">All</button>
                         </div>
+
+                        <p class="text-[11px] text-gray-400 mb-3">
+                            Tip: scan a barcode, then type a quantity and press Enter to set the count for that item.
+                        </p>
 
                         {{-- Category tabs --}}
                         <div class="flex flex-wrap gap-2 mb-3">
@@ -68,7 +72,7 @@
 
                         <div class="divide-y max-h-[40vh] overflow-y-auto">
                             <template x-for="(line, idx) in cart" :key="line.product_id">
-                                <div class="p-2 flex items-center gap-2 text-sm">
+                                <div class="p-2 flex items-center gap-2 text-sm" :class="{ 'bg-blue-50': idx === lastScannedIndex }">
                                     <div class="flex-1">
                                         <div class="font-medium" x-text="line.name"></div>
                                         <div class="text-xs text-gray-500">
@@ -343,6 +347,7 @@
                 activeCategory: null,
                 filtered: [],
                 cart: [],
+                lastScannedIndex: null, // index of the most recently added/touched cart line
                 showPayment: false,
                 showHoldModal: false,
                 showHeldList: false,
@@ -513,6 +518,21 @@
                     // (some scanners are configured with STX/ENQ prefixes).
                     const raw = (this.search || '').replace(/[\x00-\x1F\x7F]/g, '').trim();
                     if (!raw) return;
+
+                    // Quantity shortcut: after scanning/adding a product, typing a short
+                    // number + Enter sets that line's quantity instead of scanning again.
+                    // Only safe because lookupBarcode() resolves the same active-product
+                    // set as allProducts — a short code missing from it would 404 anyway.
+                    if (/^\d{1,4}$/.test(raw)
+                        && this.lastScannedIndex !== null
+                        && this.cart[this.lastScannedIndex]
+                        && !this.allProducts.some(p => p.barcode === raw)) {
+                        this.setQty(this.lastScannedIndex, parseInt(raw, 10));
+                        this.search = '';
+                        this.filter();
+                        return;
+                    }
+
                     const hit = this.allProducts.find(p => p.barcode === raw);
                     if (hit) { this.addToCart(hit); this.search = ''; this.filter(); return; }
                     fetch(`/pos/api/barcode?code=${encodeURIComponent(raw)}`, { headers: { Accept: 'application/json' }})
@@ -553,6 +573,7 @@
                         });
                     }
                     this.recompute();
+                    this.lastScannedIndex = this.cart.findIndex(l => l.product_id === p.id);
                 },
 
                 canAdd(line, by) {
@@ -560,7 +581,22 @@
                     return (line.qty + by) <= line.stock_available;
                 },
 
+                setQty(i, qty) {
+                    const line = this.cart[i];
+                    if (!line) return;
+                    this.lastScannedIndex = i;
+                    if (line.track_stock && qty > line.stock_available) {
+                        this.errorMsg = `Only ${line.stock_available} ${line.unit} of "${line.name}" in stock.`;
+                        setTimeout(() => { this.errorMsg = ''; }, 2500);
+                        qty = line.stock_available;
+                    }
+                    if (qty < 1) qty = 1;
+                    line.qty = qty;
+                    this.recompute();
+                },
+
                 incQty(i) {
+                    this.lastScannedIndex = i;
                     const line = this.cart[i];
                     if (!this.canAdd(line, 1)) {
                         this.errorMsg = `Only ${line.stock_available} ${line.unit} of "${line.name}" in stock.`;
@@ -569,8 +605,9 @@
                     }
                     line.qty++; this.recompute();
                 },
-                decQty(i) { if (this.cart[i].qty > 1) { this.cart[i].qty--; this.recompute(); } else { this.removeLine(i); } },
+                decQty(i) { this.lastScannedIndex = i; if (this.cart[i].qty > 1) { this.cart[i].qty--; this.recompute(); } else { this.removeLine(i); } },
                 onQtyChange(i) {
+                    this.lastScannedIndex = i;
                     const line = this.cart[i];
                     if (line.track_stock && line.qty > line.stock_available) {
                         this.errorMsg = `Only ${line.stock_available} ${line.unit} of "${line.name}" in stock.`;
@@ -580,8 +617,19 @@
                     if (line.qty < 0.0001) line.qty = 1;
                     this.recompute();
                 },
-                removeLine(i) { this.cart.splice(i, 1); this.recompute(); },
-                clearCart() { if (!this.cart.length || confirm('Clear cart?')) { this.cart = []; this.recompute(); } },
+                removeLine(i) {
+                    this.cart.splice(i, 1);
+                    if (this.lastScannedIndex === i) this.lastScannedIndex = null;
+                    else if (this.lastScannedIndex !== null && this.lastScannedIndex > i) this.lastScannedIndex--;
+                    this.recompute();
+                },
+                clearCart() {
+                    if (!this.cart.length || confirm('Clear cart?')) {
+                        this.cart = [];
+                        this.lastScannedIndex = null;
+                        this.recompute();
+                    }
+                },
 
                 lineTotal(line) {
                     const gross = line.qty * line.unit_price;
