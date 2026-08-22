@@ -209,4 +209,44 @@ class ProductCrudTest extends TestCase
 
         $this->assertSame('3.0000', (string) $product->fresh()->stock_qty);
     }
+
+    public function test_check_barcode_reports_a_free_code(): void
+    {
+        $this->actingAs($this->admin())->getJson('/products/check-barcode?barcode=9999999999999')
+            ->assertOk()
+            ->assertJson(['exists' => false]);
+    }
+
+    public function test_check_barcode_reports_a_taken_code(): void
+    {
+        Product::factory()->create(['barcode' => '5901234123457', 'name' => 'Coca Cola 1L']);
+
+        $this->actingAs($this->admin())->getJson('/products/check-barcode?barcode=5901234123457')
+            ->assertOk()
+            ->assertJson(['exists' => true, 'product_name' => 'Coca Cola 1L']);
+    }
+
+    public function test_check_barcode_excludes_the_product_being_edited(): void
+    {
+        $product = Product::factory()->create(['barcode' => '5901234123457']);
+
+        $this->actingAs($this->admin())
+            ->getJson("/products/check-barcode?barcode=5901234123457&except={$product->id}")
+            ->assertOk()
+            ->assertJson(['exists' => false]);
+    }
+
+    public function test_check_barcode_treats_a_blank_code_as_free(): void
+    {
+        $this->actingAs($this->admin())->getJson('/products/check-barcode?barcode=')
+            ->assertOk()
+            ->assertJson(['exists' => false]);
+    }
+
+    public function test_product_form_ships_the_barcode_scanner_component(): void
+    {
+        $this->actingAs($this->admin())->get('/products/create')->assertOk()
+            ->assertSee('function productForm()', false)
+            ->assertSee('@keydown.enter.prevent="onBarcodeEnter()"', false);
+    }
 }

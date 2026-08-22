@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Tax;
 use App\Services\BarcodeService;
 use App\Services\InventoryService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -78,6 +79,27 @@ class ProductController extends Controller
             'categories' => Category::orderBy('sort_order')->get(),
             'taxes' => Tax::where('is_active', true)->get(),
             'defaultTaxId' => Tax::where('is_default', true)->value('id'),
+        ]);
+    }
+
+    public function checkBarcode(Request $request): JsonResponse
+    {
+        $barcode = trim((string) $request->query('barcode'));
+
+        if ($barcode === '') {
+            return response()->json(['exists' => false]);
+        }
+
+        // withTrashed(): the DB unique index and the StoreProductRequest unique rule
+        // both still see soft-deleted rows, so this preview must too.
+        $product = Product::withTrashed()
+            ->where('barcode', $barcode)
+            ->when($request->query('except'), fn ($q, $exceptId) => $q->where('id', '!=', $exceptId))
+            ->first(['id', 'name']);
+
+        return response()->json([
+            'exists' => (bool) $product,
+            'product_name' => $product?->name,
         ]);
     }
 

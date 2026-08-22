@@ -7,7 +7,7 @@
         </div>
     </x-slot>
 
-    <div class="py-6 max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-4" x-data="{ tab: 'basic' }">
+    <div class="py-6 max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-4" x-data="productForm()">
 
         @if ($errors->any())
             <div class="p-3 bg-red-50 text-red-700 rounded text-sm">
@@ -74,8 +74,24 @@
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Barcode (auto if blank)</label>
-                        <input type="text" name="barcode" value="{{ old('barcode', $product->barcode) }}"
-                               class="w-full border-gray-300 rounded text-sm" />
+                        <div class="relative">
+                            <input type="text" name="barcode" x-ref="barcode" x-model="barcode"
+                                   @keydown.enter.prevent="onBarcodeEnter()"
+                                   @input.debounce.400ms="checkBarcode()"
+                                   placeholder="Type, or click Scan and use the reader"
+                                   autocomplete="off"
+                                   class="w-full border-gray-300 rounded text-sm pr-16" />
+                            <button type="button" @click="focusScan()"
+                                    class="absolute right-1 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200"
+                                    title="Click here, then scan with the barcode reader">
+                                Scan
+                            </button>
+                        </div>
+                        <div class="text-xs mt-1 h-4">
+                            <span x-show="barcodeStatus==='checking'" x-cloak class="text-gray-400">Checking…</span>
+                            <span x-show="barcodeStatus==='free'" x-cloak class="text-green-600">✓ Available</span>
+                            <span x-show="barcodeStatus==='taken'" x-cloak class="text-red-600">✕ Already used by "<span x-text="barcodeTakenBy"></span>"</span>
+                        </div>
                     </div>
 
                     <div class="md:col-span-2">
@@ -264,4 +280,52 @@
             </div>
         @endif
     </div>
+
+    @push('scripts')
+    <script>
+    function productForm() {
+        return {
+            tab: 'basic',
+            barcode: @js(old('barcode', $product->barcode) ?? ''),
+            barcodeStatus: null, // null | 'checking' | 'free' | 'taken'
+            barcodeTakenBy: '',
+            _lastChecked: null,
+
+            focusScan() {
+                this.$refs.barcode.focus();
+                this.$refs.barcode.select();
+            },
+
+            onBarcodeEnter() {
+                // Scanners send Enter after the digits — check the code, don't submit the form.
+                // If the debounced check already cleared this exact code, checkBarcode()
+                // no-ops and the verdict on screen stays as it is.
+                if (this.barcode.trim()) this.checkBarcode();
+            },
+
+            checkBarcode() {
+                const code = this.barcode.trim();
+                if (!code) { this.barcodeStatus = null; return; }
+                if (code === this._lastChecked) return;
+
+                this.barcodeStatus = 'checking';
+
+                fetch(`{{ route('products.check-barcode') }}?barcode=${encodeURIComponent(code)}@if($isEdit)&except={{ $product->id }}@endif`,
+                    { headers: { Accept: 'application/json' } })
+                    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+                    .then(data => {
+                        // A late reply for a code the admin has already typed past is noise.
+                        if (code !== this.barcode.trim()) return;
+                        this._lastChecked = code;
+                        this.barcodeStatus = data.exists ? 'taken' : 'free';
+                        this.barcodeTakenBy = data.product_name ?? '';
+                    })
+                    // Fail closed. A 500/419/403 must not render "Available" on a code we
+                    // never actually cleared — show nothing and let the server rule decide.
+                    .catch(() => { this.barcodeStatus = null; });
+            },
+        };
+    }
+    </script>
+    @endpush
 </x-app-layout>
