@@ -55,7 +55,7 @@
         const data = @json(collect($rows)->pluck('total')->map(fn($v) => round((float) $v, 2)));
         new Chart(document.getElementById('salesChart').getContext('2d'), {
             type: 'line',
-            data: { labels, datasets: [{ label: 'Revenue (USD)', data, borderColor: '#1B3A6B', backgroundColor: 'rgba(41,128,185,0.15)', tension: 0.2, fill: true }] },
+            data: { labels, datasets: [{ label: 'Revenue (USD)', data, borderColor: '#124F4A', backgroundColor: 'rgba(93,179,173,0.15)', tension: 0.2, fill: true }] },
             options: { responsive: true, plugins: { legend: { display: false } } }
         });
     </script>

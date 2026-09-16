@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8"><title>{{ $title }}</title>
 <style>body { font-family: DejaVu Sans, sans-serif; font-size: 11px; }
-h1 { font-size: 16px; color: #1B3A6B; margin: 0 0 4px; }
+h1 { font-size: 16px; color: #124F4A; margin: 0 0 4px; }
 .meta { color: #555; font-size: 10px; margin-bottom: 16px; }
 table { width: 100%; border-collapse: collapse; max-width: 500px; }
 td { padding: 8px 12px; border-bottom: 1px solid #eee; }
 .right { text-align: right; }
 .indent { padding-left: 24px; color: #555; }
-.heavy { font-weight: bold; background: #f5f7fa; border-top: 2px solid #1B3A6B; }
-.total { font-weight: bold; font-size: 14px; color: #1B3A6B; }</style>
+.heavy { font-weight: bold; background: #f5f7fa; border-top: 2px solid #124F4A; }
+.total { font-weight: bold; font-size: 14px; color: #124F4A; }</style>
 </head>
 <body>
 <h1>{{ $title }}</h1>

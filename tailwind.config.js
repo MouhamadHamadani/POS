@@ -17,21 +17,21 @@ export default {
             },
             colors: {
                 brand: {
-                    50:  '#EEF3FA',
-                    100: '#D6E2F1',
-                    200: '#A8C0DF',
-                    300: '#7A9DCD',
-                    400: '#4F7BB8',
-                    500: '#2E5BA0',
-                    600: '#23467E',
-                    700: '#1B3A6B', // Primary navy (spec §27.1)
-                    800: '#13284A',
-                    900: '#0B182C',
+                    50:  '#EAF5F5',
+                    100: '#C9E6E5',
+                    200: '#93CDC9',
+                    300: '#5DB3AD',
+                    400: '#2E9A92',
+                    500: '#1D7D76',
+                    600: '#17635E',
+                    700: '#124F4A', // Primary teal (LebaSouk)
+                    800: '#0C3733',
+                    900: '#06211E',
                 },
                 accent: {
-                    DEFAULT: '#2980B9', // Sky blue (spec §27.1)
-                    light:   '#5DADE2',
-                    dark:    '#1F618D',
+                    DEFAULT: '#E2673F', // Terracotta (LebaSouk)
+                    light:   '#EF9271',
+                    dark:    '#B84F2E',
                 },
                 success: '#27AE60',
                 warning: '#E67E22',
@@ -39,7 +39,7 @@ export default {
             },
             boxShadow: {
                 card: '0 1px 3px rgba(0,0,0,0.08)',
-                pop:  '0 8px 24px rgba(27,58,107,0.12)',
+                pop:  '0 8px 24px rgba(18,79,74,0.12)',
             },
         },
     },
