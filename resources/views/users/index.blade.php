@@ -68,7 +68,7 @@
                                 @if ($u->isPrivileged() && !auth()->user()->isSuperAdmin())
                                     <span class="text-xs text-gray-400">Managed by super admin</span>
                                 @else
-                                <a href="{{ route('users.edit', $u) }}" class="text-blue-600 hover:underline text-xs">Edit</a>
+                                <a href="{{ route('users.edit', $u) }}" class="text-brand-600 hover:underline text-xs">Edit</a>
                                 <form method="POST" action="{{ route('users.toggle', $u) }}" class="inline">
                                     @csrf
                                     <button class="text-xs {{ $u->is_active ? 'text-orange-600' : 'text-green-600' }} hover:underline">

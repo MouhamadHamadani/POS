@@ -35,7 +35,7 @@
                         <div class="flex flex-wrap gap-2 mb-3">
                             <template x-for="cat in categories" :key="cat.id">
                                 <button type="button" @click="activeCategory = cat.id; filter()"
-                                        :class="activeCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'"
+                                        :class="activeCategory === cat.id ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-700'"
                                         class="px-3 py-1 text-xs rounded">
                                     <span x-text="cat.name"></span>
                                 </button>
@@ -47,10 +47,10 @@
                             <template x-for="p in filtered" :key="p.id">
                                 <button type="button" @click="addToCart(p)"
                                         :disabled="p.track_stock && p.stock_qty <= 0"
-                                        class="p-2 bg-white border rounded-lg hover:bg-blue-50 hover:border-blue-300 text-left disabled:opacity-40 disabled:cursor-not-allowed">
+                                        class="p-2 bg-white border rounded-lg hover:bg-brand-50 hover:border-brand-300 text-left disabled:opacity-40 disabled:cursor-not-allowed">
                                     <div class="text-xs font-medium text-gray-900 line-clamp-2" x-text="p.name"></div>
                                     <div class="text-[11px] text-gray-500 mt-0.5" x-text="p.sku || p.barcode || ''"></div>
-                                    <div class="mt-1 text-sm font-bold text-blue-700">$<span x-text="Number(p.price_usd).toFixed(2)"></span></div>
+                                    <div class="mt-1 text-sm font-bold text-brand-700">$<span x-text="Number(p.price_usd).toFixed(2)"></span></div>
                                     <div class="text-[11px] text-gray-500" x-text="`Stock: ${Number(p.stock_qty).toFixed(0)} ${p.unit}`"></div>
                                 </button>
                             </template>
@@ -73,12 +73,12 @@
                         <div class="p-3 border-b">
                             <template x-if="!customer">
                                 <button type="button" @click="openCustomerModal()"
-                                        class="w-full flex items-center justify-center gap-1 py-1.5 text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-dashed border-blue-200">
+                                        class="w-full flex items-center justify-center gap-1 py-1.5 text-xs text-brand-700 bg-brand-50 hover:bg-brand-100 rounded border border-dashed border-brand-200">
                                     <span>+ Add customer</span> <span class="text-gray-400">(F3)</span>
                                 </button>
                             </template>
                             <template x-if="customer">
-                                <div class="flex items-center justify-between gap-2 text-xs bg-blue-50 rounded px-2 py-1.5">
+                                <div class="flex items-center justify-between gap-2 text-xs bg-brand-50 rounded px-2 py-1.5">
                                     <div class="min-w-0">
                                         <span class="font-medium" x-text="customer.name"></span>
                                         <span class="text-gray-500" x-show="customer.phone" x-text="' · ' + customer.phone"></span>
@@ -86,7 +86,7 @@
                                         <span x-show="Number(customer.balance) > 0" class="ml-1 text-amber-700" x-text="'· owes $' + Number(customer.balance).toFixed(2)"></span>
                                     </div>
                                     <div class="flex items-center gap-2 flex-shrink-0">
-                                        <button type="button" @click="openCustomerModal()" class="text-blue-600 hover:underline">Change</button>
+                                        <button type="button" @click="openCustomerModal()" class="text-brand-600 hover:underline">Change</button>
                                         <button type="button" @click="customer=null" class="text-red-500">×</button>
                                     </div>
                                 </div>
@@ -95,7 +95,7 @@
 
                         <div class="divide-y max-h-[40vh] overflow-y-auto">
                             <template x-for="(line, idx) in cart" :key="line.product_id">
-                                <div class="p-2 flex items-center gap-2 text-sm" :class="{ 'bg-blue-50': idx === lastScannedIndex }">
+                                <div class="p-2 flex items-center gap-2 text-sm" :class="{ 'bg-brand-50': idx === lastScannedIndex }">
                                     <div class="flex-1">
                                         <div class="font-medium" x-text="line.name"></div>
                                         <div class="text-xs text-gray-500">
@@ -123,7 +123,7 @@
                             <div class="flex justify-between text-gray-500"><span>VAT (11%)</span><span>$<span x-text="totals.tax.toFixed(2)"></span></span></div>
                             <div class="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                                 <span>Total</span>
-                                <span class="text-blue-700">$<span x-text="totals.total.toFixed(2)"></span></span>
+                                <span class="text-brand-700">$<span x-text="totals.total.toFixed(2)"></span></span>
                             </div>
                             <div class="flex justify-between text-xs text-gray-500">
                                 <span>LBP equiv.</span>
@@ -235,7 +235,7 @@
                             <div class="divide-y max-h-56 overflow-y-auto border rounded" x-show="customerResults.length">
                                 <template x-for="c in customerResults" :key="c.id">
                                     <button type="button" @click="selectCustomer(c)"
-                                            class="w-full text-left p-2 hover:bg-blue-50">
+                                            class="w-full text-left p-2 hover:bg-brand-50">
                                         <div class="font-medium" x-text="c.name"></div>
                                         <div class="text-xs text-gray-500">
                                             <span x-text="c.phone || 'No phone'"></span>
@@ -285,7 +285,7 @@
                                 <button type="button" @click="quickAddMode=false; customerError=''"
                                         class="flex-1 py-2 bg-gray-100 rounded text-sm">Back</button>
                                 <button type="button" @click="submitQuickAdd()" :disabled="quickAddProcessing || !quickAdd.name.trim()"
-                                        class="flex-1 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-300">
+                                        class="flex-1 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 disabled:bg-gray-300">
                                     <span x-show="!quickAddProcessing">Create & select</span>
                                     <span x-show="quickAddProcessing">Creating…</span>
                                 </button>
@@ -304,9 +304,9 @@
                         <button type="button" @click="showPayment=false" class="text-gray-400 hover:text-gray-700 text-xl">×</button>
                     </div>
 
-                    <div class="text-center py-3 bg-blue-50 rounded mb-4">
+                    <div class="text-center py-3 bg-brand-50 rounded mb-4">
                         <div class="text-sm text-gray-600">Total Due</div>
-                        <div class="text-3xl font-bold text-blue-700">$<span x-text="totals.total.toFixed(2)"></span></div>
+                        <div class="text-3xl font-bold text-brand-700">$<span x-text="totals.total.toFixed(2)"></span></div>
                         <div class="text-xs text-gray-500" x-text="formatLbp(totals.total * exchangeRate)"></div>
                     </div>
 
@@ -369,9 +369,9 @@
                         </div>
 
                         {{-- Split-change section: cashier decides how much USD to give back --}}
-                        <div x-show="changeUsd() > 0.005" class="border border-blue-200 bg-blue-50 p-2 rounded text-xs space-y-2">
+                        <div x-show="changeUsd() > 0.005" class="border border-brand-200 bg-brand-50 p-2 rounded text-xs space-y-2">
                             <div class="flex justify-between items-center">
-                                <span class="font-semibold text-blue-800">Change to return</span>
+                                <span class="font-semibold text-brand-800">Change to return</span>
                                 <div class="flex gap-1">
                                     <button type="button" @click="setSplit('all_usd')" class="px-2 py-0.5 bg-white border rounded text-[10px]">All USD</button>
                                     <button type="button" @click="setSplit('all_lbp')" class="px-2 py-0.5 bg-white border rounded text-[10px]">All LBP</button>
@@ -420,7 +420,7 @@
                     <div class="text-green-600 text-5xl mb-2">✓</div>
                     <h3 class="text-xl font-bold mb-1">Sale Completed</h3>
                     <div class="text-sm text-gray-500 mb-3" x-text="lastSale?.receipt_number"></div>
-                    <div class="text-3xl font-bold text-blue-700 mb-1">$<span x-text="Number(lastSale?.total_usd || 0).toFixed(2)"></span></div>
+                    <div class="text-3xl font-bold text-brand-700 mb-1">$<span x-text="Number(lastSale?.total_usd || 0).toFixed(2)"></span></div>
                     <div class="text-xs text-gray-500 mb-1" x-text="formatLbp((lastSale?.total_usd || 0) * exchangeRate)"></div>
                     <template x-if="lastSale && Number(lastSale.change_usd) > 0">
                         <div class="text-sm text-gray-700 mt-2">Change: $<span x-text="Number(lastSale.change_usd).toFixed(2)"></span></div>
@@ -429,7 +429,7 @@
                         <button type="button" @click="reprintLast()"
                                 class="flex-1 py-2 bg-slate-600 text-white rounded text-sm hover:bg-slate-700">Reprint</button>
                         <button type="button" @click="lastSale=null"
-                                class="flex-1 py-2 bg-blue-600 text-white rounded">New Sale</button>
+                                class="flex-1 py-2 bg-brand-600 text-white rounded">New Sale</button>
                     </div>
                 </div>
             </div>

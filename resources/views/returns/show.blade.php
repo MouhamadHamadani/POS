@@ -1,7 +1,7 @@
 @php
     $statusClass = match($return->status) {
         'pending' => 'bg-orange-100 text-orange-700',
-        'approved' => 'bg-blue-100 text-blue-700',
+        'approved' => 'bg-brand-100 text-brand-700',
         'completed' => 'bg-green-100 text-green-700',
         'rejected' => 'bg-red-100 text-red-700',
         default => 'bg-gray-100 text-gray-700',

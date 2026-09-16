@@ -31,7 +31,7 @@
                     <label class="block text-xs text-gray-500">Sort</label>
                     <input type="number" name="sort_order" value="0" class="w-full border-gray-300 rounded text-sm" />
                 </div>
-                <button class="px-3 py-1.5 bg-blue-600 text-white rounded text-sm">Add</button>
+                <button class="px-3 py-1.5 bg-brand-600 text-white rounded text-sm">Add</button>
             </form>
         </div>
 
@@ -60,7 +60,7 @@
                                     <input type="checkbox" name="is_active" value="1" @checked($c->is_active)>
                                 </td>
                                 <td class="p-2 text-right whitespace-nowrap">
-                                    <button class="text-xs text-blue-600 hover:underline">Save</button>
+                                    <button class="text-xs text-brand-600 hover:underline">Save</button>
                             </form>
                                     <form method="POST" action="{{ route('categories.destroy', $c) }}" class="inline ml-2"
                                           onsubmit="return confirm('Delete category {{ $c->name }}?')">

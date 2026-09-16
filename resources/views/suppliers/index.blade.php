@@ -47,7 +47,7 @@
                             <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ $sp->payment_terms }}</span></td>
                             <td class="p-3 text-right {{ $sp->balance > 0 ? 'text-warning font-bold' : 'text-gray-700' }}">${{ number_format((float) $sp->balance, 2) }}</td>
                             <td class="p-3 text-right text-xs">
-                                <a href="{{ route('suppliers.show', $sp) }}" class="text-blue-600 hover:underline">View</a>
+                                <a href="{{ route('suppliers.show', $sp) }}" class="text-brand-600 hover:underline">View</a>
                             </td>
                         </tr>
                     @empty
