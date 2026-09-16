@@ -85,7 +85,7 @@ class SaleController extends Controller
     {
         $user = $request->user();
         $isOwner = $sale->user_id === $user->id;
-        $isManagerial = in_array($user->role, ['admin', 'manager'], true);
+        $isManagerial = $user->isManagerial();
         abort_unless($isOwner || $isManagerial, 403);
 
         return response()->json($sale->load('items', 'customer', 'user:id,name'));

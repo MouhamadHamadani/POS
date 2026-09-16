@@ -10,7 +10,6 @@ use Native\Laravel\Facades\GlobalShortcut;
 use Native\Laravel\Facades\Menu;
 use Native\Laravel\Facades\MenuBar;
 use Native\Laravel\Facades\Window;
-use Native\Laravel\Menu\MenuItem;
 
 class NativeAppServiceProvider implements ProvidesPhpIni
 {
@@ -31,45 +30,48 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->url($base . '/pos')
             ->resizable(true);
 
-        Menu::new()
-            ->appMenu()
-            ->submenu('File', Menu::new()
-                ->link($base . '/pos', 'New Sale')
-                ->link($base . '/pos?action=hold', 'Hold Sale')
-                ->link($base . '/shifts/close', 'Close Shift')
-                ->separator()
-                ->quit('Exit')
-            )
-            ->submenu('View', Menu::new()
-                ->toggleFullscreen()
-                ->separator()
-                ->item(MenuItem::make('Zoom In')->accelerator('CmdOrCtrl++'))
-                ->item(MenuItem::make('Zoom Out')->accelerator('CmdOrCtrl+-'))
-            )
-            ->submenu('Reports', Menu::new()
-                ->link($base . '/reports', 'Daily Summary')
-                ->link($base . '/reports/shifts/z', 'Z-Report')
-                ->link($base . '/reports/inventory/levels', 'Inventory Report')
-            )
-            ->submenu('Tools', Menu::new()
-                ->link($base . '/settings/backups', 'Backup Now')
-                ->link($base . '/settings', 'Settings')
-                ->link($base . '/users', 'User Management')
-            )
-            ->submenu('Help', Menu::new()
-                ->link($base . '/about', 'About')
-                ->link('https://nativephp.com/docs/desktop/2/getting-started/introduction', 'Documentation')
-            )
+        Menu::make(
+            Menu::app()->submenu(
+                Menu::label('File')->submenu(
+                    Menu::link($base . '/pos', 'New Sale'),
+                    Menu::link($base . '/pos?action=hold', 'Hold Sale'),
+                    Menu::link($base . '/shifts/close', 'Close Shift'),
+                    Menu::separator(),
+                    Menu::quit('Exit'),
+                ),
+                Menu::label('View')->submenu(
+                    Menu::fullscreen(),
+                    Menu::separator(),
+                    Menu::label('Zoom In')->accelerator('CmdOrCtrl++'),
+                    Menu::label('Zoom Out')->accelerator('CmdOrCtrl+-'),
+                ),
+                Menu::label('Reports')->submenu(
+                    Menu::link($base . '/reports', 'Daily Summary'),
+                    Menu::link($base . '/reports/shifts/z', 'Z-Report'),
+                    Menu::link($base . '/reports/inventory/levels', 'Inventory Report'),
+                ),
+                Menu::label('Tools')->submenu(
+                    Menu::link($base . '/settings/backups', 'Backup Now'),
+                    Menu::link($base . '/settings', 'Settings'),
+                    Menu::link($base . '/users', 'User Management'),
+                ),
+                Menu::label('Help')->submenu(
+                    Menu::link($base . '/about', 'About'),
+                    Menu::link('https://nativephp.com/docs/desktop/2/getting-started/introduction', 'Documentation')
+                        ->openInBrowser(),
+                ),
+            ),
+        )
             ->register();
 
         MenuBar::create()
             ->onlyShowContextMenu()
-            ->withContextMenu(
-                MenuItem::make('Open POS')->link($base . '/pos'),
-                MenuItem::make('Open Reports')->link($base . '/reports'),
-                MenuItem::separator(),
-                MenuItem::quit('Quit'),
-            );
+            ->withContextMenu(Menu::make(
+                Menu::link($base . '/pos', 'Open POS'),
+                Menu::link($base . '/reports', 'Open Reports'),
+                Menu::separator(),
+                Menu::quit('Quit'),
+            ));
 
         GlobalShortcut::key('CmdOrCtrl+Shift+P')
             ->event(\App\Events\OpenPos::class)

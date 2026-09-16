@@ -38,6 +38,11 @@ class UserFactory extends Factory
         return $this->state(fn () => ['email_verified_at' => null]);
     }
 
+    public function superAdmin(): static
+    {
+        return $this->state(fn () => ['role' => User::ROLE_SUPER_ADMIN]);
+    }
+
     public function admin(): static
     {
         return $this->state(fn () => ['role' => User::ROLE_ADMIN]);

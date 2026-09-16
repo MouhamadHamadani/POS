@@ -20,7 +20,7 @@ td { padding: 8px 12px; border-bottom: 1px solid #eee; }
 <tr><td>Gross Revenue</td><td class="right">${{ number_format($gross_revenue, 2) }}</td></tr>
 <tr><td class="indent">– Discounts</td><td class="right">${{ number_format($discounts, 2) }}</td></tr>
 <tr><td class="indent">+ Tax Collected</td><td class="right">${{ number_format($tax_collected, 2) }}</td></tr>
-<tr class="heavy"><td>Net Revenue</td><td class="right">${{ number_format($net_revenue, 2) }}</td></tr>
+<tr class="heavy"><td>Net Revenue (incl. tax)</td><td class="right">${{ number_format($net_revenue, 2) }}</td></tr>
 <tr><td class="indent">– COGS</td><td class="right">${{ number_format($cogs, 2) }}</td></tr>
 <tr class="heavy"><td class="total">Gross Profit</td><td class="right total">${{ number_format($gross_profit, 2) }}</td></tr>
 <tr><td>Margin</td><td class="right">{{ number_format($margin_pct, 1) }}%</td></tr>

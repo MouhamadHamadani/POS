@@ -25,7 +25,7 @@
                     <label class="block text-xs text-gray-500">Role</label>
                     <select name="role" class="border-gray-300 rounded text-sm">
                         <option value="">All</option>
-                        @foreach (['admin' => 'Admin', 'manager' => 'Manager', 'cashier' => 'Cashier', 'stock' => 'Stock'] as $v => $l)
+                        @foreach (\App\Models\User::ROLES as $v => $l)
                             <option value="{{ $v }}" @selected(request('role') === $v)>{{ $l }}</option>
                         @endforeach
                     </select>
@@ -54,7 +54,7 @@
                             <td class="p-3">{{ $u->name }}</td>
                             <td class="p-3 font-mono text-xs">{{ $u->username }}</td>
                             <td class="p-3 text-xs">{{ $u->email ?? '—' }}</td>
-                            <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ ucfirst($u->role) }}</span></td>
+                            <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ \App\Models\User::ROLES[$u->role] ?? ucfirst($u->role) }}</span></td>
                             <td class="p-3 uppercase text-xs">{{ $u->language }}</td>
                             <td class="p-3 text-xs text-gray-500">{{ $u->last_login_at?->diffForHumans() ?? '—' }}</td>
                             <td class="p-3 text-center">
@@ -65,6 +65,9 @@
                                 @endif
                             </td>
                             <td class="p-3 text-right space-x-2 whitespace-nowrap">
+                                @if ($u->isPrivileged() && !auth()->user()->isSuperAdmin())
+                                    <span class="text-xs text-gray-400">Managed by super admin</span>
+                                @else
                                 <a href="{{ route('users.edit', $u) }}" class="text-blue-600 hover:underline text-xs">Edit</a>
                                 <form method="POST" action="{{ route('users.toggle', $u) }}" class="inline">
                                     @csrf
@@ -72,6 +75,7 @@
                                         {{ $u->is_active ? 'Deactivate' : 'Activate' }}
                                     </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

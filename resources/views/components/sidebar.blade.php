@@ -37,7 +37,7 @@
         @foreach ($nav as [$label, $path, $rolesCsv, $icon])
             @php
                 $roles = array_filter(array_map('trim', explode(',', $rolesCsv)));
-                $allowed = !$role || in_array($role, $roles, true);
+                $allowed = !$role || $role === \App\Models\User::ROLE_SUPER_ADMIN || in_array($role, $roles, true);
                 $active = request()->is(ltrim($path, '/') . '*');
             @endphp
             @if ($allowed)
@@ -59,7 +59,7 @@
             </div>
             <div x-show="open" class="overflow-hidden">
                 <div class="font-medium truncate">{{ $user?->name }}</div>
-                <div class="text-brand-300 truncate">{{ ucfirst($role ?? '') }}</div>
+                <div class="text-brand-300 truncate">{{ \App\Models\User::ROLES[$role] ?? ucfirst($role ?? '') }}</div>
             </div>
         </a>
         <form method="POST" action="{{ route('logout') }}">

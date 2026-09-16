@@ -183,6 +183,7 @@ class SaleService
         $subtotal = 0;
         $discount = 0;
         $tax = 0;
+        $total = 0;
 
         foreach ($cart as $row) {
             $product = $row['product'] ?? Product::find($row['product_id']);
@@ -215,6 +216,7 @@ class SaleService
             $subtotal += $gross;
             $discount += $lineDiscount;
             $tax += $taxAmt;
+            $total += $lineTotal;
 
             $lines[] = [
                 'product' => $product,
@@ -234,7 +236,12 @@ class SaleService
             'subtotal' => round($subtotal, 4),
             'discount' => round($discount, 4),
             'tax' => round($tax, 4),
-            'total' => round($subtotal - $discount + $tax, 4),
+            // Sum of line totals, not subtotal - discount + tax: an
+            // inclusive-VAT line already carries its tax inside $net, so
+            // adding $tax again overcharges the customer. Summing the lines
+            // is also correct for a cart that mixes inclusive and exclusive
+            // items, which a single cart-wide rule cannot be.
+            'total' => round($total, 4),
         ];
     }
 

@@ -134,6 +134,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/settings/tax', [SettingController::class, 'storeTax'])->name('settings.tax.store');
         Route::put('/settings/tax/{tax}', [SettingController::class, 'updateTax'])->name('settings.tax.update');
         Route::delete('/settings/tax/{tax}', [SettingController::class, 'destroyTax'])->name('settings.tax.destroy');
+    });
+
+    // Super-admin only — backups are vendor/owner territory, not the client's.
+    Route::middleware('role:super_admin')->group(function () {
         Route::post('/settings/backup/now', [SettingController::class, 'backupNow'])->name('settings.backup.now');
         Route::get('/settings/backup/download/{filename}', [SettingController::class, 'backupDownload'])->name('settings.backup.download');
         Route::post('/settings/backup/restore/{filename}', [SettingController::class, 'backupRestore'])->name('settings.backup.restore');

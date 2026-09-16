@@ -6,7 +6,7 @@
         'rejected' => 'bg-red-100 text-red-700',
         default => 'bg-gray-100 text-gray-700',
     };
-    $canApprove = in_array(auth()->user()->role, ['admin', 'manager'], true) && $return->status === 'pending';
+    $canApprove = auth()->user()->hasRole('super_admin', 'admin', 'manager') && $return->status === 'pending';
 @endphp
 
 <x-app-layout>

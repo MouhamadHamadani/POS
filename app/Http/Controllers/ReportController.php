@@ -45,7 +45,7 @@ class ReportController extends Controller
         $payload = array_merge($data, ['from' => $from, 'to' => $to]);
 
         return $this->respond($request, 'reports.sales-by-product', $payload, 'Sales by Product', function () use ($data) {
-            $rows = [['Product', 'Units', 'Revenue', 'COGS', 'Profit', 'Margin %']];
+            $rows = [['Product', 'Units', 'Revenue (ex-VAT)', 'COGS', 'Profit', 'Margin %']];
             foreach ($data['rows'] as $r) {
                 $rows[] = [$r['product_name'], (float) $r['units'], (float) $r['revenue'], (float) $r['cogs'], $r['profit'], $r['margin_pct']];
             }
@@ -81,7 +81,8 @@ class ReportController extends Controller
                 ['Gross Revenue', $data['gross_revenue']],
                 ['Discounts', -$data['discounts']],
                 ['Tax Collected', $data['tax_collected']],
-                ['Net Revenue', $data['net_revenue']],
+                ['Net Revenue (incl. tax)', $data['net_revenue']],
+                ['Revenue ex-VAT', $data['ex_vat_revenue']],
                 ['COGS', -$data['cogs']],
                 ['Gross Profit', $data['gross_profit']],
                 ['Margin %', $data['margin_pct']],

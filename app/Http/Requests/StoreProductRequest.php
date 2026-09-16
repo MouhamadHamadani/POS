@@ -9,7 +9,12 @@ class StoreProductRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array($this->user()?->role, ['admin', 'manager', 'stock'], true);
+        return (bool) $this->user()?->hasRole(
+            \App\Models\User::ROLE_SUPER_ADMIN,
+            \App\Models\User::ROLE_ADMIN,
+            \App\Models\User::ROLE_MANAGER,
+            \App\Models\User::ROLE_STOCK,
+        );
     }
 
     public function rules(): array

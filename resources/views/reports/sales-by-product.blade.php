@@ -10,7 +10,7 @@
                     <tr>
                         <th class="p-3 text-left">Product</th>
                         <th class="p-3 text-right">Units</th>
-                        <th class="p-3 text-right">Revenue</th>
+                        <th class="p-3 text-right">Revenue (ex-VAT)</th>
                         <th class="p-3 text-right">COGS</th>
                         <th class="p-3 text-right">Profit</th>
                         <th class="p-3 text-right">Margin %</th>

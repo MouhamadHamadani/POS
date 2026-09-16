@@ -124,7 +124,7 @@ class CustomerController extends Controller
                       ->orWhere('phone', 'like', "%{$q}%");
                 })
                 ->limit(10)
-                ->get(['id', 'name', 'phone', 'customer_group', 'balance', 'loyalty_points', 'credit_limit', 'tax_exempt'])
+                ->get(Customer::POS_COLUMNS)
         );
     }
 
@@ -142,7 +142,12 @@ class CustomerController extends Controller
         $data['is_active'] = true;
 
         $customer = Customer::create($data);
-        return response()->json($customer, 201);
+        AuditLog::record($request->user()->id, 'create', Customer::class, $customer->id, null, ['name' => $customer->name, 'via' => 'pos_quick_add']);
+
+        // refresh(): balance / loyalty_points / credit_limit / tax_exempt come
+        // from column defaults, so the in-memory model has them as null until
+        // re-read. The POS chip expects the same shape the typeahead returns.
+        return response()->json($customer->refresh()->posSummary(), 201);
     }
 
     private function validateData(Request $request, ?Customer $existing = null): array

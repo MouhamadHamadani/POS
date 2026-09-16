@@ -124,7 +124,7 @@ class ReturnController extends Controller
         }
 
         $user = $request->user();
-        $isAutoApprove = in_array($user->role, ['admin', 'manager'], true);
+        $isAutoApprove = $user->isManagerial();
 
         $return = DB::transaction(function () use ($sale, $perLine, $data, $user, $isAutoApprove, $refundAmount) {
             $rt = ReturnTransaction::create([
@@ -181,7 +181,7 @@ class ReturnController extends Controller
 
     public function approve(Request $request, ReturnTransaction $return): RedirectResponse
     {
-        if (!in_array($request->user()->role, ['admin', 'manager'], true)) {
+        if (!$request->user()->isManagerial()) {
             abort(403);
         }
         if ($return->status !== ReturnTransaction::STATUS_PENDING) {
@@ -203,7 +203,7 @@ class ReturnController extends Controller
 
     public function reject(Request $request, ReturnTransaction $return): RedirectResponse
     {
-        if (!in_array($request->user()->role, ['admin', 'manager'], true)) {
+        if (!$request->user()->isManagerial()) {
             abort(403);
         }
         if ($return->status !== ReturnTransaction::STATUS_PENDING) {

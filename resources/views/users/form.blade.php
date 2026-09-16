@@ -37,7 +37,7 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Role *</label>
                     <select name="role" required class="w-full border-gray-300 rounded text-sm">
-                        @foreach (['admin' => 'Admin', 'manager' => 'Manager', 'cashier' => 'Cashier', 'stock' => 'Stock Keeper'] as $v => $l)
+                        @foreach (auth()->user()->isSuperAdmin() ? \App\Models\User::ROLES : \App\Models\User::STAFF_ROLES as $v => $l)
                             <option value="{{ $v }}" @selected(old('role', $user->role) === $v)>{{ $l }}</option>
                         @endforeach
                     </select>

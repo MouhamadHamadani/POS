@@ -70,28 +70,27 @@
                                     class="text-xs text-red-600 hover:underline">Clear</button>
                         </div>
 
-                        {{-- Customer: "+ Add customer" until one is attached, then a chip. --}}
-                        <div class="px-3 py-2 border-b">
-                            <button type="button" x-show="!customer" @click="openCustomerModal()"
-                                    class="w-full py-1.5 text-sm text-blue-700 border border-dashed border-blue-300 rounded hover:bg-blue-50">
-                                + Add customer (F3)
-                            </button>
-
-                            <div x-show="customer" x-cloak class="flex items-start gap-2 bg-blue-50 rounded p-2">
-                                <div class="flex-1 min-w-0">
-                                    <div class="text-sm font-medium truncate" x-text="customer?.name"></div>
-                                    <div class="text-xs text-gray-600 flex flex-wrap gap-x-2">
-                                        <span x-show="customer?.phone" x-text="customer?.phone"></span>
-                                        <span class="uppercase tracking-wide" x-text="customer?.customer_group"></span>
-                                        <span x-show="Number(customer?.balance) > 0" class="text-red-600 font-medium"
-                                              x-text="'Owes $' + Number(customer?.balance).toFixed(2)"></span>
+                        <div class="p-3 border-b">
+                            <template x-if="!customer">
+                                <button type="button" @click="openCustomerModal()"
+                                        class="w-full flex items-center justify-center gap-1 py-1.5 text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-dashed border-blue-200">
+                                    <span>+ Add customer</span> <span class="text-gray-400">(F3)</span>
+                                </button>
+                            </template>
+                            <template x-if="customer">
+                                <div class="flex items-center justify-between gap-2 text-xs bg-blue-50 rounded px-2 py-1.5">
+                                    <div class="min-w-0">
+                                        <span class="font-medium" x-text="customer.name"></span>
+                                        <span class="text-gray-500" x-show="customer.phone" x-text="' · ' + customer.phone"></span>
+                                        <span class="ml-1 px-1.5 py-0.5 rounded bg-white text-[10px] uppercase text-gray-500" x-text="customer.customer_group"></span>
+                                        <span x-show="Number(customer.balance) > 0" class="ml-1 text-amber-700" x-text="'· owes $' + Number(customer.balance).toFixed(2)"></span>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <button type="button" @click="openCustomerModal()" class="text-blue-600 hover:underline">Change</button>
+                                        <button type="button" @click="customer=null" class="text-red-500">×</button>
                                     </div>
                                 </div>
-                                <button type="button" @click="openCustomerModal()"
-                                        class="text-xs text-blue-700 hover:underline shrink-0">Change</button>
-                                <button type="button" @click="customer = null" title="Remove customer"
-                                        class="text-red-500 text-sm leading-none shrink-0">&times;</button>
-                            </div>
+                            </template>
                         </div>
 
                         <div class="divide-y max-h-[40vh] overflow-y-auto">
@@ -147,87 +146,6 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Customer picker: typeahead over existing customers, plus inline quick-add --}}
-            <div x-show="showCustomerModal" x-cloak @keydown.escape.window="showCustomerModal=false"
-                 class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-lg font-bold">Customer</h3>
-                        <button type="button" @click="showCustomerModal=false" class="text-gray-400 hover:text-gray-700 text-xl">&times;</button>
-                    </div>
-
-                    <div class="space-y-3 text-sm">
-                        {{-- Search existing --}}
-                        <div x-show="!showNewCustomer">
-                            <label class="block text-xs font-medium text-gray-600">Search by name or phone</label>
-                            <input type="text" x-ref="customerSearch" x-model="customerQuery"
-                                   @input="onCustomerQuery()" maxlength="60"
-                                   placeholder="At least 2 characters"
-                                   class="w-full border-gray-300 rounded mt-1 text-sm" />
-
-                            <div class="mt-2 max-h-56 overflow-y-auto divide-y border rounded"
-                                 x-show="customerResults.length">
-                                <template x-for="c in customerResults" :key="c.id">
-                                    <button type="button" @click="selectCustomer(c)"
-                                            class="w-full text-left p-2 hover:bg-blue-50">
-                                        <div class="font-medium" x-text="c.name"></div>
-                                        <div class="text-xs text-gray-500 flex flex-wrap gap-x-2">
-                                            <span x-show="c.phone" x-text="c.phone"></span>
-                                            <span class="uppercase" x-text="c.customer_group"></span>
-                                            <span x-show="Number(c.balance) > 0" class="text-red-600"
-                                                  x-text="'Owes $' + Number(c.balance).toFixed(2)"></span>
-                                        </div>
-                                    </button>
-                                </template>
-                            </div>
-
-                            <div x-show="customerSearching" class="text-xs text-gray-500 mt-2">Searching…</div>
-                            <div x-show="!customerSearching && customerQuery.trim().length >= 2 && customerResults.length === 0"
-                                 class="text-xs text-gray-500 mt-2">
-                                No match. Use “+ New customer” below.
-                            </div>
-
-                            <button type="button" @click="startNewCustomer()"
-                                    class="mt-3 text-sm text-blue-700 hover:underline">+ New customer</button>
-                        </div>
-
-                        {{-- Quick-add --}}
-                        <div x-show="showNewCustomer" x-cloak class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600">Name *</label>
-                                <input type="text" x-ref="newCustomerName" x-model="newCustomer.name" maxlength="120"
-                                       class="w-full border-gray-300 rounded mt-1 text-sm" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600">Phone (optional)</label>
-                                <input type="text" x-model="newCustomer.phone" maxlength="30"
-                                       placeholder="03 123 456"
-                                       class="w-full border-gray-300 rounded mt-1 text-sm" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600">Group</label>
-                                <select x-model="newCustomer.customer_group" class="w-full border-gray-300 rounded mt-1 text-sm">
-                                    <option value="retail">Retail</option>
-                                    <option value="wholesale">Wholesale</option>
-                                    <option value="vip">VIP</option>
-                                </select>
-                            </div>
-                            <div class="flex gap-2">
-                                <button type="button" @click="showNewCustomer=false; customerError=''"
-                                        class="px-3 py-2 bg-gray-100 rounded text-sm">Back to search</button>
-                                <button type="button" @click="saveNewCustomer()" :disabled="customerProcessing"
-                                        class="flex-1 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                                    <span x-show="!customerProcessing">Create &amp; attach</span>
-                                    <span x-show="customerProcessing">Saving…</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div x-show="customerError" x-cloak class="text-sm text-red-600 bg-red-50 p-2 rounded" x-text="customerError"></div>
                     </div>
                 </div>
             </div>
@@ -294,6 +212,86 @@
                             </div>
                         </template>
                     </div>
+                </div>
+            </div>
+
+            {{-- Customer search / quick-add modal --}}
+            <div x-show="showCustomerModal" x-cloak @keydown.escape.window="showCustomerModal=false"
+                 class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-bold">Customer</h3>
+                        <button type="button" @click="showCustomerModal=false" class="text-gray-400 hover:text-gray-700 text-xl">×</button>
+                    </div>
+
+                    <template x-if="!quickAddMode">
+                        <div class="space-y-3 text-sm">
+                            <input type="text" x-model="customerSearch" @input.debounce.250ms="searchCustomers()"
+                                   placeholder="Search by name or phone…" autofocus
+                                   class="w-full border-gray-300 rounded-md text-sm" />
+
+                            <div x-show="customerSearching" class="text-xs text-gray-400">Searching…</div>
+
+                            <div class="divide-y max-h-56 overflow-y-auto border rounded" x-show="customerResults.length">
+                                <template x-for="c in customerResults" :key="c.id">
+                                    <button type="button" @click="selectCustomer(c)"
+                                            class="w-full text-left p-2 hover:bg-blue-50">
+                                        <div class="font-medium" x-text="c.name"></div>
+                                        <div class="text-xs text-gray-500">
+                                            <span x-text="c.phone || 'No phone'"></span>
+                                            <span class="mx-1">·</span>
+                                            <span x-text="c.customer_group"></span>
+                                            <span x-show="Number(c.balance) > 0" class="text-amber-700" x-text="' · owes $' + Number(c.balance).toFixed(2)"></span>
+                                        </div>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <div x-show="customerSearch.trim().length >= 2 && !customerSearching && customerResults.length === 0"
+                                 class="text-xs text-gray-500 text-center py-2">
+                                No matches.
+                            </div>
+
+                            <button type="button" @click="startQuickAdd()"
+                                    class="w-full py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded text-gray-700">
+                                + New customer
+                            </button>
+                        </div>
+                    </template>
+
+                    <template x-if="quickAddMode">
+                        <div class="space-y-3 text-sm">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600">Name</label>
+                                <input type="text" x-model="quickAdd.name" maxlength="120"
+                                       class="w-full border-gray-300 rounded mt-1 text-sm" autofocus />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600">Phone (optional)</label>
+                                <input type="text" x-model="quickAdd.phone" maxlength="30"
+                                       placeholder="03 123456"
+                                       class="w-full border-gray-300 rounded mt-1 text-sm" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600">Group</label>
+                                <select x-model="quickAdd.customer_group" class="w-full border-gray-300 rounded mt-1 text-sm">
+                                    <option value="retail">Retail</option>
+                                    <option value="wholesale">Wholesale</option>
+                                    <option value="vip">VIP</option>
+                                </select>
+                            </div>
+                            <div x-show="customerError" x-cloak class="text-sm text-red-600 bg-red-50 p-2 rounded" x-text="customerError"></div>
+                            <div class="flex gap-2">
+                                <button type="button" @click="quickAddMode=false; customerError=''"
+                                        class="flex-1 py-2 bg-gray-100 rounded text-sm">Back</button>
+                                <button type="button" @click="submitQuickAdd()" :disabled="quickAddProcessing || !quickAdd.name.trim()"
+                                        class="flex-1 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-300">
+                                    <span x-show="!quickAddProcessing">Create & select</span>
+                                    <span x-show="quickAddProcessing">Creating…</span>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -453,16 +451,6 @@
                 filtered: [],
                 cart: [],
                 lastScannedIndex: null, // index of the most recently added/touched cart line
-                customer: null,         // the POS customer shape: {id, name, phone, customer_group, balance, ...}
-                showCustomerModal: false,
-                showNewCustomer: false,
-                customerQuery: '',
-                customerResults: [],
-                customerSearching: false,
-                customerProcessing: false,
-                customerError: '',
-                newCustomer: { name: '', phone: '', customer_group: 'retail' },
-                _customerTimer: null,
                 showPayment: false,
                 showHoldModal: false,
                 showHeldList: false,
@@ -476,6 +464,17 @@
                 payment: { method: 'cash_usd', amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', change_usd_out: null },
                 changePreview: null,
                 _previewTimer: null,
+
+                // Customer attached to the current sale (null = walk-in).
+                customer: null,
+                showCustomerModal: false,
+                customerSearch: '',
+                customerResults: [],
+                customerSearching: false,
+                quickAddMode: false,
+                quickAdd: { name: '', phone: '', customer_group: 'retail' },
+                quickAddProcessing: false,
+                customerError: '',
 
                 init() {
                     this.filter();
@@ -504,97 +503,6 @@
                             this.heldCount = data.length;
                         }
                     } catch (e) { /* non-critical */ }
-                },
-
-                openCustomerModal() {
-                    this.customerQuery = '';
-                    this.customerResults = [];
-                    this.customerError = '';
-                    this.showNewCustomer = false;
-                    this.showCustomerModal = true;
-                    this.$nextTick(() => this.$refs.customerSearch?.focus());
-                },
-
-                onCustomerQuery() {
-                    clearTimeout(this._customerTimer);
-                    const q = this.customerQuery.trim();
-                    if (q.length < 2) {
-                        this.customerResults = [];
-                        this.customerSearching = false;
-                        return;
-                    }
-                    // Debounced so a cashier typing a phone number doesn't fire
-                    // a request per keystroke.
-                    this.customerSearching = true;
-                    this._customerTimer = setTimeout(() => this.searchCustomers(q), 250);
-                },
-
-                async searchCustomers(q) {
-                    try {
-                        const res = await fetch('/pos/api/customers/search?q=' + encodeURIComponent(q), {
-                            headers: { Accept: 'application/json' },
-                        });
-                        // A stale response from an earlier keystroke must not
-                        // overwrite results for what is now in the box.
-                        if (q !== this.customerQuery.trim()) return;
-                        this.customerResults = res.ok ? await res.json() : [];
-                    } catch (e) {
-                        this.customerError = 'Network error: ' + e.message;
-                        this.customerResults = [];
-                    } finally {
-                        if (q === this.customerQuery.trim()) this.customerSearching = false;
-                    }
-                },
-
-                selectCustomer(c) {
-                    this.customer = c;
-                    this.showCustomerModal = false;
-                },
-
-                startNewCustomer() {
-                    // Carry whatever was typed across: a search that found nothing
-                    // is usually the new customer's name.
-                    this.newCustomer = { name: this.customerQuery.trim(), phone: '', customer_group: 'retail' };
-                    this.customerError = '';
-                    this.showNewCustomer = true;
-                    this.$nextTick(() => this.$refs.newCustomerName?.focus());
-                },
-
-                async saveNewCustomer() {
-                    if (this.customerProcessing) return;
-                    if (!this.newCustomer.name.trim()) {
-                        this.customerError = 'Name is required.';
-                        return;
-                    }
-                    this.customerProcessing = true;
-                    this.customerError = '';
-                    try {
-                        const res = await fetch('/pos/api/customers/quick-add', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': this._csrf(),
-                            },
-                            body: JSON.stringify({
-                                name: this.newCustomer.name.trim(),
-                                phone: this.newCustomer.phone.trim() || null,
-                                customer_group: this.newCustomer.customer_group,
-                            }),
-                        });
-                        const data = await res.json();
-                        if (!res.ok) {
-                            this.customerError = data.message
-                                || Object.values(data.errors || {}).flat().join(' ')
-                                || 'Could not create the customer.';
-                            return;
-                        }
-                        this.selectCustomer(data);
-                    } catch (e) {
-                        this.customerError = 'Network error: ' + e.message;
-                    } finally {
-                        this.customerProcessing = false;
-                    }
                 },
 
                 openHold() {
@@ -690,11 +598,77 @@
                             });
                         }
                         this.cart = cart;
-                        this.customer = data.customer || null;
                         this.showHeldList = false;
                         await this.refreshHeldCount();
                     } catch (e) {
                         this.errorMsg = 'Network error: ' + e.message;
+                    }
+                },
+
+                openCustomerModal() {
+                    this.customerSearch = '';
+                    this.customerResults = [];
+                    this.quickAddMode = false;
+                    this.customerError = '';
+                    this.showCustomerModal = true;
+                },
+
+                async searchCustomers() {
+                    const q = this.customerSearch.trim();
+                    if (q.length < 2) { this.customerResults = []; return; }
+                    this.customerSearching = true;
+                    try {
+                        const res = await fetch(`/pos/api/customers/search?q=${encodeURIComponent(q)}`, {
+                            headers: { Accept: 'application/json' },
+                        });
+                        this.customerResults = res.ok ? await res.json() : [];
+                    } catch (e) {
+                        this.customerResults = [];
+                    } finally {
+                        this.customerSearching = false;
+                    }
+                },
+
+                selectCustomer(c) {
+                    this.customer = c;
+                    this.showCustomerModal = false;
+                },
+
+                startQuickAdd() {
+                    // Prefill the name from whatever was already typed in search.
+                    this.quickAdd = { name: this.customerSearch.trim(), phone: '', customer_group: 'retail' };
+                    this.customerError = '';
+                    this.quickAddMode = true;
+                },
+
+                async submitQuickAdd() {
+                    if (this.quickAddProcessing || !this.quickAdd.name.trim()) return;
+                    this.quickAddProcessing = true;
+                    this.customerError = '';
+                    try {
+                        const res = await fetch('/pos/api/customers/quick-add', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': this._csrf(),
+                            },
+                            body: JSON.stringify(this.quickAdd),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            this.customerError = typeof data.message === 'string'
+                                ? data.message
+                                : Object.values(data.errors || {}).flat().join(' ') || 'Could not create customer.';
+                            return;
+                        }
+                        this.customer = data;
+                        this.showCustomerModal = false;
+                        this.quickAddMode = false;
+                    } catch (e) {
+                        this.customerError = 'Network error: ' + e.message;
+                    } finally {
+                        this.quickAddProcessing = false;
                     }
                 },
 
@@ -943,7 +917,6 @@
                                     discount_amount: l.discount_amount,
                                 })),
                                 payment: this.payment,
-                                customer_id: this.customer?.id || null,
                             }),
                         });
                         const data = await res.json();

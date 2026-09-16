@@ -14,7 +14,7 @@ td { padding: 6px 8px; border-bottom: 1px solid #eee; }
 <h1>{{ $title }}</h1>
 <div class="meta">Generated {{ now()->format('Y-m-d H:i') }} · Period {{ $from->format('Y-m-d') }} to {{ $to->format('Y-m-d') }}</div>
 <table>
-<thead><tr><th>Product</th><th class="right">Units</th><th class="right">Revenue</th><th class="right">COGS</th><th class="right">Profit</th><th class="right">Margin %</th></tr></thead>
+<thead><tr><th>Product</th><th class="right">Units</th><th class="right">Revenue (ex-VAT)</th><th class="right">COGS</th><th class="right">Profit</th><th class="right">Margin %</th></tr></thead>
 <tbody>
 @forelse ($rows as $r)
 <tr>

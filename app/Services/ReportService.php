@@ -57,7 +57,11 @@ class ReportService
                 'sale_items.product_id',
                 'sale_items.product_name',
                 DB::raw('SUM(sale_items.qty) as units'),
-                DB::raw('SUM(sale_items.line_total_usd) as revenue'),
+                // Revenue net of VAT: line_total carries the tax for an
+                // exclusive rate and contains it for an inclusive one, so
+                // subtracting the line's tax is right either way. VAT is
+                // collected for the state, never margin.
+                DB::raw('SUM(sale_items.line_total_usd - sale_items.tax_amount_usd) as revenue'),
                 DB::raw('SUM(sale_items.qty * sale_items.cost_usd) as cogs'),
             )
             ->orderByDesc('revenue')
@@ -132,8 +136,12 @@ class ReportService
         $discounts = (float) $agg->discounts;
         $tax = (float) $agg->tax_collected;
         $net = (float) $agg->net_revenue;
-        $grossProfit = ($grossRevenue - $discounts) - $cogs;
-        $marginPct = ($grossRevenue - $discounts) > 0 ? round($grossProfit / ($grossRevenue - $discounts) * 100, 2) : 0;
+        // Revenue actually earned: what was charged, less the VAT inside it.
+        // (net_revenue - tax) equals (subtotal - discounts) for an exclusive
+        // rate and strips the embedded VAT for an inclusive one.
+        $exVatRevenue = $net - $tax;
+        $grossProfit = $exVatRevenue - $cogs;
+        $marginPct = $exVatRevenue > 0 ? round($grossProfit / $exVatRevenue * 100, 2) : 0;
 
         return [
             'txn_count' => (int) $agg->txn_count,
@@ -141,6 +149,7 @@ class ReportService
             'discounts' => $discounts,
             'tax_collected' => $tax,
             'net_revenue' => $net,
+            'ex_vat_revenue' => round($exVatRevenue, 4),
             'cogs' => $cogs,
             'gross_profit' => $grossProfit,
             'margin_pct' => $marginPct,

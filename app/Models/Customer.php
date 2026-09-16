@@ -42,6 +42,22 @@ class Customer extends Model
         return $this->hasMany(LoyaltyTransaction::class);
     }
 
+    /**
+     * Columns the POS customer chip needs. Kept here so the typeahead
+     * (CustomerController::search) and a recalled hold hand the sell screen
+     * the same shape — the frontend renders both with one template.
+     */
+    public const POS_COLUMNS = [
+        'id', 'name', 'phone', 'customer_group',
+        'balance', 'loyalty_points', 'credit_limit', 'tax_exempt',
+    ];
+
+    /** @return array<string, mixed> */
+    public function posSummary(): array
+    {
+        return $this->only(self::POS_COLUMNS);
+    }
+
     public function hasAvailableCredit(float $amount): bool
     {
         return ($this->balance + $amount) <= $this->credit_limit;

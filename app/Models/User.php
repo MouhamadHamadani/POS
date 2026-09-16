@@ -13,10 +13,27 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    public const ROLE_SUPER_ADMIN = 'super_admin';
     public const ROLE_ADMIN = 'admin';
     public const ROLE_MANAGER = 'manager';
     public const ROLE_CASHIER = 'cashier';
     public const ROLE_STOCK = 'stock';
+
+    /** role value => label. Order matters: most privileged first. */
+    public const ROLES = [
+        self::ROLE_SUPER_ADMIN => 'Super Admin',
+        self::ROLE_ADMIN => 'Admin',
+        self::ROLE_MANAGER => 'Manager',
+        self::ROLE_CASHIER => 'Cashier',
+        self::ROLE_STOCK => 'Stock Keeper',
+    ];
+
+    /** Roles an `admin` (client store owner) may assign to their own staff. */
+    public const STAFF_ROLES = [
+        self::ROLE_MANAGER => 'Manager',
+        self::ROLE_CASHIER => 'Cashier',
+        self::ROLE_STOCK => 'Stock Keeper',
+    ];
 
     protected $fillable = [
         'uuid',
@@ -64,7 +81,28 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->hasRole(self::ROLE_ADMIN, self::ROLE_SUPER_ADMIN);
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === self::ROLE_SUPER_ADMIN;
+    }
+
+    /**
+     * Managerial tier — may view and act on *other* users' sales, receipts,
+     * holds and returns. Keep every such check routed through here so a new
+     * role tier lands in one place.
+     */
+    public function isManagerial(): bool
+    {
+        return $this->hasRole(self::ROLE_SUPER_ADMIN, self::ROLE_ADMIN, self::ROLE_MANAGER);
+    }
+
+    /** Roles that may only be created or edited by a super-admin. */
+    public function isPrivileged(): bool
+    {
+        return $this->hasRole(self::ROLE_ADMIN, self::ROLE_SUPER_ADMIN);
     }
 
     public function shifts(): HasMany

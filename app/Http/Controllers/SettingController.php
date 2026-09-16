@@ -21,7 +21,14 @@ class SettingController extends Controller
     {
         $tab = $request->query('tab', 'general');
         $taxes = Tax::orderByDesc('is_default')->orderBy('name')->get();
-        $backups = $this->backups->listBackups();
+
+        // Backup filenames are only listed for the accounts that can act on
+        // them (see the role:super_admin group in routes/web.php).
+        $isSuperAdmin = $request->user()->isSuperAdmin();
+        if ($tab === 'backup' && !$isSuperAdmin) {
+            $tab = 'general';
+        }
+        $backups = $isSuperAdmin ? $this->backups->listBackups() : [];
 
         $all = Setting::all()->keyBy('key')->map(fn ($s) => $s->value)->toArray();
 

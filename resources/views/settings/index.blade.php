@@ -7,8 +7,12 @@
         'receipt' => 'Receipt',
         'numbering' => 'Numbering',
         'loyalty' => 'Loyalty',
-        'backup' => 'Backup',
     ];
+
+    // Backups are vendor/owner territory — see the role:super_admin route group.
+    if (auth()->user()?->isSuperAdmin()) {
+        $tabs['backup'] = 'Backup';
+    }
     $get = fn($key, $default = '') => $all[$key] ?? $default;
 @endphp
 

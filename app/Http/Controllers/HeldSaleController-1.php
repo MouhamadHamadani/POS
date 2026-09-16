@@ -65,16 +65,17 @@ class HeldSaleController extends Controller
     public function recall(Request $request, HeldSale $heldSale): JsonResponse
     {
         $this->authorizeHold($request, $heldSale);
-
-        // Return the cart and delete the hold in one shot. `customer` carries
-        // the same shape the POS typeahead returns so the sell screen can
-        // restore the customer chip without a second round trip.
         $heldSale->loadMissing('customer');
 
+        // Return the cart and delete the hold in one shot. The full customer
+        // object (not just the id) lets the POS screen restore the selected-
+        // customer chip without a second round trip.
         $payload = [
             'cart' => $heldSale->cart,
             'customer_id' => $heldSale->customer_id,
-            'customer' => $heldSale->customer?->posSummary(),
+            'customer' => $heldSale->customer?->only([
+                'id', 'name', 'phone', 'customer_group', 'balance', 'loyalty_points', 'tax_exempt',
+            ]),
             'notes' => $heldSale->notes,
             'label' => $heldSale->label,
         ];
