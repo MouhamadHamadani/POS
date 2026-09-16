@@ -8,12 +8,13 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Builds database/demo-template.sqlite — the baseline every demo launch is
- * restored from.
+ * Builds resources/demo/demo-template.sqlite — the baseline every demo launch
+ * is restored from.
  *
  * Runs against a scratch file, never the connection this process started on, so
- * it can't touch a working database by accident. The template is not committed
- * (database/.gitignore excludes *.sqlite*); config/nativephp.php runs this as a
+ * it can't touch a working database by accident. It lives under resources/ and
+ * not database/, because NativePHP strips database/*.sqlite from the packaged
+ * app. The template is not committed; config/nativephp.php runs this as a
  * prebuild step when POS_DEMO_MODE is set, so a demo build always carries a
  * freshly seeded one.
  */

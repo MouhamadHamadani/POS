@@ -18,9 +18,15 @@ class AppServiceProvider extends ServiceProvider
         // Runs after NativePHP has rewritten the connection to the packaged
         // app's data directory (package providers boot before app providers),
         // so this sees the path the app will actually open. A demo build that
-        // resolves to anything but a demo database refuses to run at all —
+        // resolves to anything but a demo database refuses to serve at all —
         // better a hard stop than a demo reset landing on a client's till.
-        if (Demo::enabled()) {
+        //
+        // Requests only. A build machine runs `key:generate`, `optimize` and
+        // `demo:build-template` with POS_DEMO_MODE already set but the project's
+        // own sqlite path still configured, and failing those would stop the
+        // demo being built at all. Nothing destructive rides on this branch:
+        // Demo::resetFromTemplate() runs the same guard itself, console or not.
+        if (Demo::enabled() && ! $this->app->runningInConsole()) {
             Demo::guardDatabasePath();
         }
 

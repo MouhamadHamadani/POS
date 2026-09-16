@@ -158,7 +158,7 @@ class DemoResetTest extends TestCase
     }
 
     /**
-     * Demo::templatePath() is fixed to database/demo-template.sqlite, so drive
+     * Demo::templatePath() is a fixed path, so drive
      * the reset through a temp template by swapping the file into place under
      * that name for the duration of the call.
      */

@@ -9,7 +9,7 @@ as it does for a paying client, because demonstrating that is the point.
 
 | Area | Production | Demo (`POS_DEMO_MODE=true`) |
 |---|---|---|
-| Database | `%APPDATA%\LebaSouk\database\database.sqlite`, persistent | `%APPDATA%\LebaSouk Demo\database\database.sqlite`, **replaced from `database/demo-template.sqlite` on every launch** |
+| Database | `%APPDATA%\lebasouk\database\database.sqlite`, persistent | `%APPDATA%\lebasouk-demo\database\database.sqlite`, **replaced from `resources/demo/demo-template.sqlite` on every launch** |
 | Accounts | none shipped; owner created once at `/setup` | `demo_admin` / `demo_manager` / `demo_cashier` / `demo_stock`, shared password, listed on the login screen |
 | `super_admin` | created by `/setup` | never created — `/setup` is closed because accounts already exist |
 | Banner | none | amber "DEMO MODE" strip, bilingual, on every screen |
@@ -36,11 +36,31 @@ php artisan native:build win
 
 `config/nativephp.php` runs `php artisan demo:build-template` as a prebuild step
 whenever `POS_DEMO_MODE` is set, so the packaged app always carries a freshly
-seeded template. The template is **not** committed — `database/.gitignore`
-excludes `*.sqlite*` — and `DemoSeeder` is its only source of truth.
+seeded template. The template is **not** committed — `resources/demo/.gitignore`
+excludes it — and `DemoSeeder` is its only source of truth.
+
+The template lives in `resources/demo/`, **not** `database/`, and must stay
+there: NativePHP hard-codes `database/*.sqlite` into the paths it strips from a
+packaged app (`vendor/nativephp/electron/src/Traits/CopiesToBuildDirectory.php`),
+and that list is merged with `cleanup_exclude_files` rather than replaced by it.
+A template under `database/` is silently dropped from the build, and the packaged
+demo then refuses to open with "Demo template missing".
 
 Bump `NATIVEPHP_APP_VERSION` (or `config/nativephp.php` `version`) before each
 build as usual; migrations run on version change.
+
+**`native:build` exits 0 even when it fails.** Check `dist/` for a freshly
+timestamped `LebaSouk Demo-<version>-setup.exe` rather than trusting the exit
+code. The failure seen in practice is NativePHP not being able to clear its
+staging copy from a previous build:
+
+> Failed to remove directory `vendor/nativephp/electron/resources/js/resources/app/`: Directory not empty
+
+Delete that `app/` directory and build again:
+
+```bash
+rm -rf vendor/nativephp/electron/resources/js/resources/app
+```
 
 To regenerate the template by hand, e.g. after editing the demo catalogue:
 
@@ -65,7 +85,7 @@ The path guard requires the word `demo` in the resolved database path, so point
 the connection at a demo file:
 
 ```bash
-cp database/demo-template.sqlite database/demo.sqlite
+cp resources/demo/demo-template.sqlite database/demo.sqlite
 ```
 
 ```bash
@@ -83,12 +103,18 @@ Two independent guards, both in `App\Support\Demo`:
    on every request (after NativePHP has rewritten the connection to the
    packaged app's data directory) and again inside the reset itself. If a demo
    build resolves to a database path without `demo` in it — someone pointing a
-   demo at `%APPDATA%\LebaSouk\` — it refuses to boot instead of overwriting it.
+   demo at `%APPDATA%\lebasouk\` — it refuses to serve instead of overwriting
+   it. Console commands are exempt on purpose: a build machine runs
+   `key:generate`, `optimize` and `demo:build-template` with `POS_DEMO_MODE`
+   already set and the project's own sqlite path still configured. Nothing
+   destructive rides on that exemption — `Demo::resetFromTemplate()` runs the
+   guard itself, console or not.
 2. **Separate install** — `APP_NAME="LebaSouk Demo"` and
    `NATIVEPHP_APP_ID=com.buildsyntax.lebasouk.demo` give the demo its own
-   Electron `userData` directory, its own installer identity, and its own
-   Start Menu entry, so a demo and a production install coexist on one machine
-   without either clobbering the other.
+   Electron `userData` directory (`%APPDATA%\lebasouk-demo\`, slugged from the
+   app name), its own installer identity, and its own Start Menu entry, so a
+   demo and a production install coexist on one machine without either
+   clobbering the other.
 
 ## Where the reset happens
 
@@ -107,13 +133,24 @@ The mid-meeting button (`POST /demo/reset`, `demo:only`) runs the same
 WAL sidecars → copy the template over the live file (short retry for a Windows
 file lock) → flush the settings cache → log the actor out.
 
+## Relaunching: close it first
+
+NativePHP takes an Electron single-instance lock
+(`app.requestSingleInstanceLock()`), so starting the app while a copy is already
+running just focuses the open window — it never boots, so **the reset does not
+run**. Between meetings, close the app fully (or use **Reset Demo Data**) rather
+than clicking the shortcut again.
+
+## Verified on the packaged Windows build
+
+- Boot-time restore: launched `dist/win-unpacked/lebasouk-demo.exe`, deleted
+  rows from `%APPDATA%\lebasouk-demo\database\database.sqlite`, closed and
+  relaunched — the catalogue came back to 17 products and 4 accounts. The WAL
+  file-lock concern did not materialise on Windows.
+
 ## Still needs verifying on real hardware
 
 Nothing below can be settled by code review or the test suite:
-
-- The boot-time file copy inside the packaged Electron build — file-lock
-  semantics differ from `php artisan serve`, and NativePHP keeps queue workers
-  polling the same SQLite file.
 - A real barcode scanner against the seeded barcodes (`2900000000018` …). They
   are valid EAN-13 in the `29` in-store range; the test suite checks the check
   digits, not a scanner.

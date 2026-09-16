@@ -21,7 +21,7 @@ use Illuminate\Database\Seeder;
  * from the seeded exchange rate, exactly as it is for a paying client.
  *
  * Never chained into DatabaseSeeder: a shipped build must not carry accounts or
- * a catalogue. This runs only into database/demo-template.sqlite, via
+ * a catalogue. This runs only into resources/demo/demo-template.sqlite, via
  * `php artisan demo:build-template`.
  */
 class DemoSeeder extends Seeder

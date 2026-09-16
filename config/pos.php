@@ -55,7 +55,7 @@ return [
 
     /**
      * Demo build. A demo is a sandbox handed to a prospect: it runs off a
-     * throwaway database seeded from database/demo-template.sqlite, resets
+     * throwaway database seeded from resources/demo/demo-template.sqlite, resets
      * itself on every launch, and has every real-world side effect (backups,
      * exports, updater) switched off. Never set this on a client's machine —
      * App\Support\Demo::guardDatabasePath() refuses to boot a demo build that

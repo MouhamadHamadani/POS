@@ -48,12 +48,19 @@ final class Demo
 
     /**
      * The seeded baseline, built by `php artisan demo:build-template`.
-     * Not committed — database/.gitignore excludes *.sqlite* — so the demo
-     * build regenerates it at build time (see docs/demo-build.md).
+     *
+     * Deliberately NOT under database/: NativePHP strips `database/*.sqlite`
+     * from the packaged app as potentially sensitive, and that list is merged
+     * with config/nativephp.php rather than replaceable, so a template kept
+     * there silently never reaches the build
+     * (vendor/nativephp/electron/src/Traits/CopiesToBuildDirectory.php).
+     *
+     * Not committed either — resources/demo/.gitignore excludes it — so the
+     * demo build regenerates it at build time (see docs/demo-build.md).
      */
     public static function templatePath(): string
     {
-        return database_path('demo-template.sqlite');
+        return resource_path('demo/demo-template.sqlite');
     }
 
     /** The database this process is actually connected to, after NativePHP's rewrite. */

@@ -158,7 +158,7 @@ return [
         'php artisan optimize', // Run another command before the build
 
         // Demo builds ship a freshly seeded template to reset themselves from.
-        // It is not committed (database/.gitignore excludes *.sqlite*), so it is
+        // It is not committed (resources/demo/.gitignore excludes it), so it is
         // built here rather than being something a release can forget. env() and
         // not config(): config files are loaded before this one can read another.
         filter_var(env('POS_DEMO_MODE', false), FILTER_VALIDATE_BOOLEAN)
