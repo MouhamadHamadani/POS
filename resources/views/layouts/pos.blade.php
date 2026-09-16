@@ -22,7 +22,7 @@
             {{-- Slim top strip --}}
             <header class="bg-brand-700 text-white px-4 py-2 flex items-center gap-4 flex-shrink-0 shadow-card">
                 <div class="flex items-center gap-2 font-semibold">
-                    <div class="w-7 h-7 rounded bg-accent-light text-brand-900 flex items-center justify-center font-bold text-sm">L</div>
+                    <x-brand-mark class="w-7 h-7 rounded" />
                     <span class="text-sm">LebaSouk</span>
                 </div>
 
