@@ -13,6 +13,13 @@
     if (auth()->user()?->isSuperAdmin()) {
         $tabs['backup'] = 'Backup';
     }
+
+    // Business identity, currency and VAT are part of the demo baseline and are
+    // refused server-side in a demo build (SettingController::DEMO_LOCKED_TABS);
+    // don't offer a form that cannot save.
+    if (\App\Support\Demo::enabled()) {
+        $tabs = array_diff_key($tabs, array_flip(\App\Http\Controllers\SettingController::DEMO_LOCKED_TABS));
+    }
     $get = fn($key, $default = '') => $all[$key] ?? $default;
 @endphp
 

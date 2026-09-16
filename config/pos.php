@@ -53,6 +53,19 @@ return [
         'retention_days' => env('POS_BACKUP_RETENTION_DAYS', 30),
     ],
 
+    /**
+     * Demo build. A demo is a sandbox handed to a prospect: it runs off a
+     * throwaway database seeded from database/demo-template.sqlite, resets
+     * itself on every launch, and has every real-world side effect (backups,
+     * exports, updater) switched off. Never set this on a client's machine —
+     * App\Support\Demo::guardDatabasePath() refuses to boot a demo build that
+     * resolves to a non-demo database path.
+     */
+    'demo_mode' => env('POS_DEMO_MODE', false),
+
+    /** Shared password for the four seeded demo accounts. Demo builds only. */
+    'demo_password' => env('POS_DEMO_PASSWORD', 'demo1234'),
+
     'roles' => [
         'admin' => 'Administrator',
         'manager' => 'Manager',

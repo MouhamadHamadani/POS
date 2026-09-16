@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\DemoGate;
 use App\Models\AuditLog;
 use App\Models\Setting;
 use App\Models\Tax;
 use App\Services\BackupService;
+use App\Support\Demo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +17,15 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SettingController extends Controller
 {
+    /**
+     * Settings a demo build keeps fixed: business identity, currency, and VAT.
+     * Changing them would either undermine the "every launch is identical"
+     * property or misrepresent the very numbers the demo is showing off.
+     */
+    public const DEMO_LOCKED_TABS = ['general', 'currency', 'tax'];
+
+    private const DEMO_LOCKED_GROUPS = ['general', 'currency'];
+
     public function __construct(private readonly BackupService $backups) {}
 
     public function index(Request $request): View
@@ -27,6 +38,13 @@ class SettingController extends Controller
         $isSuperAdmin = $request->user()->isSuperAdmin();
         if ($tab === 'backup' && !$isSuperAdmin) {
             $tab = 'general';
+        }
+
+        // A demo resets to a fixed baseline on every launch, so the settings
+        // that define that baseline are not editable in it (see update() and
+        // the demo:blocked tax routes). Land somewhere that still works.
+        if (Demo::enabled() && in_array($tab, self::DEMO_LOCKED_TABS, true)) {
+            $tab = 'pos';
         }
         $backups = $isSuperAdmin ? $this->backups->listBackups() : [];
 
@@ -42,6 +60,10 @@ class SettingController extends Controller
             'group' => 'required|in:general,currency,pos,receipt,numbering,loyalty,backup,appearance',
             'settings' => 'required|array',
         ]);
+
+        if (Demo::enabled() && in_array($data['group'], self::DEMO_LOCKED_GROUPS, true)) {
+            return back()->withErrors(['demo' => DemoGate::refusal()]);
+        }
 
         $typeMap = [
             // general

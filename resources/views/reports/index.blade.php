@@ -2,7 +2,14 @@
     <x-slot name="header"><h2 class="font-semibold text-xl text-gray-800">{{ __('Reports') }}</h2></x-slot>
 
     <div class="py-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-        <p class="text-sm text-gray-600">Pick a report. All reports support PDF and XLSX export from inside.</p>
+        <p class="text-sm text-gray-600">
+            Pick a report.
+            @if (\App\Support\Demo::enabled())
+                Exports are disabled in the demo build — reports are viewable on screen.
+            @else
+                All reports support PDF and XLSX export from inside.
+            @endif
+        </p>
 
         @php
             $reports = [

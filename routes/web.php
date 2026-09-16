@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DemoController;
 use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
@@ -136,13 +137,25 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
-        Route::post('/settings/tax', [SettingController::class, 'storeTax'])->name('settings.tax.store');
-        Route::put('/settings/tax/{tax}', [SettingController::class, 'updateTax'])->name('settings.tax.update');
-        Route::delete('/settings/tax/{tax}', [SettingController::class, 'destroyTax'])->name('settings.tax.destroy');
+        // Tax rates are part of the demo baseline — editing them mid-pitch would
+        // undermine the "always resets clean" property, and VAT is one of the
+        // things being demonstrated.
+        Route::middleware('demo:blocked')->group(function () {
+            Route::post('/settings/tax', [SettingController::class, 'storeTax'])->name('settings.tax.store');
+            Route::put('/settings/tax/{tax}', [SettingController::class, 'updateTax'])->name('settings.tax.update');
+            Route::delete('/settings/tax/{tax}', [SettingController::class, 'destroyTax'])->name('settings.tax.destroy');
+        });
     });
 
+    // Demo builds only — restore the seeded baseline mid-pitch. `demo:only`
+    // means a production install does not have this endpoint at all.
+    Route::post('/demo/reset', [DemoController::class, 'reset'])
+        ->middleware('demo:only')->name('demo.reset');
+
     // Super-admin only — backups are vendor/owner territory, not the client's.
-    Route::middleware('role:super_admin')->group(function () {
+    // A demo build seeds no super_admin, so this group is already unreachable
+    // there; `demo:blocked` says so out loud rather than relying on that.
+    Route::middleware(['role:super_admin', 'demo:blocked'])->group(function () {
         Route::post('/settings/backup/now', [SettingController::class, 'backupNow'])->name('settings.backup.now');
         Route::get('/settings/backup/download/{filename}', [SettingController::class, 'backupDownload'])->name('settings.backup.download');
         Route::post('/settings/backup/restore/{filename}', [SettingController::class, 'backupRestore'])->name('settings.backup.restore');

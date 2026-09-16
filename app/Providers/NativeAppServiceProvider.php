@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Setting;
+use App\Support\Demo;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Native\Laravel\Contracts\ProvidesPhpIni;
@@ -22,7 +23,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         $base = request()->getSchemeAndHttpHost();
 
         Window::open()
-            ->title('LebaSouk')
+            ->title('LebaSouk'.Demo::titleSuffix())
             ->width(1400)
             ->height(900)
             ->minWidth(1280)
@@ -104,9 +105,27 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      * not carry a known credential, and a client's till must not open on
      * somebody's demo products. The owner account is created on the machine
      * through /setup.
+     *
+     * A demo build instead restores the seeded template over the runtime DB
+     * first, so every launch starts from the same catalogue no matter what the
+     * last meeting did to it.
      */
     private function bootstrapDatabase(): void
     {
+        // This provider's boot() is the earliest per-launch hook the package
+        // exposes: Electron POSTs /_native/api/booted on startup and
+        // NativeAppBootedController resolves config('nativephp.provider') and
+        // calls boot() on it (vendor/nativephp/laravel/src/Http/Controllers/
+        // NativeAppBootedController.php). It runs before Window::open() above,
+        // so the swap lands before the till is on screen.
+        //
+        // Outside the try/catch on purpose. A migrate failure should not stop
+        // the window opening; a failed demo reset should stop everything,
+        // because the alternative is demoing on last meeting's data.
+        if (Demo::enabled()) {
+            Demo::resetFromTemplate();
+        }
+
         try {
             // Always run any pending migrations — this catches schema drift between
             // the project DB and the runtime DB (e.g. when a new migration ships

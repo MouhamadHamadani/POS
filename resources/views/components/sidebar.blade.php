@@ -51,6 +51,20 @@
     </nav>
 
     <div class="border-t border-brand-600 p-3 text-xs space-y-2">
+        @if (\App\Support\Demo::enabled())
+            {{-- Demo builds only. The confirm() is the guard against firing this
+                 mid-sale: the reset replaces the database file underneath the app. --}}
+            <form method="POST" action="{{ route('demo.reset') }}"
+                  onsubmit="return confirm('Reset the demo to the seeded catalogue? Anything rung up in this session is discarded and you will be logged out — finish or cancel the sale on screen first.')">
+                @csrf
+                <button class="w-full flex items-center gap-2 px-2 py-2 rounded bg-amber-400 text-amber-950 font-semibold hover:bg-amber-300 transition"
+                        :title="open ? '' : 'Reset Demo Data'">
+                    <span class="inline-block w-5 text-center">&#8634;</span>
+                    <span x-show="open">Reset Demo Data</span>
+                </button>
+            </form>
+        @endif
+
         <a href="{{ route('profile.edit') }}"
            class="flex items-center gap-2 hover:text-accent-light"
            :title="open ? '' : '{{ $user?->name }}'">

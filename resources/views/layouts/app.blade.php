@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ $title ?? 'LebaSouk' }}</title>
+        <title>{{ ($title ?? 'LebaSouk') . \App\Support\Demo::titleSuffix() }}</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|cairo:400,500,600,700&display=swap" rel="stylesheet" />
@@ -13,6 +13,8 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased text-gray-900 bg-slate-50">
+        @includeWhen(\App\Support\Demo::enabled(), 'partials.demo-banner')
+
         <div class="flex min-h-screen">
             <x-sidebar />
 

@@ -23,6 +23,17 @@
 </style>
 </head>
 <body>
+    @php $isDemo = \App\Support\Demo::enabled(); @endphp
+
+    {{-- A demo printout must never be able to pass as a transaction record.
+         Two short lines so it still fits 58mm (32 char) paper, not just 80mm. --}}
+    @if ($isDemo)
+        <div class="center bold">*** DEMO RECEIPT ***</div>
+        <div class="center bold">NOT A VALID RECEIPT</div>
+        <div class="center bold" dir="rtl">إيصال تجريبي — غير صالح</div>
+        <hr>
+    @endif
+
     <div class="center bold">{{ $business['name'] }}</div>
     @if ($business['name_ar']) <div class="center" dir="rtl">{{ $business['name_ar'] }}</div> @endif
     @if ($business['address']) <div class="center small">{{ $business['address'] }}</div> @endif
@@ -107,6 +118,13 @@
     @endif
 
     <div class="center small" style="margin-top: 6mm;">Receipt # {{ $sale->receipt_number }}</div>
+
+    @if ($isDemo)
+        <hr>
+        <div class="center bold">*** DEMO RECEIPT ***</div>
+        <div class="center bold">NOT A VALID RECEIPT</div>
+        <div class="center bold" dir="rtl">إيصال تجريبي — غير صالح</div>
+    @endif
 
     <div class="actions">
         <button type="button" onclick="window.print()">Print</button>

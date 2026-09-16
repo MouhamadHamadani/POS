@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\Demo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 
@@ -14,6 +15,15 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Runs after NativePHP has rewritten the connection to the packaged
+        // app's data directory (package providers boot before app providers),
+        // so this sees the path the app will actually open. A demo build that
+        // resolves to anything but a demo database refuses to run at all —
+        // better a hard stop than a demo reset landing on a client's till.
+        if (Demo::enabled()) {
+            Demo::guardDatabasePath();
+        }
+
         if (DB::connection()->getDriverName() !== 'sqlite') {
             return;
         }

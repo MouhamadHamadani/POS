@@ -1,3 +1,7 @@
+@error('demo')
+    <div class="w-full p-2 bg-amber-50 text-amber-800 rounded text-xs">{{ $message }}</div>
+@enderror
+
 <form method="GET" class="bg-white rounded-lg shadow-card p-4 flex flex-wrap gap-3 items-end text-sm">
     @if (isset($from))
         <div>
@@ -11,9 +15,15 @@
     @endif
     {{ $slot ?? '' }}
     <button class="px-3 py-1.5 bg-gray-800 text-white rounded text-xs">Apply</button>
-    <a href="{{ url()->current() }}?{{ http_build_query(array_merge(request()->query(), ['format' => 'pdf'])) }}"
-       class="px-3 py-1.5 bg-red-600 text-white rounded text-xs">Export PDF</a>
-    <a href="{{ url()->current() }}?{{ http_build_query(array_merge(request()->query(), ['format' => 'xlsx'])) }}"
-       class="px-3 py-1.5 bg-green-600 text-white rounded text-xs">Export XLSX</a>
+    @if (\App\Support\Demo::enabled())
+        <span class="px-3 py-1.5 bg-gray-200 text-gray-500 rounded text-xs" title="Exports are disabled in the demo build">
+            Export disabled in demo
+        </span>
+    @else
+        <a href="{{ url()->current() }}?{{ http_build_query(array_merge(request()->query(), ['format' => 'pdf'])) }}"
+           class="px-3 py-1.5 bg-red-600 text-white rounded text-xs">Export PDF</a>
+        <a href="{{ url()->current() }}?{{ http_build_query(array_merge(request()->query(), ['format' => 'xlsx'])) }}"
+           class="px-3 py-1.5 bg-green-600 text-white rounded text-xs">Export XLSX</a>
+    @endif
     <a href="{{ route('reports.index') }}" class="text-xs text-gray-500 hover:underline ml-auto">← All reports</a>
 </form>

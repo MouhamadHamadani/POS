@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\DemoGate;
 use App\Http\Middleware\RequiresSetup;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SetLocale;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'shift' => ShiftRequired::class,
+            'demo' => DemoGate::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

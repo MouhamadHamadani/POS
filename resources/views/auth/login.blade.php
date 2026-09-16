@@ -35,4 +35,6 @@
             </x-primary-button>
         </div>
     </form>
+
+    @includeWhen(\App\Support\Demo::enabled(), 'partials.demo-credentials')
 </x-guest-layout>

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\DemoGate;
 use App\Services\ReportService;
+use App\Support\Demo;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -101,6 +103,15 @@ class ReportController extends Controller
     private function respond(Request $request, string $view, array $payload, string $title, \Closure $exportRows): View|Response
     {
         $format = $request->query('format');
+
+        // TODO(demo-decision): exports are OFF in demo builds pending Mouhamad's
+        // call — the alternative is keeping them working but watermarking the
+        // filename and PDF header with "DEMO DATA — NOT REAL FIGURES". Reports
+        // themselves stay fully browsable on screen either way; this only stops
+        // a file of invented figures leaving the meeting looking authoritative.
+        if (Demo::enabled() && in_array($format, ['pdf', 'xlsx'], true)) {
+            return back()->withErrors(['demo' => DemoGate::refusal().' Reports are viewable on screen.']);
+        }
 
         if ($format === 'pdf') {
             $pdf = Pdf::loadView($view . '-pdf', $payload + ['title' => $title]);

@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <title>LebaSouk — {{ $title ?? 'Sales' }}</title>
+        <title>LebaSouk{{ \App\Support\Demo::titleSuffix() }} — {{ $title ?? 'Sales' }}</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|cairo:400,500,600,700&display=swap" rel="stylesheet" />
@@ -19,6 +19,8 @@
         @endphp
 
         <div class="flex flex-col h-screen">
+            @includeWhen(\App\Support\Demo::enabled(), 'partials.demo-banner')
+
             {{-- Slim top strip --}}
             <header class="bg-brand-700 text-white px-4 py-2 flex items-center gap-4 flex-shrink-0 shadow-card">
                 <div class="flex items-center gap-2 font-semibold">
@@ -56,6 +58,14 @@
                              class="absolute end-0 mt-1 w-44 bg-white text-gray-800 rounded-lg shadow-pop py-1 text-sm z-50">
                             <a href="{{ route('profile.edit') }}" class="block px-3 py-2 hover:bg-gray-100">Profile</a>
                             <a href="{{ route('dashboard') }}" class="block px-3 py-2 hover:bg-gray-100">Management</a>
+                            @if (\App\Support\Demo::enabled())
+                                <hr class="my-1">
+                                <form method="POST" action="{{ route('demo.reset') }}"
+                                      onsubmit="return confirm('Reset the demo to the seeded catalogue? Anything rung up in this session is discarded and you will be logged out — finish or cancel the sale on screen first.')">
+                                    @csrf
+                                    <button class="block w-full text-left px-3 py-2 hover:bg-amber-50 text-amber-700 font-medium">Reset Demo Data</button>
+                                </form>
+                            @endif
                             <hr class="my-1">
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
