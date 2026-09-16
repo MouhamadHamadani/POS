@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Models\User;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Native\Laravel\Contracts\ProvidesPhpIni;
@@ -97,8 +97,13 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
     /**
      * On first launch (and after a fresh NativePHP install), the runtime DB at
-     * %APPDATA%/<app>/database/database.sqlite is empty. Run migrations + seeders
-     * once so the user has an admin account and sample data ready to go.
+     * %APPDATA%/<app>/database/database.sqlite is empty. Bring the schema up to
+     * date and lay down config defaults.
+     *
+     * Deliberately seeds no user and no sample catalogue: a shipped build must
+     * not carry a known credential, and a client's till must not open on
+     * somebody's demo products. The owner account is created on the machine
+     * through /setup.
      */
     private function bootstrapDatabase(): void
     {
@@ -109,9 +114,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             // already-applied migrations are skipped.
             Artisan::call('migrate', ['--force' => true]);
 
-            if (User::query()->count() === 0) {
+            // Only into a database that has no config yet. DefaultSettingsSeeder
+            // is updateOrCreate, so re-running it on every launch would silently
+            // reset a client's configured exchange rate and VAT settings.
+            if (Setting::query()->doesntExist()) {
                 Artisan::call('db:seed', ['--force' => true]);
-                Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\SampleProductsSeeder', '--force' => true]);
             }
         } catch (\Throwable $e) {
             // Swallow — we don't want a seed failure to prevent the window from opening.
