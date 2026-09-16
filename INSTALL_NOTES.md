@@ -1,4 +1,4 @@
-# POS Pro — Windows Install Notes
+# LebaSouk — Windows Install Notes
 
 Applies to the **unsigned Windows x64 build** produced from this repository.
 Read the whole page before touching the client's machine — the first-login step
@@ -10,29 +10,38 @@ matters, and there is no way to redo it quietly afterwards.
 
 | | |
 |---|---|
-| Product name | POS Pro (`APP_NAME`; final naming not yet decided) |
-| App id | `com.buildsyntax.pos` |
+| Product name | LebaSouk (`APP_NAME`) |
+| App id | `com.buildsyntax.lebasouk` |
 | Version | 1.0.0 (`NATIVEPHP_APP_VERSION`) |
 | Platform | Windows x64 only |
-| Installer | `POS Pro-1.0.0-setup.exe` (NSIS), in `dist/` |
+| Installer | `LebaSouk-1.0.0-setup.exe` (NSIS), in `dist/` |
 | Code signing | **None.** See §3. |
 | Auto-update | **Disabled.** See §6. |
-| Database | SQLite, created on first launch at `%APPDATA%\pos-pro\database\database.sqlite` |
+| Database | SQLite, created on first launch at `%APPDATA%\lebasouk\database\database.sqlite` |
+
+> **Rebuild required after the rebrand.** The installer currently sitting in
+> `dist/` was built under the old name and still carries the old app id and
+> `%APPDATA%` folder. Rebuild (§7) to get the values in this table. Because the
+> app id and app name both changed, a rebranded build installs *alongside* an
+> old install rather than upgrading it, and starts from an empty database in the
+> new `%APPDATA%\lebasouk\` folder — on any machine that already ran the old
+> build, copy the old `database.sqlite` across before the client uses it.
 
 ---
 
 ## 2. Running the installer
 
-1. Copy `POS Pro-1.0.0-setup.exe` to the machine (USB or download).
+1. Copy `LebaSouk-1.0.0-setup.exe` to the machine (USB or download).
 2. Double-click it.
 3. Work through the SmartScreen warning — see §3.
 4. The installer creates a desktop shortcut and a Start Menu entry, both named
-   **POS Pro**.
+   **LebaSouk**.
 5. Launch it. The first start runs migrations and seeders, so it takes a few
    seconds longer than later starts (about 20–30 seconds on a cold start).
    You should land on the login screen — username and password fields under a
-   window titled **POS Pro**. This was verified against the packaged build
-   from `dist/win-unpacked`.
+   window titled **LebaSouk**. The launch/first-login flow was verified against
+   the packaged build in `dist/win-unpacked`; that build predates the rebrand,
+   so its window title and paths still read the old name until you rebuild.
 
 ---
 
@@ -45,7 +54,7 @@ shows a blue full-screen dialog on first run:
 > **Windows protected your PC**
 > Microsoft Defender SmartScreen prevented an unrecognised app from starting.
 > Running this app might put your PC at risk.
-> *App:* POS Pro-1.0.0-setup.exe   *Publisher:* Unknown publisher
+> *App:* LebaSouk-1.0.0-setup.exe   *Publisher:* Unknown publisher
 
 To continue:
 
@@ -117,7 +126,7 @@ a pre-`super_admin` build keeps its existing `admin`-role account and gets
 Check with the login screen: if the account you log in as shows **Admin** (not
 **Super Admin**) under its name in the sidebar, you are in this case. Either:
 
-- wipe `%APPDATA%\pos-pro\database\database.sqlite` to start clean (this
+- wipe `%APPDATA%\lebasouk\database\database.sqlite` to start clean (this
   destroys all sales history on that machine — take a copy first), or
 - promote the account by hand, once, against that same file:
   `UPDATE users SET role = 'super_admin' WHERE username = 'admin';`
@@ -130,7 +139,7 @@ packaged build against an empty data directory seeds exactly one account,
 
 ## 5. Where the data lives
 
-- Database: `%APPDATA%\pos-pro\database\database.sqlite` (the folder is the
+- Database: `%APPDATA%\lebasouk\database\database.sqlite` (the folder is the
   slugged app name, not the display name)
 - Backups (super_admin only, Settings → Backup): written next to the database.
 

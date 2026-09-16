@@ -90,8 +90,8 @@ actually shows Arabic today.
    `vendor/nativephp/electron`'s own docs/config. Do not guess syntax.
 2. Confirm `config/nativephp.php` / `.env` values are sensible for a client
    build: `NATIVEPHP_APP_VERSION`, `NATIVEPHP_APP_ID`, `APP_NAME` (current
-   placeholder is "POS Pro" — leave as-is unless told otherwise; naming is
-   a separate, non-blocking decision).
+   name is "LebaSouk" — leave as-is unless told otherwise; naming was
+   a separate, non-blocking decision, since resolved).
 3. Explicitly leave all code-signing / certificate env vars empty — do not
    attempt to self-sign or fabricate a certificate. Confirm the build
    completes and produces a runnable Windows installer/executable without
@@ -156,7 +156,7 @@ works and de-risking the highest-value gaps — not achieving full coverage.
 - Code signing / notarization (needs a purchased certificate or Apple
   Developer enrollment — a human procurement step)
 - Full test coverage across every module
-- Final product naming decision (still "POS Pro")
+- Final product naming decision (since resolved to "LebaSouk")
 - Marketing website work
 - Mac packaging
 
