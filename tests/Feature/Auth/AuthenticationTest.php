@@ -12,6 +12,11 @@ class AuthenticationTest extends TestCase
 
     public function test_login_screen_can_be_rendered(): void
     {
+        // A machine with no accounts is unprovisioned, and every route funnels
+        // to /setup — a login form would have nothing to accept. The login
+        // screen only exists once the machine has an owner.
+        User::factory()->create();
+
         $this->get('/login')->assertStatus(200);
     }
 

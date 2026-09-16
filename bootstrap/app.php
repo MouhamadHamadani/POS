@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\RequiresSetup;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\ShiftRequired;
@@ -16,8 +17,18 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [
+            RequiresSetup::class,
             SetLocale::class,
         ]);
+
+        // Setup has to be decided before authentication is. Otherwise `auth`
+        // wins on protected routes and bounces an unprovisioned machine to a
+        // login screen that has no account to accept — it recovers on the next
+        // hop, but only by accident.
+        $middleware->prependToPriorityList(
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            RequiresSetup::class,
+        );
 
         $middleware->alias([
             'role' => RoleMiddleware::class,

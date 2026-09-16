@@ -17,6 +17,8 @@ matters, and there is no way to redo it quietly afterwards.
 | Installer | `LebaSouk-1.0.0-setup.exe` (NSIS), in `dist/` |
 | Code signing | **None.** See §3. |
 | Auto-update | **Disabled.** See §6. |
+| Accounts | **None.** No credential ships in the build; the owner account is created on the machine at first run (§4) |
+| Sample data | **None.** Config only — VAT, exchange rate, currencies, receipt settings |
 | Database | SQLite, created on first launch at `%APPDATA%\lebasouk\database\database.sqlite` |
 
 > **Rebuild required after the rebrand.** The installer currently sitting in
@@ -36,12 +38,12 @@ matters, and there is no way to redo it quietly afterwards.
 3. Work through the SmartScreen warning — see §3.
 4. The installer creates a desktop shortcut and a Start Menu entry, both named
    **LebaSouk**.
-5. Launch it. The first start runs migrations and seeders, so it takes a few
-   seconds longer than later starts (about 20–30 seconds on a cold start).
-   You should land on the login screen — username and password fields under a
-   window titled **LebaSouk**. The launch/first-login flow was verified against
-   the packaged build in `dist/win-unpacked`; that build predates the rebrand,
-   so its window title and paths still read the old name until you rebuild.
+5. Launch it. The first start runs migrations and lays down config defaults, so
+   it takes a few seconds longer than later starts (about 20–30 seconds on a
+   cold start). You land on the **setup screen**, not the login page — see §4.
+   The packaged build in `dist/win-unpacked` predates both the rebrand and the
+   setup screen, so it still shows the old name and the old seeded login until
+   you rebuild.
 
 ---
 
@@ -74,33 +76,29 @@ warning permanently. That is the fix; everything above is a workaround.
 
 ---
 
-## 4. First login — do this before handing the machine over
+## 4. First run — setting up the machine
 
-The installer seeds exactly **one** account, and it is the **vendor/owner**
-account, not the client's:
+**The build contains no accounts and no password.** Nothing is seeded, so there
+is no shared credential to extract from the installer and no two machines start
+out the same. The first launch opens a one-time **setup screen** instead of the
+login page — every route redirects there until an account exists.
 
-| | |
-|---|---|
-| Username | `admin` |
-| Password | `admin123` |
-| PIN | `1234` |
-| Role | `super_admin` |
+Do this with the machine in front of you, before the client sits down:
 
-**`super_admin` is our account, not the client's.** It is the only role that can
-take, download, restore and delete database backups, and the only role that can
-create or edit other admin-tier accounts.
-
-Do this, in order, before the client sits down:
-
-1. Log in as `admin` / `admin123`.
-2. **Change that password immediately** (Profile → password), and set a new PIN.
-   The seeded credentials are public knowledge — they are in this file.
-3. Go to **Users → New User** and create the client's own account with role
-   **Admin**. This is the store-owner account they will use day to day.
-   Give it a password the client chooses.
-4. Have the client log in as their new `admin` account and confirm they can
+1. Launch the app. You land on **Set up this machine**.
+2. Create the **owner account**. This is the `super_admin` — your account, the
+   one that can take, download, restore and delete database backups, and the
+   only one that can create or edit other admin-tier accounts. Choose the
+   password yourself; nothing is pre-filled.
+3. The setup screen closes permanently the moment that account is created. It
+   returns 404 from then on, so it can never be used to mint a second
+   `super_admin`. Further accounts come from **Users → New User**.
+4. Go to **Users → New User** and create the client's own account with role
+   **Admin**. This is the store-owner account they use day to day. Let the
+   client choose its password.
+5. Have the client log in as their new `admin` account and confirm they can
    reach Products, Settings, Reports, Customers, Suppliers and Purchase Orders.
-5. Create their staff accounts (`manager` / `cashier` / `stock`) — the client's
+6. Create their staff accounts (`manager` / `cashier` / `stock`) — the client's
    `admin` can do this themselves from the same screen.
 
 What the client's `admin` account **cannot** do, by design:
@@ -111,31 +109,53 @@ What the client's `admin` account **cannot** do, by design:
   dropdown only offers Manager / Cashier / Stock Keeper for them, and the server
   rejects the request even if the form is tampered with.
 
-Everything else an admin could do before the two-tier split, they can still do.
-
 Do **not** delete or deactivate the `super_admin` account — it is the only way
 back into backups, and the app refuses to leave itself without an active
 admin-tier user.
 
+> **If you delete every account**, the machine becomes unprovisioned again and
+> the setup screen comes back. That is the recovery path if the owner password
+> is ever lost, but it is also why the app will not let you remove the last
+> admin-tier user from inside the UI.
+
+### The till starts empty
+
+No sample products, categories or customers ship with the build. What the client
+gets on first run is configuration only — VAT rate, exchange rate, LBP rounding
+step, currencies, receipt settings — so the till prices correctly from the start
+but the catalogue is theirs to enter.
+
+To put a machine back into that state (after a demo, say):
+
+```bash
+php artisan pos:reset-data
+```
+
+It clears the catalogue, all transactional history and every account, keeps
+settings/taxes/currencies, and prints what it is about to delete before asking
+to confirm. `--keep-users` spares the accounts; `--force` skips the prompt.
+
 ### If the machine has run an older build before
 
-Seeding only happens when the users table is empty. A machine that already ran
-a pre-`super_admin` build keeps its existing `admin`-role account and gets
-**no** `super_admin` — so nobody on that machine can reach backups.
+Setup only appears when the users table is empty. A machine that already ran an
+earlier build keeps its existing accounts and goes straight to the login screen —
+including, if it ran a build from before this change, the old seeded `admin`
+account whose password was published in this file.
 
-Check with the login screen: if the account you log in as shows **Admin** (not
-**Super Admin**) under its name in the sidebar, you are in this case. Either:
+**On any machine that ever ran one of those builds, change that account's
+password (or delete the account) before handing it over.** Check with the
+sidebar: if the account you log in as shows **Admin** rather than **Super
+Admin** under its name, it also predates the admin/super-admin split and cannot
+reach backups. Either:
 
-- wipe `%APPDATA%\lebasouk\database\database.sqlite` to start clean (this
-  destroys all sales history on that machine — take a copy first), or
+- wipe `%APPDATA%\lebasouk\database\database.sqlite` to start clean — this
+  destroys all sales history on that machine, so take a copy first, and the app
+  will open the setup screen on next launch; or
 - promote the account by hand, once, against that same file:
   `UPDATE users SET role = 'super_admin' WHERE username = 'admin';`
 
-A genuinely new client machine has neither problem — verified: launching the
-packaged build against an empty data directory seeds exactly one account,
-`admin` / `System Owner` / `super_admin`.
+A genuinely new client machine has neither problem.
 
----
 
 ## 5. Where the data lives
 

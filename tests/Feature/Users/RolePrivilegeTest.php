@@ -228,13 +228,16 @@ class RolePrivilegeTest extends TestCase
         }
     }
 
-    public function test_seeded_first_run_account_is_a_super_admin(): void
+    /**
+     * The first-run account is no longer seeded — a shipped build carries no
+     * credential at all, and the owner provisions the machine through /setup.
+     * That flow is covered by Tests\Feature\Setup\FirstRunSetupTest; what
+     * matters here is that the seeders leave no account behind.
+     */
+    public function test_the_seeders_create_no_account_at_all(): void
     {
-        $this->seed(\Database\Seeders\AdminUserSeeder::class);
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
 
-        $this->assertSame(
-            User::ROLE_SUPER_ADMIN,
-            User::where('username', 'admin')->firstOrFail()->role
-        );
+        $this->assertSame(0, User::count());
     }
 }

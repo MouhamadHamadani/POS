@@ -35,8 +35,4 @@
             </x-primary-button>
         </div>
     </form>
-
-    <div class="mt-4 text-xs text-gray-500 text-center">
-        Default admin: <code>admin</code> / <code>admin123</code>
-    </div>
 </x-guest-layout>
