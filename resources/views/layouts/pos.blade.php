@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <title>POS Pro — {{ $title ?? 'Sales' }}</title>
+        <title>LebaSouk — {{ $title ?? 'Sales' }}</title>
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|cairo:400,500,600,700&display=swap" rel="stylesheet" />
@@ -22,8 +22,8 @@
             {{-- Slim top strip --}}
             <header class="bg-brand-700 text-white px-4 py-2 flex items-center gap-4 flex-shrink-0 shadow-card">
                 <div class="flex items-center gap-2 font-semibold">
-                    <div class="w-7 h-7 rounded bg-accent-light text-brand-900 flex items-center justify-center font-bold text-sm">P</div>
-                    <span class="text-sm">POS Pro</span>
+                    <div class="w-7 h-7 rounded bg-accent-light text-brand-900 flex items-center justify-center font-bold text-sm">L</div>
+                    <span class="text-sm">LebaSouk</span>
                 </div>
 
                 <div class="hidden md:flex items-center gap-3 ml-4 text-xs">

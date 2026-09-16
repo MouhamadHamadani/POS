@@ -11,8 +11,8 @@ class DefaultSettingsSeeder extends Seeder
     {
         $defaults = [
             // general
-            ['general', 'business_name', 'POS Pro', 'string'],
-            ['general', 'business_name_ar', 'بوس برو', 'string'],
+            ['general', 'business_name', 'LebaSouk', 'string'],
+            ['general', 'business_name_ar', 'ليبا سوق', 'string'],
             ['general', 'address', '', 'string'],
             ['general', 'phone', '', 'string'],
             ['general', 'email', '', 'string'],
@@ -36,7 +36,7 @@ class DefaultSettingsSeeder extends Seeder
             // receipt
             ['receipt', 'receipt_width', '80', 'int'],
             ['receipt', 'paper_width_char', '48', 'int'],
-            ['receipt', 'receipt_header', "POS Pro\nThank you for your business", 'string'],
+            ['receipt', 'receipt_header', "LebaSouk\nThank you for your business", 'string'],
             ['receipt', 'receipt_footer', 'Visit us again!', 'string'],
 
             // numbering

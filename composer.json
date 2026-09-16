@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "build-syntax/lebasouk",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "LebaSouk — point of sale for Lebanese retail (Build Syntax).",
     "keywords": [
         "laravel",
         "framework"

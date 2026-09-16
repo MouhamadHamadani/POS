@@ -24,8 +24,8 @@
 
     <div class="flex items-center justify-between p-3 border-b border-brand-600">
         <div class="flex items-center gap-2 overflow-hidden">
-            <div class="w-8 h-8 rounded bg-accent-light text-brand-900 flex items-center justify-center font-bold flex-shrink-0">P</div>
-            <div x-show="open" class="font-semibold whitespace-nowrap">POS Pro</div>
+            <div class="w-8 h-8 rounded bg-accent-light text-brand-900 flex items-center justify-center font-bold flex-shrink-0">L</div>
+            <div x-show="open" class="font-semibold whitespace-nowrap">LebaSouk</div>
         </div>
         <button @click="open = !open" class="text-brand-200 hover:text-white p-1" title="Toggle sidebar">
             <svg x-show="open"  class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
