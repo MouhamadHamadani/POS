@@ -104,7 +104,7 @@
                                     <td class="py-2 text-center"><input type="checkbox" name="is_inclusive" value="1" @checked($t->is_inclusive)></td>
                                     <td class="py-2 text-center"><input type="checkbox" name="is_default" value="1" @checked($t->is_default)></td>
                                     <td class="py-2 text-center"><input type="checkbox" name="is_active" value="1" @checked($t->is_active)></td>
-                                    <td class="py-2 text-right"><button class="text-xs text-blue-600">Save</button>
+                                    <td class="py-2 text-right"><button class="text-xs text-brand-600">Save</button>
                                 </form>
                                     <form method="POST" action="{{ route('settings.tax.destroy', $t) }}" class="inline ml-2" onsubmit="return confirm('Delete tax {{ $t->name }}?')">
                                         @csrf @method('DELETE')
@@ -264,7 +264,7 @@
                                 <td class="text-right text-xs">{{ $b['bytes'] }}</td>
                                 <td class="text-right text-xs text-gray-500">{{ date('Y-m-d H:i', $b['date']) }}</td>
                                 <td class="text-right space-x-2 whitespace-nowrap">
-                                    <a href="{{ route('settings.backup.download', $b['name']) }}" class="text-xs text-blue-600 hover:underline">Download</a>
+                                    <a href="{{ route('settings.backup.download', $b['name']) }}" class="text-xs text-brand-600 hover:underline">Download</a>
                                     <form method="POST" action="{{ route('settings.backup.restore', $b['name']) }}" class="inline"
                                           onsubmit="return confirm('Restore this backup? Current DB will be overwritten.')">
                                         @csrf

@@ -73,7 +73,7 @@
                         <td><span class="text-xs px-2 py-0.5 rounded bg-brand-100 text-brand-700">{{ ucfirst($po->status) }}</span></td>
                         <td class="text-right font-medium">${{ number_format((float) $po->total_usd, 2) }}</td>
                         <td class="text-right text-gray-500">{{ $po->expected_at?->format('Y-m-d') ?? '—' }}</td>
-                        <td class="text-right text-xs"><a href="{{ route('purchases.show', $po) }}" class="text-blue-600">View</a></td>
+                        <td class="text-right text-xs"><a href="{{ route('purchases.show', $po) }}" class="text-brand-600">View</a></td>
                     </tr>
                 @empty
                     <tr><td colspan="5" class="py-6 text-center text-gray-400">No purchase orders yet.</td></tr>

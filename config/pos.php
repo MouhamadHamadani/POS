@@ -2,7 +2,7 @@
 
 return [
     'business' => [
-        'name' => env('POS_BUSINESS_NAME', 'POS Pro'),
+        'name' => env('POS_BUSINESS_NAME', 'LebaSouk'),
         'country' => env('POS_COUNTRY', 'LB'),
         'timezone' => env('POS_TIMEZONE', 'Asia/Beirut'),
     ],

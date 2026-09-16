@@ -23,10 +23,10 @@
 
             <div class="bg-white rounded-lg shadow-sm">
                 <div class="flex border-b text-sm">
-                    <button type="button" @click="tab='basic'" :class="tab==='basic' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600'" class="px-4 py-3">Basic Info</button>
-                    <button type="button" @click="tab='pricing'" :class="tab==='pricing' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600'" class="px-4 py-3">Pricing</button>
-                    <button type="button" @click="tab='stock'" :class="tab==='stock' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600'" class="px-4 py-3">Stock</button>
-                    <button type="button" @click="tab='tax'" :class="tab==='tax' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600'" class="px-4 py-3">Tax &amp; Options</button>
+                    <button type="button" @click="tab='basic'" :class="tab==='basic' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">Basic Info</button>
+                    <button type="button" @click="tab='pricing'" :class="tab==='pricing' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">Pricing</button>
+                    <button type="button" @click="tab='stock'" :class="tab==='stock' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">Stock</button>
+                    <button type="button" @click="tab='tax'" :class="tab==='tax' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">Tax &amp; Options</button>
                 </div>
 
                 {{-- BASIC --}}
@@ -53,7 +53,7 @@
                             @endforeach
                         </select>
                         <div class="text-xs text-gray-500 mt-1">
-                            <a href="{{ route('categories.index') }}" target="_blank" class="text-blue-600 hover:underline">Manage categories</a>
+                            <a href="{{ route('categories.index') }}" target="_blank" class="text-brand-600 hover:underline">Manage categories</a>
                         </div>
                     </div>
 
@@ -241,7 +241,7 @@
 
                 <div class="border-t p-4 flex justify-end gap-2">
                     <a href="{{ route('products.index') }}" class="px-4 py-2 text-sm bg-gray-100 rounded">Cancel</a>
-                    <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                    <button class="px-4 py-2 text-sm bg-brand-600 text-white rounded hover:bg-brand-700">
                         {{ $isEdit ? 'Save Changes' : 'Create Product' }}
                     </button>
                 </div>

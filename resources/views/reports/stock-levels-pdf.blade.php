@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8"><title>{{ $title }}</title>
 <style>body { font-family: DejaVu Sans, sans-serif; font-size: 11px; }
-h1 { font-size: 16px; color: #1B3A6B; margin: 0 0 4px; }
+h1 { font-size: 16px; color: #124F4A; margin: 0 0 4px; }
 .meta { color: #555; font-size: 10px; margin-bottom: 12px; }
 table { width: 100%; border-collapse: collapse; }
-th { background: #1B3A6B; color: white; padding: 6px 8px; font-size: 10px; text-align: left; }
+th { background: #124F4A; color: white; padding: 6px 8px; font-size: 10px; text-align: left; }
 td { padding: 6px 8px; border-bottom: 1px solid #eee; }
 tfoot td { background: #f5f7fa; font-weight: bold; }
 .right { text-align: right; }</style>

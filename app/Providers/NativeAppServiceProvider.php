@@ -22,7 +22,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         $base = request()->getSchemeAndHttpHost();
 
         Window::open()
-            ->title('POS Pro')
+            ->title('LebaSouk')
             ->width(1400)
             ->height(900)
             ->minWidth(1280)

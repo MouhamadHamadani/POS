@@ -27,7 +27,7 @@ class ReceiptController extends Controller
         return view('receipts.thermal', [
             'sale' => $sale,
             'business' => [
-                'name' => Setting::get('business_name', 'POS Pro'),
+                'name' => Setting::get('business_name', 'LebaSouk'),
                 'name_ar' => Setting::get('business_name_ar'),
                 'address' => Setting::get('address'),
                 'phone' => Setting::get('phone'),

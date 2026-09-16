@@ -15,7 +15,7 @@ You own the build and release process for a NativePHP v2 (Electron) desktop POS 
 5. **Offline assumption:** the bundled PHP server runs on a random port; the app uses `request()->getSchemeAndHttpHost()`, not `APP_URL`. Don't introduce build steps that bake in a fixed host/port.
 
 ## Pre-release checklist (run/verify before building)
-- `config/nativephp.php` version bumped; `app_id`, `author`, `copyright`, `website`, `description` set for "POS Pro by Build Syntax" (or the current product name — confirm if a rename is in progress).
+- `config/nativephp.php` version bumped; `app_id`, `author`, `copyright`, `website`, `description` set for "LebaSouk by Build Syntax" (or the current product name — confirm if a rename is in progress).
 - `composer install --no-dev --optimize-autoloader` and `npm ci && npm run build` (Vite assets compiled).
 - `php artisan config:clear` (don't ship a cached config that points at dev paths).
 - Migrations + seeders run cleanly on a fresh SQLite DB locally.

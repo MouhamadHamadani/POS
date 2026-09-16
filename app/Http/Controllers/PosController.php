@@ -38,7 +38,7 @@ class PosController extends Controller
             'lbpStep' => $lbpStep,
             'autoPrint' => (bool) Setting::get('auto_print', false),
             'business' => [
-                'name' => Setting::get('business_name', 'POS Pro'),
+                'name' => Setting::get('business_name', 'LebaSouk'),
             ],
         ]);
     }

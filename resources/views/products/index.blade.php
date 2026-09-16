@@ -4,7 +4,7 @@
             <h2 class="font-semibold text-xl text-gray-800">{{ __('Products') }}</h2>
             <div class="flex gap-2">
                 <a href="{{ route('categories.index') }}" class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded">Categories</a>
-                <a href="{{ route('products.create') }}" class="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">+ New Product</a>
+                <a href="{{ route('products.create') }}" class="px-3 py-2 text-sm bg-brand-600 text-white rounded hover:bg-brand-700">+ New Product</a>
             </div>
         </div>
     </x-slot>
@@ -105,7 +105,7 @@
                                 @endif
                             </td>
                             <td class="p-3 text-right">
-                                <a href="{{ route('products.edit', $p) }}" class="text-blue-600 hover:underline text-xs">Edit</a>
+                                <a href="{{ route('products.edit', $p) }}" class="text-brand-600 hover:underline text-xs">Edit</a>
                                 <form method="POST" action="{{ route('products.destroy', $p) }}" class="inline ml-2"
                                       onsubmit="return confirm('Delete {{ $p->name }}?')">
                                     @csrf @method('DELETE')
@@ -115,7 +115,7 @@
                         </tr>
                     @empty
                         <tr><td colspan="8" class="p-10 text-center text-gray-500">
-                            No products match. <a href="{{ route('products.create') }}" class="text-blue-600">Create the first one.</a>
+                            No products match. <a href="{{ route('products.create') }}" class="text-brand-600">Create the first one.</a>
                         </td></tr>
                     @endforelse
                 </tbody>

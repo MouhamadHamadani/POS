@@ -62,7 +62,7 @@
                                 <span class="text-xs text-gray-500 ml-1">({{ ucfirst($c->loyalty_tier) }})</span>
                             </td>
                             <td class="p-3 text-right text-xs">
-                                <a href="{{ route('customers.show', $c) }}" class="text-blue-600 hover:underline">View</a>
+                                <a href="{{ route('customers.show', $c) }}" class="text-brand-600 hover:underline">View</a>
                             </td>
                         </tr>
                     @empty

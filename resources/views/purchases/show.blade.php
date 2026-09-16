@@ -6,7 +6,7 @@
                 @php
                     $color = match($po->status) {
                         'draft' => 'bg-gray-100 text-gray-700',
-                        'sent' => 'bg-blue-100 text-blue-700',
+                        'sent' => 'bg-brand-100 text-brand-700',
                         'partial' => 'bg-orange-100 text-orange-700',
                         'received' => 'bg-green-100 text-green-700',
                         'closed' => 'bg-brand-100 text-brand-700',
