@@ -5,7 +5,9 @@
         @include('reports._filters')
 
         <div class="bg-white rounded-lg shadow-card p-5">
-            <canvas id="salesChart" height="80"></canvas>
+            <canvas id="salesChart" height="80"
+                    data-labels='@json(collect($rows)->pluck('day'))'
+                    data-values='@json(collect($rows)->pluck('total')->map(fn($v) => round((float) $v, 2)))'></canvas>
         </div>
 
         <div class="bg-white rounded-lg shadow-card overflow-hidden">
@@ -49,15 +51,6 @@
     </div>
 
     @push('scripts')
-    <script type="module">
-        import Chart from 'chart.js/auto';
-        const labels = @json(collect($rows)->pluck('day'));
-        const data = @json(collect($rows)->pluck('total')->map(fn($v) => round((float) $v, 2)));
-        new Chart(document.getElementById('salesChart').getContext('2d'), {
-            type: 'line',
-            data: { labels, datasets: [{ label: 'Revenue (USD)', data, borderColor: '#124F4A', backgroundColor: 'rgba(93,179,173,0.15)', tension: 0.2, fill: true }] },
-            options: { responsive: true, plugins: { legend: { display: false } } }
-        });
-    </script>
+    @vite('resources/js/charts.js')
     @endpush
 </x-app-layout>
