@@ -77,7 +77,15 @@ about this repo being read-only; they no longer apply.)
 
 ## Guardrails (still apply)
 
-- Don't modify `.env` or read/log secrets from it.
+- Never read, echo, log or commit secrets from `.env` — `APP_KEY`, DB
+  credentials, mail/cloud keys, and the code-signing and updater provider
+  credentials. Don't paste them into a commit, a PR body, or a chat reply.
+- Editing a *non-secret* key in `.env` (`APP_NAME`, `APP_ENV`, `APP_DEBUG`,
+  `NATIVEPHP_APP_VERSION`, `POS_*`) is fine when the task calls for it. Change
+  the one line, leave the rest of the file alone, and mirror the change into
+  `.env.example` — that one *is* committed, so it's what a fresh checkout and
+  the build machine actually get. `.env` itself is gitignored, so a change
+  there is local to one machine and never reaches a PR.
 - Don't edit already-shipped migrations — add new ones instead.
 - Don't touch `storage/` contents directly.
 - Keep the audit log and currency/VAT conventions above consistent across
