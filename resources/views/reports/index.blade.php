@@ -7,7 +7,7 @@
             @if (\App\Support\Demo::enabled())
                 Exports are disabled in the demo build — reports are viewable on screen.
             @else
-                All reports support PDF and XLSX export from inside.
+                All reports export to PDF and {{ strtoupper(\App\Support\Spreadsheet::extension()) }} from inside.
             @endif
         </p>
 

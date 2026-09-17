@@ -36,7 +36,7 @@ class SettingController extends Controller
         // Backup filenames are only listed for the accounts that can act on
         // them (see the role:super_admin group in routes/web.php).
         $isSuperAdmin = $request->user()->isSuperAdmin();
-        if ($tab === 'backup' && !$isSuperAdmin) {
+        if (in_array($tab, ['backup', 'permissions'], true) && !$isSuperAdmin) {
             $tab = 'general';
         }
 
@@ -111,6 +111,38 @@ class SettingController extends Controller
         Cache::flush();
 
         return redirect()->route('settings.index', ['tab' => $group])->with('success', 'Settings saved.');
+    }
+
+    /**
+     * The two bulk-upload toggles. Super-admin only (see the role:super_admin
+     * group in routes/web.php) and audited one entry per role whose value
+     * actually moved — "who turned this on" is the whole point of the switch.
+     */
+    public function updatePermissions(Request $request): RedirectResponse
+    {
+        $roles = [
+            \App\Models\User::ROLE_ADMIN => 'bulk_upload_enabled_admin',
+            \App\Models\User::ROLE_STOCK => 'bulk_upload_enabled_stock',
+        ];
+
+        foreach ($roles as $role => $key) {
+            $was = (bool) Setting::get($key, false);
+            $now = $request->boolean("settings.{$key}");
+
+            if ($was === $now) {
+                continue;
+            }
+
+            Setting::set($key, $now ? '1' : '0', 'permissions', 'bool');
+
+            AuditLog::record($request->user()->id, 'permission_change', 'Setting', null,
+                [$key => $was],
+                [$key => $now, 'role' => $role],
+            );
+        }
+
+        return redirect()->route('settings.index', ['tab' => 'permissions'])
+            ->with('success', 'Permissions saved.');
     }
 
     // === Tax inline CRUD ===

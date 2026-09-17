@@ -6,6 +6,7 @@ use App\Http\Controllers\DemoController;
 use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\PurchaseOrderController;
@@ -29,6 +30,11 @@ Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
 
 Route::middleware(['auth'])->group(function () {
     Route::view('/dashboard', 'dashboard')->name('dashboard');
+
+    // Help -> About in the desktop menu bar points here. The build ships no
+    // auto-updater, so "which version is this machine on" is a question
+    // support has to be able to answer over the phone.
+    Route::view('/about', 'about')->name('about');
 
     // Receipt reprint — accessible outside the shift gate so cashier can
     // print receipts for earlier sales after closing a shift.
@@ -68,6 +74,17 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
         Route::post('/products/{product}/adjust-stock', [ProductController::class, 'adjustStock'])->name('products.adjust-stock');
         Route::get('/products/check-barcode', [ProductController::class, 'checkBarcode'])->name('products.check-barcode');
+
+        // Bulk upload. `can:` resolves User::canBulkUploadProducts(): eligible
+        // role AND a super-admin having switched that role's toggle on. Declared
+        // before /products/{product} routes so 'import' can't be read as an id.
+        // `demo:blocked` — a demo build's catalogue is a fixed baseline.
+        Route::middleware(['can:bulk-upload-products', 'demo:blocked'])->group(function () {
+            Route::get('/products/import', [ProductImportController::class, 'show'])->name('products.import.show');
+            Route::get('/products/import/template', [ProductImportController::class, 'template'])->name('products.import.template');
+            Route::post('/products/import/preview', [ProductImportController::class, 'preview'])->name('products.import.preview');
+            Route::post('/products/import', [ProductImportController::class, 'store'])->name('products.import.store');
+        });
 
         Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
         Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
@@ -156,6 +173,8 @@ Route::middleware(['auth'])->group(function () {
     // A demo build seeds no super_admin, so this group is already unreachable
     // there; `demo:blocked` says so out loud rather than relying on that.
     Route::middleware(['role:super_admin', 'demo:blocked'])->group(function () {
+        Route::post('/settings/permissions', [SettingController::class, 'updatePermissions'])->name('settings.permissions.update');
+
         Route::post('/settings/backup/now', [SettingController::class, 'backupNow'])->name('settings.backup.now');
         Route::get('/settings/backup/download/{filename}', [SettingController::class, 'backupDownload'])->name('settings.backup.download');
         Route::post('/settings/backup/restore/{filename}', [SettingController::class, 'backupRestore'])->name('settings.backup.restore');

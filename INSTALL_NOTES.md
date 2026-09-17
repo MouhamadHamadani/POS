@@ -18,16 +18,17 @@ matters, and there is no way to redo it quietly afterwards.
 | Code signing | **None.** See §3. |
 | Auto-update | **Disabled.** See §6. |
 | Accounts | **None.** No credential ships in the build; the owner account is created on the machine at first run (§4) |
+| Build mode | `APP_ENV=production`, `APP_DEBUG=false` |
+| Time zone | `Asia/Beirut` — receipts and report day boundaries are local, not UTC |
 | Sample data | **None.** Config only — VAT, exchange rate, currencies, receipt settings |
 | Database | SQLite, created on first launch at `%APPDATA%\lebasouk\database\database.sqlite` |
 
-> **Rebuild required after the rebrand.** The installer currently sitting in
-> `dist/` was built under the old name and still carries the old app id and
-> `%APPDATA%` folder. Rebuild (§7) to get the values in this table. Because the
-> app id and app name both changed, a rebranded build installs *alongside* an
-> old install rather than upgrading it, and starts from an empty database in the
-> new `%APPDATA%\lebasouk\` folder — on any machine that already ran the old
-> build, copy the old `database.sqlite` across before the client uses it.
+> **This is the first client release.** Because the app name and the app id both
+> changed since the earlier internal builds (`POS Pro`, `com.buildsyntax.pos`),
+> this installer installs *alongside* any older build rather than upgrading it,
+> and starts from an empty database in `%APPDATA%\lebasouk\`. On a machine that
+> already ran one of those builds, copy the old `database.sqlite` across before
+> the client uses it, or uninstall the old app first.
 
 ---
 
@@ -41,9 +42,6 @@ matters, and there is no way to redo it quietly afterwards.
 5. Launch it. The first start runs migrations and lays down config defaults, so
    it takes a few seconds longer than later starts (about 20–30 seconds on a
    cold start). You land on the **setup screen**, not the login page — see §4.
-   The packaged build in `dist/win-unpacked` predates both the rebrand and the
-   setup screen, so it still shows the old name and the old seeded login until
-   you rebuild.
 
 ---
 
@@ -196,8 +194,29 @@ built on Windows):
 php artisan native:build win x64
 ```
 
-The build runs `npm run build` and `php artisan optimize` itself
-(`prebuild` in `config/nativephp.php`), then writes the installer to `dist/`.
+**The build refuses to run against an unsafe `.env`.** Before anything is
+packaged, `native:build` checks that `APP_ENV=production`, `APP_DEBUG=false` and
+`APP_KEY` is set, and aborts with the list of what is wrong if not:
+
+```
+Refusing to build LebaSouk 1.0.0 (local). Fix .env first:
+  - APP_ENV is "local", expected "production".
+  - APP_DEBUG is true — a PHP error would print a stack trace at the till.
+```
+
+§9 used to carry "shipped with APP_DEBUG on" as a known gap; this is why it no
+longer can. To check a machine without starting a build:
+
+```bash
+php artisan pos:assert-release-env
+```
+
+Add `--demo` when you mean to build a demo sandbox — that form also asserts
+`POS_DEMO_MODE` matches your intent, which `native:build` cannot do on its own.
+
+Past the guard, the build runs `npm run build` and `php artisan optimize`
+itself (`prebuild` in `config/nativephp.php`), then writes the installer to
+`dist/`.
 
 Bump `NATIVEPHP_APP_VERSION` before every release build — NativePHP uses the
 version change to decide when to run migrations against the installed
@@ -216,13 +235,41 @@ Two things that will bite you right after a build:
 
 ---
 
-## 8. Known gaps in this build
+## 8. What changed for this release
 
-- **`APP_DEBUG` is `true` and `APP_ENV` is `local`** in the environment this was
-  built from. That means a PHP error shows a full stack trace to whoever is
-  standing at the till. Set `APP_DEBUG=false` and `APP_ENV=production` and
-  rebuild before this goes live for real.
+- `APP_ENV=production`, `APP_DEBUG=false`. A PHP error now shows a plain error
+  page instead of a full stack trace to whoever is standing at the till.
+- `APP_TIMEZONE=Asia/Beirut`. Receipt times and the day boundary on daily and
+  shift reports are local Lebanese time. Earlier builds stamped everything UTC,
+  so a sale after midnight local time could land on the previous day's report.
+- Logs rotate daily and keep 14 days (`LOG_STACK=daily`, `LOG_DAILY_DAYS=14`) at
+  `warning` and above, instead of a single `laravel.log` growing forever at
+  `debug` on a machine nobody ever clears.
+- The desktop menu bar's dead entries are fixed. Reports → Inventory Report,
+  Tools → Backup Now and Help → About all pointed at routes that do not exist,
+  and landed the till on a 404.
+- The three global keyboard shortcuts are removed. They fired events that had no
+  listener, so they did nothing — and a *global* shortcut is registered OS-wide,
+  so `Ctrl+B` was swallowed from every other application on the machine for as
+  long as the till was running.
+- `NATIVEPHP_APP_ID` now matches this document (`com.buildsyntax.lebasouk`); the
+  environment still carried `com.buildsyntax.pos` from before the rebrand.
+- The auto-updater now defaults to **off** in `config/nativephp.php` rather than
+  on, so a missing environment variable cannot switch on an updater that has no
+  provider behind it (§6).
+- `native:build` now refuses to package an `APP_DEBUG=true` build at all (§7).
+
+## 9. Known gaps in this build
+
 - Arabic UI translation is not in this build. The locale/RTL plumbing works and
   user-entered Arabic data (product `name_ar`, business name on receipts) shows
   correctly, but the interface chrome is English only.
 - The app is unsigned (§3) and does not auto-update (§6).
+- **Spreadsheet exports come out as `.csv`, not `.xlsx`.** The PHP runtime that
+  NativePHP bundles has no `ext-xmlwriter`, so PhpSpreadsheet cannot write an
+  `.xlsx` there at all. Exports step down to CSV, which opens in Excel
+  regardless, and the export buttons read **Export CSV** in the packaged app so
+  nothing is promised that is not delivered. Reading `.xlsx` is unaffected —
+  bulk product upload still accepts `.xlsx` and `.xls` files. PDF is unaffected.
+- Off-machine backup is manual (§5). Nothing copies the database off the till on
+  a schedule.

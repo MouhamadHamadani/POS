@@ -72,7 +72,7 @@
             <div class="flex justify-between items-center pt-4 border-t">
                 @if ($isEdit)
                     <form method="POST" action="{{ route('suppliers.destroy', $supplier) }}"
-                          onsubmit="return confirm('Delete {{ $supplier->name }}?')">
+                          onsubmit="return confirm({{ Js::from('Delete supplier '.$supplier->name.'? This cannot be undone.') }})">
                         @csrf @method('DELETE')
                         <button class="px-4 py-2 text-sm text-danger hover:bg-red-50 rounded">Delete</button>
                     </form>

@@ -107,7 +107,7 @@
                             <td class="p-3 text-right">
                                 <a href="{{ route('products.edit', $p) }}" class="text-brand-600 hover:underline text-xs">Edit</a>
                                 <form method="POST" action="{{ route('products.destroy', $p) }}" class="inline ml-2"
-                                      onsubmit="return confirm('Delete {{ $p->name }}?')">
+                                      onsubmit="return confirm({{ Js::from('Delete '.$p->name.'? This cannot be undone.') }})">
                                     @csrf @method('DELETE')
                                     <button class="text-red-600 hover:underline text-xs">Delete</button>
                                 </form>

@@ -9,8 +9,10 @@
         'loyalty' => 'Loyalty',
     ];
 
-    // Backups are vendor/owner territory — see the role:super_admin route group.
+    // Backups and the bulk-upload switches are vendor/owner territory — see the
+    // role:super_admin route group.
     if (auth()->user()?->isSuperAdmin()) {
+        $tabs['permissions'] = 'Permissions';
         $tabs['backup'] = 'Backup';
     }
 
@@ -113,7 +115,7 @@
                                     <td class="py-2 text-center"><input type="checkbox" name="is_active" value="1" @checked($t->is_active)></td>
                                     <td class="py-2 text-right"><button class="text-xs text-brand-600">Save</button>
                                 </form>
-                                    <form method="POST" action="{{ route('settings.tax.destroy', $t) }}" class="inline ml-2" onsubmit="return confirm('Delete tax {{ $t->name }}?')">
+                                    <form method="POST" action="{{ route('settings.tax.destroy', $t) }}" class="inline ml-2" onsubmit="return confirm({{ Js::from('Delete tax '.$t->name.'? This cannot be undone.') }})">
                                         @csrf @method('DELETE')
                                         <button class="text-xs text-red-600">×</button>
                                     </form>
@@ -231,6 +233,32 @@
                             <input type="number" min="0" name="settings[expiry_days]" value="{{ $get('expiry_days') }}" class="w-full border-gray-300 rounded text-sm" />
                         </div>
                         <div class="md:col-span-2 flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">Save</button></div>
+                    </form>
+
+                @elseif ($tab === 'permissions')
+                    <form method="POST" action="{{ route('settings.permissions.update') }}" class="space-y-4 text-sm max-w-xl">
+                        @csrf
+                        <div>
+                            <h3 class="font-semibold">Bulk product upload</h3>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Who may import products from a CSV or Excel file. Only these two roles
+                                are ever eligible; both are off until you switch them on.
+                            </p>
+                        </div>
+
+                        @foreach ([
+                            'bulk_upload_enabled_admin' => 'Allow Admin to bulk upload products',
+                            'bulk_upload_enabled_stock' => 'Allow Stock to bulk upload products',
+                        ] as $key => $label)
+                            <label class="flex items-start gap-3 border rounded p-3">
+                                <input type="checkbox" name="settings[{{ $key }}]" value="1"
+                                       @checked($get($key) === '1')
+                                       class="mt-0.5 rounded border-gray-300" />
+                                <span>{{ $label }}</span>
+                            </label>
+                        @endforeach
+
+                        <div class="flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">Save</button></div>
                     </form>
 
                 @elseif ($tab === 'backup')

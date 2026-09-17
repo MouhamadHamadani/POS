@@ -23,6 +23,25 @@ class BarcodeService
         throw new \RuntimeException('Could not generate a unique barcode after 20 attempts.');
     }
 
+    /**
+     * Find the product already holding a barcode, if any.
+     *
+     * withTrashed(): the DB unique index and the StoreProductRequest unique
+     * rule both still see soft-deleted rows, so every duplicate check must too
+     * — otherwise the preview says "free" and the INSERT says otherwise.
+     */
+    public function findByBarcode(string $barcode, ?int $exceptId = null): ?Product
+    {
+        if (trim($barcode) === '') {
+            return null;
+        }
+
+        return Product::withTrashed()
+            ->where('barcode', trim($barcode))
+            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->first(['id', 'name']);
+    }
+
     public function ean13CheckDigit(string $first12): string
     {
         $sum = 0;

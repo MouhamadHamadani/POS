@@ -90,12 +90,8 @@ class ProductController extends Controller
             return response()->json(['exists' => false]);
         }
 
-        // withTrashed(): the DB unique index and the StoreProductRequest unique rule
-        // both still see soft-deleted rows, so this preview must too.
-        $product = Product::withTrashed()
-            ->where('barcode', $barcode)
-            ->when($request->query('except'), fn ($q, $exceptId) => $q->where('id', '!=', $exceptId))
-            ->first(['id', 'name']);
+        $except = $request->query('except');
+        $product = $this->barcodes->findByBarcode($barcode, $except ? (int) $except : null);
 
         return response()->json([
             'exists' => (bool) $product,

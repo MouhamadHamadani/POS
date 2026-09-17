@@ -10,9 +10,9 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
+use App\Support\Spreadsheet;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
@@ -125,7 +125,9 @@ class ReportController extends Controller
                 public function array(): array { return array_slice($this->rows, 1); }
                 public function headings(): array { return $this->rows[0]; }
             };
-            return Excel::download($export, \Illuminate\Support\Str::slug($title) . '-' . now()->format('Ymd-His') . '.xlsx');
+            // Extension is picked by what this runtime can write — the packaged
+            // app has no ext-xmlwriter and cannot produce .xlsx at all.
+            return Spreadsheet::download($export, \Illuminate\Support\Str::slug($title) . '-' . now()->format('Ymd-His'));
         }
 
         return view($view, $payload + ['title' => $title]);

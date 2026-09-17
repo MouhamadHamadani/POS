@@ -105,6 +105,26 @@ class User extends Authenticatable
         return $this->hasRole(self::ROLE_ADMIN, self::ROLE_SUPER_ADMIN);
     }
 
+    /**
+     * Bulk product import. Only `admin` and `stock` are ever eligible, and each
+     * of those two is separately switched on by a super-admin (see the
+     * Permissions tab in Settings). super_admin itself is always allowed —
+     * same principle as RoleMiddleware: the vendor account can't be locked out
+     * of a feature it has to support.
+     */
+    public function canBulkUploadProducts(): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        return match ($this->role) {
+            self::ROLE_ADMIN => (bool) Setting::get('bulk_upload_enabled_admin', false),
+            self::ROLE_STOCK => (bool) Setting::get('bulk_upload_enabled_stock', false),
+            default => false,
+        };
+    }
+
     public function shifts(): HasMany
     {
         return $this->hasMany(Shift::class);

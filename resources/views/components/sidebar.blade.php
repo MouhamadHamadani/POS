@@ -15,6 +15,13 @@
         ['Users',           '/users',            'admin',                        '👤'],
         ['Settings',        '/settings',         'admin',                        '⚙️'],
     ];
+
+    // Bulk upload is off by default and switched on per role by a super-admin,
+    // so it can't be expressed as a role list. Hiding it is cosmetic — the
+    // routes are gated by `can:bulk-upload-products` regardless.
+    if ($user?->canBulkUploadProducts()) {
+        array_splice($nav, 3, 0, [['Bulk Upload', '/products/import', $role, '📤']]);
+    }
 @endphp
 
 <aside x-data="{ open: window.innerWidth >= 1024 }"

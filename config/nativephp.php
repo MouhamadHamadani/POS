@@ -44,7 +44,7 @@ return [
     /**
      * The Website of your application.
      */
-    'website' => env('NATIVEPHP_APP_WEBSITE', 'https://nativephp.com'),
+    'website' => env('NATIVEPHP_APP_WEBSITE'),
 
     /**
      * The default service provider for your application. This provider
@@ -96,8 +96,14 @@ return [
          * Whether or not the updater is enabled. Please note that the
          * updater will only work when your application is bundled
          * for production.
+         *
+         * Defaults to FALSE on purpose: none of the three providers below has
+         * real credentials, and nothing is published on build. An updater that
+         * is on but pointed at nothing fails on every launch of a till that has
+         * no internet anyway. Turn it on only together with a wired provider
+         * and `native:build win x64 --publish` (INSTALL_NOTES.md section 6).
          */
-        'enabled' => env('NATIVEPHP_UPDATER_ENABLED', true),
+        'enabled' => env('NATIVEPHP_UPDATER_ENABLED', false),
 
         /**
          * The updater provider to use.
@@ -154,6 +160,11 @@ return [
      * Define your own scripts to run before and after the build process.
      */
     'prebuild' => array_values(array_filter([
+        // Nothing that has to *stop* the build belongs in this list: NativePHP
+        // prints when a prebuild command fails and carries on regardless
+        // (HasPreAndPostProcessing::runProcess). The release check is hooked
+        // onto the command itself in App\Providers\AppServiceProvider.
+        'php artisan optimize:clear', // drop the previous build's caches
         'npm run build', // Run a command before the build
         'php artisan optimize', // Run another command before the build
 

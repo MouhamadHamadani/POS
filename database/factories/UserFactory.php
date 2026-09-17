@@ -52,4 +52,9 @@ class UserFactory extends Factory
     {
         return $this->state(fn () => ['role' => User::ROLE_MANAGER]);
     }
+
+    public function stock(): static
+    {
+        return $this->state(fn () => ['role' => User::ROLE_STOCK]);
+    }
 }

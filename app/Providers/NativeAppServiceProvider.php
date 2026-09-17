@@ -5,9 +5,7 @@ namespace App\Providers;
 use App\Models\Setting;
 use App\Support\Demo;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Schema;
 use Native\Laravel\Contracts\ProvidesPhpIni;
-use Native\Laravel\Facades\GlobalShortcut;
 use Native\Laravel\Facades\Menu;
 use Native\Laravel\Facades\MenuBar;
 use Native\Laravel\Facades\Window;
@@ -23,7 +21,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         $base = request()->getSchemeAndHttpHost();
 
         Window::open()
-            ->title('LebaSouk'.Demo::titleSuffix())
+            ->title(config('app.name').Demo::titleSuffix())
             ->width(1400)
             ->height(900)
             ->minWidth(1280)
@@ -31,11 +29,14 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->url($base . '/pos')
             ->resizable(true);
 
+        // Every link below is a real route in routes/web.php. A menu entry
+        // pointing at a path that does not exist lands the till on a 404 —
+        // and with APP_DEBUG=false that is a blank error page, not a clue.
         Menu::make(
             Menu::app()->submenu(
                 Menu::label('File')->submenu(
                     Menu::link($base . '/pos', 'New Sale'),
-                    Menu::link($base . '/pos?action=hold', 'Hold Sale'),
+                    Menu::link($base . '/shifts/open', 'Open Shift'),
                     Menu::link($base . '/shifts/close', 'Close Shift'),
                     Menu::separator(),
                     Menu::quit('Exit'),
@@ -47,19 +48,23 @@ class NativeAppServiceProvider implements ProvidesPhpIni
                     Menu::label('Zoom Out')->accelerator('CmdOrCtrl+-'),
                 ),
                 Menu::label('Reports')->submenu(
-                    Menu::link($base . '/reports', 'Daily Summary'),
-                    Menu::link($base . '/reports/shifts/z', 'Z-Report'),
-                    Menu::link($base . '/reports/inventory/levels', 'Inventory Report'),
+                    Menu::link($base . '/reports/sales/daily', 'Daily Sales Summary'),
+                    Menu::link($base . '/reports/sales/by-product', 'Sales by Product'),
+                    Menu::link($base . '/reports/inventory/stock-levels', 'Inventory Stock Levels'),
+                    Menu::link($base . '/reports/financial/pnl', 'Profit & Loss'),
+                    Menu::separator(),
+                    Menu::link($base . '/reports', 'All Reports'),
                 ),
                 Menu::label('Tools')->submenu(
-                    Menu::link($base . '/settings/backups', 'Backup Now'),
+                    // The Backup tab, not a backup: taking one is a POST, and a
+                    // menu item cannot make one. Super-admin only; anyone else
+                    // gets the General tab (SettingController::index).
+                    Menu::link($base . '/settings?tab=backup', 'Backups'),
                     Menu::link($base . '/settings', 'Settings'),
                     Menu::link($base . '/users', 'User Management'),
                 ),
                 Menu::label('Help')->submenu(
                     Menu::link($base . '/about', 'About'),
-                    Menu::link('https://nativephp.com/docs/desktop/2/getting-started/introduction', 'Documentation')
-                        ->openInBrowser(),
                 ),
             ),
         )
@@ -74,17 +79,12 @@ class NativeAppServiceProvider implements ProvidesPhpIni
                 Menu::quit('Quit'),
             ));
 
-        GlobalShortcut::key('CmdOrCtrl+Shift+P')
-            ->event(\App\Events\OpenPos::class)
-            ->register();
-
-        GlobalShortcut::key('CmdOrCtrl+Shift+R')
-            ->event(\App\Events\OpenReports::class)
-            ->register();
-
-        GlobalShortcut::key('CmdOrCtrl+B')
-            ->event(\App\Events\BackupNow::class)
-            ->register();
+        // No GlobalShortcut registrations. The three that used to live here
+        // (Ctrl+Shift+P, Ctrl+Shift+R, Ctrl+B) dispatched event classes that
+        // had no listener, so they did nothing — while a *global* shortcut is
+        // registered OS-wide, so Ctrl+B was swallowed from every other
+        // application for as long as the till was running. Re-add them only
+        // together with listeners that actually navigate the window.
     }
 
     public function phpIni(): array

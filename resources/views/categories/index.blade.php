@@ -62,11 +62,21 @@
                                 <td class="p-2 text-right whitespace-nowrap">
                                     <button class="text-xs text-brand-600 hover:underline">Save</button>
                             </form>
-                                    <form method="POST" action="{{ route('categories.destroy', $c) }}" class="inline ml-2"
-                                          onsubmit="return confirm('Delete category {{ $c->name }}?')">
-                                        @csrf @method('DELETE')
-                                        <button class="text-xs text-red-600 hover:underline" {{ $c->products_count > 0 ? 'disabled title=Has products' : '' }}>Delete</button>
-                                    </form>
+                                    @if ($c->products_count > 0)
+                                        {{-- A category with products can't be deleted (CategoryController
+                                             refuses it too). Say so instead of rendering a red "Delete" that
+                                             looks live and silently swallows the click. --}}
+                                        <span class="text-xs text-gray-400 ml-2 cursor-not-allowed"
+                                              title="Can't delete — {{ $c->products_count }} {{ \Illuminate\Support\Str::plural('product', $c->products_count) }} still assigned. Move or delete them first.">
+                                            Delete
+                                        </span>
+                                    @else
+                                        <form method="POST" action="{{ route('categories.destroy', $c) }}" class="inline ml-2"
+                                              onsubmit="return confirm({{ Js::from('Delete category '.$c->name.'? This cannot be undone.') }})">
+                                            @csrf @method('DELETE')
+                                            <button class="text-xs text-red-600 hover:underline">Delete</button>
+                                        </form>
+                                    @endif
                                 </td>
                         </tr>
                     @empty
