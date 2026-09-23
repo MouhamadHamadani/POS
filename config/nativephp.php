@@ -157,6 +157,31 @@ return [
     ],
 
     /**
+     * The Electron main process' scheduler loop.
+     *
+     * NativePHP runs `artisan schedule:run` on a 60-second timer, spawning the
+     * bundled php.exe every tick. This app schedules nothing (routes/console.php
+     * only has the stock `inspire` example), so all of that was work for no
+     * work — and on one client machine an antivirus that had quarantined
+     * php.exe turned a tick into `spawn UNKNOWN`, uncaught in Electron's main
+     * process, which killed the till mid-shift.
+     *
+     * Defaults to FALSE on purpose, same reasoning as `updater` above: don't run
+     * a background loop that has nothing to do. Turn it on in the same change
+     * that adds the first real scheduled task (the auto-backup behind
+     * Settings -> Backup is the obvious candidate).
+     *
+     * Upstream ships no toggle of its own — https://github.com/NativePHP/desktop/issues/147
+     * — so this key is read by a patch applied to the vendored Electron plugin;
+     * see app/Console/Commands/PatchNativePhpScheduler.php. filter_var, not a
+     * bare env(), because the value crosses into JavaScript as JSON and a
+     * literal "1" there is not `true`.
+     */
+    'scheduler' => [
+        'enabled' => filter_var(env('NATIVEPHP_SCHEDULER_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+    ],
+
+    /**
      * Define your own scripts to run before and after the build process.
      */
     'prebuild' => array_values(array_filter([

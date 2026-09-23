@@ -160,6 +160,13 @@ A genuinely new client machine has neither problem.
 - Database: `%APPDATA%\lebasouk\database\database.sqlite` (the folder is the
   slugged app name, not the display name)
 - Backups (super_admin only, Settings → Backup): written next to the database.
+- Laravel log: `%APPDATA%\lebasouk\storage\logs\` (daily files, `warning` and
+  above — see §8).
+- Electron main-process warnings: `%APPDATA%\lebasouk\storage\logs\nativephp-main.log`.
+  NativePHP itself only ever writes main-process output to a console nobody
+  sees in a packaged build, so this file exists for the one case that has bitten
+  a till — see §10. It is written only when something goes wrong; an absent
+  file means nothing has.
 
 Backing the machine up is a manual step today: take a backup from
 Settings → Backup and copy the file off the machine. There is no scheduled
@@ -273,3 +280,40 @@ Two things that will bite you right after a build:
   bulk product upload still accepts `.xlsx` and `.xls` files. PDF is unaffected.
 - Off-machine backup is manual (§5). Nothing copies the database off the till on
   a schedule.
+
+---
+
+## 10. The background scheduler (off, deliberately)
+
+NativePHP's Electron process runs `artisan schedule:run` on a 60-second timer
+from the moment the app launches. It does that whether or not the app has
+anything scheduled — and this one does not. Every tick spawned the bundled
+`php.exe`, did nothing, and exited.
+
+That is how a client's till died: an antivirus had quarantined the bundled
+`php.exe` as a false positive, the next tick failed with `spawn UNKNOWN`, and
+because nothing caught it the error reached Electron's main process uncaught
+and took the whole app down mid-shift.
+
+Two changes, both on by default in this build:
+
+- **The loop is off.** `NATIVEPHP_SCHEDULER_ENABLED=false` (read as
+  `nativephp.scheduler.enabled` in `config/nativephp.php`). No timer, no spawn,
+  nothing for an antivirus to interrupt.
+- **A failed spawn is survivable.** If the loop is ever turned on and PHP can't
+  be started, the tick is skipped, a line is written to
+  `storage\logs\nativephp-main.log` (§5), and the next tick tries again. The app
+  keeps running.
+
+NativePHP ships no switch of its own — [NativePHP/desktop#147](https://github.com/NativePHP/desktop/issues/147)
+is open and unfixed — so both changes are a patch applied to the vendored
+Electron plugin by `php artisan nativephp:patch-scheduler`. It runs
+automatically after `composer install`/`composer update` and again at the start
+of every `native:build`, which **refuses to package** if the patch no longer
+applies. Run `php artisan nativephp:patch-scheduler --check` to see where a
+working copy stands.
+
+Turning the loop back on is one env var — but do it in the same change that adds
+the first real scheduled task. The scheduled off-machine backup named in §9 is
+the obvious first customer; the Settings → Backup frequency setting is stored
+today but nothing reads it yet.

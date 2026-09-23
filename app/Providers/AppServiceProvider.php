@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Support\Demo;
 use App\Support\ReleaseEnv;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -27,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('bulk-upload-products', fn (User $user) => $user->canBulkUploadProducts());
 
         $this->guardReleaseBuilds();
+        $this->repatchNativePhpBeforeBuild();
 
         // Runs after NativePHP has rewritten the connection to the packaged
         // app's data directory (package providers boot before app providers),
@@ -92,6 +94,35 @@ class AppServiceProvider extends ServiceProvider
                 throw new \RuntimeException(
                     'Refusing to build '.ReleaseEnv::summary().". Fix .env first:\n  - "
                     .implode("\n  - ", $problems)
+                );
+            }
+        });
+    }
+
+    /**
+     * Re-assert the NativePHP vendor patch before packaging.
+     *
+     * composer.json applies it on install and update, which covers the normal
+     * case. This is what makes it impossible to *package* an unpatched build:
+     * a `composer install --no-scripts`, a restored vendor cache or a NativePHP
+     * bump that moves the code the patch anchors on would otherwise put the
+     * scheduler crash straight back into a client's installer. See
+     * App\Console\Commands\PatchNativePhpScheduler for what it does and why.
+     *
+     * Hooked onto the command for the same reason as guardReleaseBuilds(): the
+     * `prebuild` list only prints when a command fails and builds on regardless.
+     */
+    private function repatchNativePhpBeforeBuild(): void
+    {
+        Event::listen(function (CommandStarting $event) {
+            if ($event->command !== 'native:build') {
+                return;
+            }
+
+            if (Artisan::call('nativephp:patch-scheduler') !== 0) {
+                throw new \RuntimeException(
+                    "Refusing to build — the NativePHP scheduler patch did not apply:\n"
+                    .trim(Artisan::output())
                 );
             }
         });
