@@ -173,6 +173,11 @@ Route::middleware(['auth'])->group(function () {
     // A demo build seeds no super_admin, so this group is already unreachable
     // there; `demo:blocked` says so out loud rather than relying on that.
     Route::middleware(['role:super_admin', 'demo:blocked'])->group(function () {
+        // Deleted products, read-only. Sits here and not with the other product
+        // routes on purpose: the client's own admin must never see a trash of
+        // deleted products, so the gate is route middleware, not a controller if.
+        Route::get('/products/trashed', [ProductController::class, 'trashed'])->name('products.trashed');
+
         Route::post('/settings/permissions', [SettingController::class, 'updatePermissions'])->name('settings.permissions.update');
 
         Route::post('/settings/backup/now', [SettingController::class, 'backupNow'])->name('settings.backup.now');

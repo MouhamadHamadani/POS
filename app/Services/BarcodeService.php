@@ -16,7 +16,7 @@ class BarcodeService
             $base12 = str_pad((string) random_int(100_000_000_000, 999_999_999_999), 12, '0', STR_PAD_LEFT);
             $candidate = $base12 . $this->ean13CheckDigit($base12);
 
-            if (!Product::where('barcode', $candidate)->exists()) {
+            if (!Product::withTrashed()->where('barcode', $candidate)->exists()) {
                 return $candidate;
             }
         }
@@ -26,9 +26,12 @@ class BarcodeService
     /**
      * Find the product already holding a barcode, if any.
      *
-     * withTrashed(): the DB unique index and the StoreProductRequest unique
-     * rule both still see soft-deleted rows, so every duplicate check must too
-     * — otherwise the preview says "free" and the INSERT says otherwise.
+     * withTrashed(): the DB unique index and the StoreProductRequest unique rule
+     * both still see soft-deleted rows, so every duplicate check must too, or the
+     * preview says "free" and the INSERT says otherwise. Deleting a product now
+     * nulls its barcode/sku (ProductController::destroy) and a migration freed the
+     * ones already stuck, so a trashed row should no longer hold a code at all —
+     * this stays as the guard that keeps the preview honest if one ever does.
      */
     public function findByBarcode(string $barcode, ?int $exceptId = null): ?Product
     {

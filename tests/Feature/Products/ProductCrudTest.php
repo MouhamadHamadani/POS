@@ -184,6 +184,93 @@ class ProductCrudTest extends TestCase
         $this->assertSoftDeleted('products', ['id' => $product->id]);
     }
 
+    public function test_deleting_a_product_frees_its_barcode_and_sku_for_reuse(): void
+    {
+        $cat = Category::factory()->create();
+        $product = Product::factory()->create([
+            'category_id' => $cat->id,
+            'barcode' => '5901234123457',
+            'sku' => 'CC-1L',
+        ]);
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->delete("/products/{$product->id}")->assertRedirect();
+
+        // The row survives (sale_items.product_id is restrictOnDelete) but must no
+        // longer reserve the codes, or the client can never key in that barcode again.
+        $this->assertSoftDeleted('products', ['id' => $product->id]);
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'barcode' => null, 'sku' => null]);
+
+        $this->actingAs($admin)->post('/products', [
+            'name' => 'Replacement',
+            'category_id' => $cat->id,
+            'price_usd' => 2.00,
+            'barcode' => '5901234123457',
+            'sku' => 'CC-1L',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('Replacement', Product::where('barcode', '5901234123457')->value('name'));
+    }
+
+    public function test_delete_audit_log_keeps_the_freed_barcode_and_sku(): void
+    {
+        $product = Product::factory()->create(['barcode' => '5901234123457', 'sku' => 'CC-1L']);
+
+        $this->actingAs($this->admin())->delete("/products/{$product->id}");
+
+        $log = \App\Models\AuditLog::where('model_type', Product::class)
+            ->where('model_id', $product->id)->where('action', 'delete')->firstOrFail();
+
+        $this->assertSame('5901234123457', $log->old_values['barcode']);
+        $this->assertSame('CC-1L', $log->old_values['sku']);
+    }
+
+    public function test_barcode_of_a_live_product_is_still_rejected(): void
+    {
+        $cat = Category::factory()->create();
+        Product::factory()->create(['barcode' => '5901234123457']);
+
+        $this->actingAs($this->admin())->post('/products', [
+            'name' => 'Clash',
+            'category_id' => $cat->id,
+            'price_usd' => 2.00,
+            'barcode' => '5901234123457',
+        ])->assertSessionHasErrors('barcode');
+    }
+
+    public function test_backfill_migration_frees_a_barcode_already_stuck_on_a_deleted_product(): void
+    {
+        $cat = Category::factory()->create();
+        $product = Product::factory()->create([
+            'category_id' => $cat->id,
+            'barcode' => '5901234123457',
+            'sku' => 'CC-1L',
+        ]);
+        $live = Product::factory()->create(['barcode' => '4001234567890', 'sku' => 'LIVE-1']);
+
+        // The client's exact state: trashed before the destroy() fix landed, so the
+        // row is soft-deleted and still sitting on its codes.
+        \Illuminate\Support\Facades\DB::table('products')
+            ->where('id', $product->id)->update(['deleted_at' => now()]);
+
+        $this->assertSame('5901234123457', \Illuminate\Support\Facades\DB::table('products')
+            ->where('id', $product->id)->value('barcode'));
+
+        (require base_path('database/migrations/2026_09_24_000001_free_codes_held_by_deleted_products.php'))
+            ->up();
+
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'barcode' => null, 'sku' => null]);
+        $this->assertDatabaseHas('products', ['id' => $live->id, 'barcode' => '4001234567890', 'sku' => 'LIVE-1']);
+
+        $this->actingAs($this->admin())->post('/products', [
+            'name' => 'Unstuck',
+            'category_id' => $cat->id,
+            'price_usd' => 2.00,
+            'barcode' => '5901234123457',
+            'sku' => 'CC-1L',
+        ])->assertSessionHasNoErrors();
+    }
+
     public function test_stock_adjustment_add_increases_qty(): void
     {
         $product = Product::factory()->create(['stock_qty' => 10]);

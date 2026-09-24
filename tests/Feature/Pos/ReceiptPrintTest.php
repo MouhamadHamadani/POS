@@ -90,6 +90,34 @@ class ReceiptPrintTest extends TestCase
             ->assertSee('REC-TEST-001');
     }
 
+    public function test_receipt_and_report_survive_deleting_the_product_that_was_sold(): void
+    {
+        $cashier = User::factory()->create(['role' => User::ROLE_CASHIER]);
+        $sale = $this->sampleSale($cashier);
+        $item = $sale->items->first();
+
+        $product = \App\Models\Product::findOrFail($item->product_id);
+        $product->update(['barcode' => '5901234123457', 'sku' => 'TI-1']);
+        $item->update(['product_sku' => 'TI-1']);
+
+        // Deleting the product nulls its barcode/sku. The receipt and the
+        // by-product report read sale_items' own snapshots, so neither moves.
+        $this->actingAs(User::factory()->admin()->create())
+            ->delete("/products/{$product->id}")->assertRedirect();
+
+        $this->assertDatabaseHas('sale_items', [
+            'id' => $item->id, 'product_id' => $product->id,
+            'product_name' => 'Test Item', 'product_sku' => 'TI-1',
+        ]);
+
+        $this->actingAs($cashier)->get("/pos/receipts/{$sale->id}/print")
+            ->assertOk()->assertSee('Test Item');
+
+        $this->actingAs(User::factory()->manager()->create())
+            ->get('/reports/sales/by-product?from=' . now()->subDay()->toDateString() . '&to=' . now()->addDay()->toDateString())
+            ->assertOk()->assertSee('Test Item');
+    }
+
     public function test_receipt_includes_business_info_from_settings(): void
     {
         Setting::set('business_name', 'My Test Shop', 'general');

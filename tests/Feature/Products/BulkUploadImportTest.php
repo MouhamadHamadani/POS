@@ -180,8 +180,11 @@ class BulkUploadImportTest extends TestCase
     public function test_barcode_of_a_soft_deleted_product_still_counts_as_duplicate(): void
     {
         $user = $this->importer();
-        // The unique index keeps the row, so a "free" barcode here would blow up
-        // at INSERT. This is why findByBarcode() uses withTrashed().
+        // Deleting through ProductController::destroy() now frees the barcode, so
+        // this manufactures the one state that can still strand one: a raw model
+        // delete, which skips that clearing. The unique index keeps the row, so a
+        // "free" verdict here would blow up at INSERT — hence findByBarcode()
+        // keeps its withTrashed() guard.
         Product::factory()->create(['barcode' => '1000000000009'])->delete();
 
         $this->preview($user, $this->csv([['Water', 'Beverages', '0.50', '1000000000009', 'W-1']]));

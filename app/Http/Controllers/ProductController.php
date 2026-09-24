@@ -12,6 +12,7 @@ use App\Services\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -53,6 +54,25 @@ class ProductController extends Controller
         $categories = Category::orderBy('sort_order')->get(['id', 'name']);
 
         return view('products.index', compact('products', 'categories'));
+    }
+
+    /**
+     * Deleted products, read-only, super-admin only.
+     *
+     * A deleted product's row survives (sale_items.product_id is restrictOnDelete)
+     * but is invisible everywhere else — the SoftDeletes global scope keeps it out
+     * of index() and the POS. This is the one place it surfaces, and it is the
+     * vendor's view, not the client's: the route sits in the role:super_admin group
+     * in routes/web.php, so a client admin gets a 403 before this method runs.
+     */
+    public function trashed(): View
+    {
+        $products = Product::onlyTrashed()
+            ->with('category:id,name')
+            ->orderByDesc('deleted_at')
+            ->paginate(25);
+
+        return view('products.trashed', compact('products'));
     }
 
     public function create(): View
@@ -149,9 +169,32 @@ class ProductController extends Controller
     public function destroy(Request $request, Product $product): RedirectResponse
     {
         $name = $product->name;
-        $product->delete(); // soft delete via SoftDeletes trait
+        $oldBarcode = $product->barcode;
+        $oldSku = $product->sku;
 
-        AuditLog::record($request->user()->id, 'delete', Product::class, $product->id, ['name' => $name], null);
+        // Free the codes before trashing the row. `barcode` and `sku` are UNIQUE
+        // and a unique index knows nothing about `deleted_at`, so a soft-deleted
+        // product would reserve its barcode forever — and the client, who sees it
+        // gone from every list, could never reuse that barcode on a replacement.
+        // The row itself has to stay: sale_items.product_id is restrictOnDelete.
+        // old_barcode/old_sku keep the codes readable on the row itself, for the
+        // super-admin-only trashed list. Historical only — no unique index, no
+        // validation rule, so they never block a new product reusing the code.
+        DB::transaction(function () use ($product, $oldBarcode, $oldSku) {
+            $product->barcode = null;
+            $product->sku = null;
+            $product->old_barcode = $oldBarcode;
+            $product->old_sku = $oldSku;
+            $product->save();
+
+            $product->delete(); // soft delete via SoftDeletes trait
+        });
+
+        AuditLog::record($request->user()->id, 'delete', Product::class, $product->id, [
+            'name' => $name,
+            'barcode' => $oldBarcode,
+            'sku' => $oldSku,
+        ], null);
 
         return redirect()->route('products.index')->with('success', "Deleted '{$name}'");
     }

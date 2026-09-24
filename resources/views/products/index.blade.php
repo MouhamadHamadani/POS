@@ -1,9 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800">{{ __('Products') }}</h2>
+            <h2 class="font-semibold text-xl text-gray-800">{{ __('products.title') }}</h2>
             <div class="flex gap-2">
                 <a href="{{ route('categories.index') }}" class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded">Categories</a>
+                {{-- Vendor/owner only, like the Backup and Permissions tabs in Settings. The
+                     route is gated too (role:super_admin) — this just hides a dead link. --}}
+                @if (auth()->user()->isSuperAdmin())
+                    <a href="{{ route('products.trashed') }}" class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded">{{ __('products.trashed.nav') }}</a>
+                @endif
                 <a href="{{ route('products.create') }}" class="px-3 py-2 text-sm bg-brand-600 text-white rounded hover:bg-brand-700">+ New Product</a>
             </div>
         </div>
