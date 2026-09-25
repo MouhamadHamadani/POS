@@ -23,14 +23,17 @@
 </style>
 </head>
 <body>
-    @php $isDemo = \App\Support\Demo::enabled(); @endphp
+    @php
+        $isDemo = \App\Support\Demo::enabled();
+        $isTest = $isTest ?? false; // Settings → Receipt test print; real sales never pass it
+    @endphp
 
-    {{-- A demo printout must never be able to pass as a transaction record.
+    {{-- A demo/test printout must never be able to pass as a transaction record.
          Two short lines so it still fits 58mm (32 char) paper, not just 80mm. --}}
-    @if ($isDemo)
-        <div class="center bold">*** DEMO RECEIPT ***</div>
+    @if ($isDemo || $isTest)
+        <div class="center bold">*** {{ $isTest ? 'TEST PRINT' : 'DEMO RECEIPT' }} ***</div>
         <div class="center bold">NOT A VALID RECEIPT</div>
-        <div class="center bold" dir="rtl">إيصال تجريبي — غير صالح</div>
+        <div class="center bold" dir="rtl">{{ $isTest ? 'طباعة تجريبية — ليست فاتورة' : 'إيصال تجريبي — غير صالح' }}</div>
         <hr>
     @endif
 
@@ -119,11 +122,11 @@
 
     <div class="center small" style="margin-top: 6mm;">Receipt # {{ $sale->receipt_number }}</div>
 
-    @if ($isDemo)
+    @if ($isDemo || $isTest)
         <hr>
-        <div class="center bold">*** DEMO RECEIPT ***</div>
+        <div class="center bold">*** {{ $isTest ? 'TEST PRINT' : 'DEMO RECEIPT' }} ***</div>
         <div class="center bold">NOT A VALID RECEIPT</div>
-        <div class="center bold" dir="rtl">إيصال تجريبي — غير صالح</div>
+        <div class="center bold" dir="rtl">{{ $isTest ? 'طباعة تجريبية — ليست فاتورة' : 'إيصال تجريبي — غير صالح' }}</div>
     @endif
 
     <div class="actions">

@@ -154,6 +154,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
+        Route::post('/settings/receipt/test-print', [SettingController::class, 'testPrintReceipt'])->name('settings.receipt.test-print');
         // Tax rates are part of the demo baseline — editing them mid-pitch would
         // undermine the "always resets clean" property, and VAT is one of the
         // things being demonstrated.

@@ -194,7 +194,11 @@
                             <label class="block text-xs text-gray-500">Footer (printed bottom of receipt)</label>
                             <textarea name="settings[receipt_footer]" rows="2" class="w-full border-gray-300 rounded text-sm">{{ $get('receipt_footer') }}</textarea>
                         </div>
-                        <div class="md:col-span-2 flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">Save</button></div>
+                        {{-- Save stays first: Enter in a field submits via the first submit button. --}}
+                        <div class="md:col-span-2 flex justify-end gap-2">
+                            <button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">Save</button>
+                            <button type="submit" formaction="{{ route('settings.receipt.test-print') }}" formtarget="_blank" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">Print Test Receipt</button>
+                        </div>
                     </form>
 
                 @elseif ($tab === 'numbering')

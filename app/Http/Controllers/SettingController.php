@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Middleware\DemoGate;
 use App\Models\AuditLog;
+use App\Models\Sale;
+use App\Models\SaleItem;
 use App\Models\Setting;
 use App\Models\Tax;
 use App\Services\BackupService;
+use App\Services\CurrencyService;
 use App\Support\Demo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -111,6 +114,74 @@ class SettingController extends Controller
         Cache::flush();
 
         return redirect()->route('settings.index', ['tab' => $group])->with('success', 'Settings saved.');
+    }
+
+    /**
+     * Render the real thermal receipt view with an in-memory sample sale, using
+     * the Receipt tab's typed-but-unsaved width/header/footer. Pure render:
+     * nothing is persisted, no receipt number is consumed, nothing is audited.
+     */
+    public function testPrintReceipt(Request $request, CurrencyService $currency): View
+    {
+        $input = fn (string $key, $default) => $request->input("settings.$key", Setting::get($key, $default));
+        $width = (int) $input('receipt_width', 80);
+
+        // Mirrors SaleService::totalsFromCart with the default exclusive 11% VAT:
+        // subtotal = gross, discount = line discounts, line_total = net + tax.
+        $lines = [
+            ['Sample Item A', 2, 4.50, 0.00, 0.11],
+            ['Sample Item B — a longer product name to test wrapping', 1, 12.00, 2.00, 0.11],
+            ['Sample Item C (tax exempt)', 0.75, 6.00, 0.00, 0.0],
+        ];
+        $items = collect($lines)->map(function ($l) {
+            [$name, $qty, $price, $disc, $rate] = $l;
+            $net = $qty * $price - $disc;
+            $tax = round($net * $rate, 4);
+
+            return new SaleItem([
+                'product_name' => $name, 'qty' => $qty, 'unit_price_usd' => $price,
+                'discount_amount_usd' => $disc, 'tax_rate' => $rate, 'tax_amount_usd' => $tax,
+                'line_total_usd' => $net + $tax, 'is_taxable' => $rate > 0,
+            ]);
+        });
+
+        $total = round($items->sum('line_total_usd'), 4);
+        // Give $4 back in USD and the rest in LBP so both change rows print.
+        $change = $currency->calculateChange($total, 30.0, 0.0, 4.0);
+
+        $sale = new Sale([
+            'receipt_number' => 'TEST-' . now()->format('His'),
+            'subtotal_usd' => $items->sum(fn ($i) => $i->qty * $i->unit_price_usd),
+            'discount_amount_usd' => $items->sum('discount_amount_usd'),
+            'tax_amount_usd' => $items->sum('tax_amount_usd'),
+            'total_usd' => $total,
+            'total_lbp' => $currency->usdToLbp($total),
+            'exchange_rate' => $currency->getRate(),
+            'payment_method' => Sale::METHOD_CASH_USD,
+            'amount_tendered_usd' => 30.0,
+            'change_usd' => $change['change_usd'],
+            'change_lbp' => $change['change_lbp'],
+        ]);
+        $sale->created_at = now();
+        $sale->setRelation('items', $items);
+        $sale->setRelation('user', $request->user());
+        $sale->setRelation('customer', null);
+
+        return view('receipts.thermal', [
+            'sale' => $sale,
+            'business' => [
+                'name' => Setting::get('business_name', 'LebaSouk'),
+                'name_ar' => Setting::get('business_name_ar'),
+                'address' => Setting::get('address'),
+                'phone' => Setting::get('phone'),
+                'tax_number' => Setting::get('tax_number'),
+            ],
+            'width' => in_array($width, [58, 80], true) ? $width : 80,
+            'header' => (string) $input('receipt_header', ''),
+            'footer' => (string) $input('receipt_footer', 'Thank you for your business!'),
+            'autoPrint' => true,
+            'isTest' => true,
+        ]);
     }
 
     /**
