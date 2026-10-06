@@ -114,7 +114,7 @@ class CurrencyService
     public function suggestLbpDenominations(float $amount): array
     {
         $denoms = [100000, 50000, 20000, 10000, 5000, 1000];
-        return $this->breakdown($amount, $denoms, '', ' LBP');
+        return $this->breakdown($amount, $denoms, '', ' '.__('shifts.lbp'));
     }
 
     private function breakdown(float $amount, array $denoms, string $prefix = '', string $suffix = ''): array

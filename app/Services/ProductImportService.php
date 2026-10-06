@@ -232,7 +232,7 @@ class ProductImportService
         $rows = $sheets[0] ?? [];
 
         if (count($rows) > self::MAX_ROWS) {
-            throw new \RuntimeException('File has ' . count($rows) . ' rows; the limit is ' . self::MAX_ROWS . '.');
+            throw new \RuntimeException(__('messages.import_too_many', ['count' => count($rows), 'limit' => self::MAX_ROWS]));
         }
 
         $headings = array_keys($rows[0] ?? []);
@@ -241,8 +241,8 @@ class ProductImportService
         if ($rows === [] || $missing !== []) {
             throw new \RuntimeException(
                 $rows === []
-                    ? 'The file has no data rows.'
-                    : 'Missing required column(s): ' . implode(', ', $missing) . '. Download the template.'
+                    ? __('messages.import_no_rows')
+                    : __('messages.import_missing_columns', ['columns' => implode(', ', $missing)])
             );
         }
 

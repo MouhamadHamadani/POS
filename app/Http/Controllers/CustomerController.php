@@ -49,7 +49,7 @@ class CustomerController extends Controller
         $data = $this->validateData($request);
         $customer = Customer::create($data);
         AuditLog::record($request->user()->id, 'create', Customer::class, $customer->id, null, ['name' => $customer->name]);
-        return redirect()->route('customers.show', $customer)->with('success', "Created '{$customer->name}'.");
+        return redirect()->route('customers.show', $customer)->with('success', __('messages.customer_created', ['name' => $customer->name]));
     }
 
     public function show(Customer $customer): View
@@ -73,7 +73,7 @@ class CustomerController extends Controller
         $old = $customer->only(array_keys($data));
         $customer->update($data);
         AuditLog::record($request->user()->id, 'update', Customer::class, $customer->id, $old, $data);
-        return redirect()->route('customers.show', $customer)->with('success', "Updated '{$customer->name}'.");
+        return redirect()->route('customers.show', $customer)->with('success', __('messages.customer_updated', ['name' => $customer->name]));
     }
 
     public function destroy(Request $request, Customer $customer): RedirectResponse
@@ -81,7 +81,7 @@ class CustomerController extends Controller
         $name = $customer->name;
         $customer->delete(); // soft delete
         AuditLog::record($request->user()->id, 'delete', Customer::class, $customer->id, ['name' => $name], null);
-        return redirect()->route('customers.index')->with('success', "Deleted '{$name}'.");
+        return redirect()->route('customers.index')->with('success', __('messages.customer_deleted', ['name' => $name]));
     }
 
     /**
@@ -98,7 +98,7 @@ class CustomerController extends Controller
         ]);
 
         if ((float) $data['amount_usd'] > (float) $customer->balance) {
-            return back()->withErrors(['amount_usd' => 'Payment exceeds outstanding balance ($' . number_format($customer->balance, 2) . ').']);
+            return back()->withErrors(['amount_usd' => __('messages.payment_exceeds', ['amount' => '$' . number_format($customer->balance, 2)])]);
         }
 
         DB::transaction(function () use ($data, $customer, $request) {
@@ -106,7 +106,7 @@ class CustomerController extends Controller
             AuditLog::record($request->user()->id, 'customer_payment', Customer::class, $customer->id, null, $data);
         });
 
-        return back()->with('success', 'Payment recorded. New balance: $' . number_format($customer->fresh()->balance, 2));
+        return back()->with('success', __('messages.payment_recorded', ['amount' => '$' . number_format($customer->fresh()->balance, 2)]));
     }
 
     /**

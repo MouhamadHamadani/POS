@@ -82,7 +82,7 @@ class ProductImportController extends Controller
         // must not be able to name a file of its own choosing.
         if (!$path || !Storage::disk('local')->exists($path)) {
             return redirect()->route('products.import.show')
-                ->withErrors(['file' => 'That upload has expired. Please upload the file again.']);
+                ->withErrors(['file' => __('messages.import_expired')]);
         }
 
         // Re-read and re-validate rather than trusting the preview: the
@@ -106,7 +106,7 @@ class ProductImportController extends Controller
         ]);
 
         return redirect()->route('products.index')
-            ->with('success', "Imported {$created} product(s).");
+            ->with('success', __('messages.imported', ['count' => $created]));
     }
 
     private function forget(Request $request, string $path): void

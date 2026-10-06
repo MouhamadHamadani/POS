@@ -119,7 +119,7 @@ class ReportController extends Controller
         // themselves stay fully browsable on screen either way; this only stops
         // a file of invented figures leaving the meeting looking authoritative.
         if (Demo::enabled() && in_array($format, ['pdf', 'xlsx'], true)) {
-            return back()->withErrors(['demo' => DemoGate::refusal().' Reports are viewable on screen.']);
+            return back()->withErrors(['demo' => DemoGate::refusal().' '.__('messages.reports_viewable')]);
         }
 
         if ($format === 'pdf') {

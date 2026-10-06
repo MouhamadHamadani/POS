@@ -26,7 +26,7 @@ class BackupService
         }
 
         if (!file_exists($dbPath)) {
-            throw new RuntimeException('SQLite database file not found: ' . $dbPath);
+            throw new RuntimeException(__('messages.backup_db_missing', ['path' => $dbPath]));
         }
 
         // Force a WAL checkpoint so the .sqlite file is fully up to date before copying.
@@ -34,7 +34,7 @@ class BackupService
 
         $target = $this->backupPath() . DIRECTORY_SEPARATOR . 'pos_backup_' . date('Y-m-d_H-i-s') . '.sqlite';
         if (!@copy($dbPath, $target)) {
-            throw new RuntimeException('Failed to copy database to ' . $target);
+            throw new RuntimeException(__('messages.backup_copy_failed', ['path' => $target]));
         }
 
         return $target;
@@ -63,7 +63,7 @@ class BackupService
     {
         $src = $this->backupPath() . DIRECTORY_SEPARATOR . basename($filename);
         if (!file_exists($src)) {
-            throw new RuntimeException('Backup file not found.');
+            throw new RuntimeException(__('messages.backup_file_missing'));
         }
 
         $dbPath = config('database.connections.sqlite.database') ?: database_path('database.sqlite');
@@ -73,7 +73,7 @@ class BackupService
 
         DB::disconnect();
         if (!@copy($src, $dbPath)) {
-            throw new RuntimeException('Restore failed: could not overwrite live DB.');
+            throw new RuntimeException(__('messages.restore_failed'));
         }
     }
 

@@ -24,9 +24,9 @@ class ShiftRequired
 
             if (!$hasOpen) {
                 if ($request->expectsJson()) {
-                    return response()->json(['error' => 'No open shift', 'redirect' => '/shifts/open'], 409);
+                    return response()->json(['error' => __('messages.no_open_shift_short'), 'redirect' => '/shifts/open'], 409);
                 }
-                return redirect('/shifts/open')->with('warning', 'You must open a shift before selling.');
+                return redirect('/shifts/open')->with('warning', __('messages.shift_open_first'));
             }
         }
 

@@ -138,7 +138,7 @@ class ProductController extends Controller
 
         AuditLog::record($request->user()->id, 'create', Product::class, $product->id, null, $data);
 
-        return redirect()->route('products.index')->with('success', "Created '{$product->name}'");
+        return redirect()->route('products.index')->with('success', __('messages.product_created', ['name' => $product->localName()]));
     }
 
     public function update(StoreProductRequest $request, Product $product): RedirectResponse
@@ -163,7 +163,7 @@ class ProductController extends Controller
 
         AuditLog::record($request->user()->id, 'update', Product::class, $product->id, $old, $data);
 
-        return redirect()->route('products.index')->with('success', "Updated '{$product->name}'");
+        return redirect()->route('products.index')->with('success', __('messages.product_updated', ['name' => $product->localName()]));
     }
 
     public function destroy(Request $request, Product $product): RedirectResponse
@@ -196,7 +196,7 @@ class ProductController extends Controller
             'sku' => $oldSku,
         ], null);
 
-        return redirect()->route('products.index')->with('success', "Deleted '{$name}'");
+        return redirect()->route('products.index')->with('success', __('messages.product_deleted', ['name' => $name]));
     }
 
     public function adjustStock(Request $request, Product $product): RedirectResponse
@@ -219,6 +219,6 @@ class ProductController extends Controller
             return back()->withErrors(['stock' => $e->getMessage()]);
         }
 
-        return redirect()->route('products.edit', $product)->with('success', 'Stock adjusted.');
+        return redirect()->route('products.edit', $product)->with('success', __('messages.stock_adjusted'));
     }
 }

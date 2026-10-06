@@ -12,11 +12,10 @@ class InsufficientStockException extends RuntimeException
         public readonly float $available,
         public readonly float $requested,
     ) {
-        parent::__construct(sprintf(
-            'Insufficient stock for "%s": %s available, %s requested.',
-            $productName,
-            rtrim(rtrim(number_format($available, 4, '.', ''), '0'), '.'),
-            rtrim(rtrim(number_format($requested, 4, '.', ''), '0'), '.'),
-        ));
+        parent::__construct(__('messages.insufficient_stock', [
+            'product' => $productName,
+            'available' => rtrim(rtrim(number_format($available, 4, '.', ''), '0'), '.'),
+            'requested' => rtrim(rtrim(number_format($requested, 4, '.', ''), '0'), '.'),
+        ]));
     }
 }

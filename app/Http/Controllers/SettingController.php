@@ -114,7 +114,7 @@ class SettingController extends Controller
         AuditLog::record($request->user()->id, 'settings_update', null, null, null, ['group' => $group]);
         Cache::flush();
 
-        return redirect()->route('settings.index', ['tab' => $group])->with('success', 'Settings saved.');
+        return redirect()->route('settings.index', ['tab' => $group])->with('success', __('messages.settings_saved'));
     }
 
     /**
@@ -214,7 +214,7 @@ class SettingController extends Controller
         }
 
         return redirect()->route('settings.index', ['tab' => 'permissions'])
-            ->with('success', 'Permissions saved.');
+            ->with('success', __('messages.permissions_saved'));
     }
 
     // === Tax inline CRUD ===
@@ -241,7 +241,7 @@ class SettingController extends Controller
             'is_active' => true,
         ]);
 
-        return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', 'Tax added.');
+        return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', __('messages.tax_added'));
     }
 
     public function updateTax(Request $request, Tax $tax): RedirectResponse
@@ -268,16 +268,16 @@ class SettingController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', 'Tax updated.');
+        return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', __('messages.tax_updated'));
     }
 
     public function destroyTax(Tax $tax): RedirectResponse
     {
         if (\App\Models\Product::where('tax_id', $tax->id)->exists()) {
-            return back()->withErrors(['delete' => 'Tax is in use by products. Reassign first.']);
+            return back()->withErrors(['delete' => __('messages.tax_in_use')]);
         }
         $tax->delete();
-        return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', 'Tax deleted.');
+        return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', __('messages.tax_deleted'));
     }
 
     // === Backups ===
@@ -294,7 +294,7 @@ class SettingController extends Controller
     public function backupDownload(string $filename): BinaryFileResponse|RedirectResponse
     {
         $path = $this->backups->backupPath() . DIRECTORY_SEPARATOR . basename($filename);
-        if (!file_exists($path)) return back()->withErrors(['backup' => 'File not found.']);
+        if (!file_exists($path)) return back()->withErrors(['backup' => __('messages.file_not_found')]);
         return response()->download($path);
     }
 
@@ -305,12 +305,12 @@ class SettingController extends Controller
         } catch (\Throwable $e) {
             return back()->withErrors(['backup' => $e->getMessage()]);
         }
-        return redirect()->route('settings.index', ['tab' => 'backup'])->with('success', 'Backup restored. You may need to log in again.');
+        return redirect()->route('settings.index', ['tab' => 'backup'])->with('success', __('messages.backup_restored'));
     }
 
     public function backupDelete(string $filename): RedirectResponse
     {
         $this->backups->delete($filename);
-        return redirect()->route('settings.index', ['tab' => 'backup'])->with('success', 'Backup deleted.');
+        return redirect()->route('settings.index', ['tab' => 'backup'])->with('success', __('messages.backup_deleted'));
     }
 }

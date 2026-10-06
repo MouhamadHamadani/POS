@@ -43,7 +43,7 @@ class SupplierController extends Controller
         $data = $this->validateData($request);
         $supplier = Supplier::create($data);
         AuditLog::record($request->user()->id, 'create', Supplier::class, $supplier->id);
-        return redirect()->route('suppliers.show', $supplier)->with('success', "Created '{$supplier->name}'.");
+        return redirect()->route('suppliers.show', $supplier)->with('success', __('messages.customer_created', ['name' => $supplier->name]));
     }
 
     public function show(Supplier $supplier): View
@@ -65,7 +65,7 @@ class SupplierController extends Controller
         $old = $supplier->only(array_keys($data));
         $supplier->update($data);
         AuditLog::record($request->user()->id, 'update', Supplier::class, $supplier->id, $old, $data);
-        return redirect()->route('suppliers.show', $supplier)->with('success', "Updated '{$supplier->name}'.");
+        return redirect()->route('suppliers.show', $supplier)->with('success', __('messages.customer_updated', ['name' => $supplier->name]));
     }
 
     public function destroy(Request $request, Supplier $supplier): RedirectResponse
@@ -73,7 +73,7 @@ class SupplierController extends Controller
         $name = $supplier->name;
         $supplier->delete();
         AuditLog::record($request->user()->id, 'delete', Supplier::class, $supplier->id, ['name' => $name], null);
-        return redirect()->route('suppliers.index')->with('success', "Deleted '{$name}'.");
+        return redirect()->route('suppliers.index')->with('success', __('messages.customer_deleted', ['name' => $name]));
     }
 
     /**
@@ -90,7 +90,7 @@ class SupplierController extends Controller
         ]);
 
         if ((float) $data['amount_usd'] > (float) $supplier->balance) {
-            return back()->withErrors(['amount_usd' => 'Payment exceeds outstanding balance ($' . number_format($supplier->balance, 2) . ').']);
+            return back()->withErrors(['amount_usd' => __('messages.payment_exceeds', ['amount' => '$' . number_format($supplier->balance, 2)])]);
         }
 
         DB::transaction(function () use ($data, $supplier, $request) {
@@ -98,7 +98,7 @@ class SupplierController extends Controller
             AuditLog::record($request->user()->id, 'supplier_payment', Supplier::class, $supplier->id, null, $data);
         });
 
-        return back()->with('success', 'Payment recorded. New balance: $' . number_format($supplier->fresh()->balance, 2));
+        return back()->with('success', __('messages.payment_recorded', ['amount' => '$' . number_format($supplier->fresh()->balance, 2)]));
     }
 
     private function validateData(Request $request): array

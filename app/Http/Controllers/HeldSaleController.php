@@ -115,7 +115,7 @@ class HeldSaleController extends Controller
         $user = $request->user();
         $isOwner = $hold->user_id === $user->id;
         $isManagerial = $user->isManagerial();
-        abort_unless($isOwner || $isManagerial, 403, 'You can only access your own held sales.');
+        abort_unless($isOwner || $isManagerial, 403, __('messages.held_own_only'));
     }
 
     /** @param \Illuminate\Support\Collection<int, Product> $products keyed by id */

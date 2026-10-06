@@ -22,7 +22,7 @@ class RoleMiddleware
 
         if (!$allowed) {
             if ($request->expectsJson()) {
-                return response()->json(['error' => 'Forbidden'], 403);
+                return response()->json(['error' => __('messages.forbidden')], 403);
             }
             abort(403);
         }

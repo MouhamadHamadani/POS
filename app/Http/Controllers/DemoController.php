@@ -31,7 +31,7 @@ class DemoController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return back()->withErrors(['demo' => 'Demo reset failed: '.$e->getMessage()]);
+            return back()->withErrors(['demo' => __('messages.demo_reset_failed', ['error' => $e->getMessage()])]);
         }
 
         // Recorded into the restored database, so the actor is looked up there —
@@ -45,6 +45,6 @@ class DemoController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login')
-            ->with('status', 'Demo data reset. Everything is back to the seeded catalogue.');
+            ->with('status', __('messages.demo_reset_done'));
     }
 }

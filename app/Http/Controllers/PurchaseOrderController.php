@@ -75,7 +75,7 @@ class PurchaseOrderController extends Controller
         });
 
         AuditLog::record($request->user()->id, 'create', PurchaseOrder::class, $po->id, null, ['po_number' => $po->po_number]);
-        return redirect()->route('purchases.show', $po)->with('success', "Created {$po->po_number}.");
+        return redirect()->route('purchases.show', $po)->with('success', __('messages.po_created', ['number' => $po->po_number]));
     }
 
     public function show(PurchaseOrder $purchase): View
@@ -87,7 +87,7 @@ class PurchaseOrderController extends Controller
     public function edit(PurchaseOrder $purchase): View
     {
         if (!in_array($purchase->status, ['draft', 'sent'], true)) {
-            abort(403, 'This PO can no longer be edited.');
+            abort(403, __('messages.po_not_editable'));
         }
         $purchase->load('items.product:id,name,name_ar,sku,unit,cost_usd,tax_id');
         $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
@@ -104,7 +104,7 @@ class PurchaseOrderController extends Controller
     public function update(Request $request, PurchaseOrder $purchase): RedirectResponse
     {
         if (!in_array($purchase->status, ['draft', 'sent'], true)) {
-            return back()->withErrors(['status' => 'This PO can no longer be edited.']);
+            return back()->withErrors(['status' => __('messages.po_not_editable')]);
         }
 
         $data = $this->validateData($request);
@@ -128,7 +128,7 @@ class PurchaseOrderController extends Controller
             AuditLog::record($request->user()->id, 'update', PurchaseOrder::class, $purchase->id);
         });
 
-        return redirect()->route('purchases.show', $purchase)->with('success', "Updated {$purchase->po_number}.");
+        return redirect()->route('purchases.show', $purchase)->with('success', __('messages.po_updated', ['number' => $purchase->po_number]));
     }
 
     public function transition(Request $request, PurchaseOrder $purchase): RedirectResponse
@@ -145,12 +145,12 @@ class PurchaseOrderController extends Controller
         };
 
         if (!$valid) {
-            return back()->withErrors(['status' => "Cannot transition from {$purchase->status} to {$data['to']}."]);
+            return back()->withErrors(['status' => __('messages.po_bad_transition', ['from' => $purchase->statusLabel(), 'to' => \App\Support\EnumLabel::get('purchase_status', $data['to'])])]);
         }
 
         $purchase->update(['status' => $data['to']]);
         AuditLog::record($request->user()->id, 'po_status', PurchaseOrder::class, $purchase->id, null, ['to' => $data['to']]);
-        return back()->with('success', "PO marked as {$data['to']}.");
+        return back()->with('success', __('messages.po_marked', ['status' => \App\Support\EnumLabel::get('purchase_status', $data['to'])]));
     }
 
     /**
@@ -160,7 +160,7 @@ class PurchaseOrderController extends Controller
     public function receive(Request $request, PurchaseOrder $purchase): RedirectResponse
     {
         if (!in_array($purchase->status, ['sent', 'partial', 'draft'], true)) {
-            return back()->withErrors(['status' => "Cannot receive against {$purchase->status} status."]);
+            return back()->withErrors(['status' => __('messages.po_cannot_receive', ['status' => $purchase->statusLabel()])]);
         }
 
         $data = $request->validate([
@@ -183,7 +183,7 @@ class PurchaseOrderController extends Controller
 
                 $remaining = (float) $item->qty_ordered - (float) $item->qty_received;
                 if ($qty > $remaining + 0.0001) {
-                    throw new RuntimeException("Cannot receive more than ordered ({$remaining} remaining for {$item->product_name}).");
+                    throw new RuntimeException(__('messages.po_over_receive', ['remaining' => $remaining, 'product' => $item->product_name]));
                 }
 
                 $item->update(['qty_received' => (float) $item->qty_received + $qty]);
@@ -232,7 +232,7 @@ class PurchaseOrderController extends Controller
             AuditLog::record($request->user()->id, 'po_receive', PurchaseOrder::class, $purchase->id, null, ['receipts' => $data['receipts']]);
         });
 
-        return redirect()->route('purchases.show', $purchase)->with('success', 'Goods received.');
+        return redirect()->route('purchases.show', $purchase)->with('success', __('messages.goods_received'));
     }
 
     private function validateData(Request $request): array

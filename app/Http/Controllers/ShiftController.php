@@ -14,7 +14,7 @@ class ShiftController extends Controller
     {
         $open = $this->currentShift();
         if ($open) {
-            return redirect('/pos')->with('info', 'A shift is already open.');
+            return redirect('/pos')->with('info', __('messages.shift_already_open'));
         }
         return view('shifts.open');
     }
@@ -31,7 +31,7 @@ class ShiftController extends Controller
         ]);
 
         if ($this->currentShift()) {
-            return redirect('/pos')->with('warning', 'A shift is already open.');
+            return redirect('/pos')->with('warning', __('messages.shift_already_open'));
         }
 
         $denoms = $this->normalizeDenominations($data['denominations'] ?? null);
@@ -51,14 +51,14 @@ class ShiftController extends Controller
             'notes' => $data['notes'] ?? null,
         ]);
 
-        return redirect('/pos')->with('success', 'Shift opened.');
+        return redirect('/pos')->with('success', __('messages.shift_opened'));
     }
 
     public function showClose(): View|RedirectResponse
     {
         $shift = $this->currentShift();
         if (!$shift) {
-            return redirect('/shifts/open')->with('warning', 'No shift is open.');
+            return redirect('/shifts/open')->with('warning', __('messages.no_shift_open'));
         }
 
         $totals = $this->shiftTotals($shift);
@@ -79,7 +79,7 @@ class ShiftController extends Controller
 
         $shift = $this->currentShift();
         if (!$shift) {
-            return redirect('/')->with('warning', 'No shift is open.');
+            return redirect('/')->with('warning', __('messages.no_shift_open'));
         }
 
         $denoms = $this->normalizeDenominations($data['denominations'] ?? null);
@@ -108,7 +108,7 @@ class ShiftController extends Controller
             'notes' => $data['notes'] ?? $shift->notes,
         ]);
 
-        return redirect('/shifts/open')->with('success', 'Shift closed. Variance USD: ' . round($shift->variance_usd, 2));
+        return redirect('/shifts/open')->with('success', __('messages.shift_closed', ['variance' => round($shift->variance_usd, 2)]));
     }
 
     private function currentShift(): ?Shift

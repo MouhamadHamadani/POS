@@ -32,7 +32,7 @@ class UserController extends Controller
         abort_if(
             $user->isPrivileged() && !$request->user()->isSuperAdmin(),
             403,
-            'Only a super admin can manage admin accounts.'
+            __('messages.only_super_admin')
         );
     }
 
@@ -86,7 +86,7 @@ class UserController extends Controller
 
         AuditLog::record($request->user()->id, 'create', User::class, $user->id, null, ['username' => $user->username, 'role' => $user->role]);
 
-        return redirect()->route('users.index')->with('success', "Created user '{$user->username}'.");
+        return redirect()->route('users.index')->with('success', __('messages.user_created', ['username' => $user->username]));
     }
 
     public function edit(Request $request, User $user): View
@@ -115,7 +115,7 @@ class UserController extends Controller
         if ($user->id === $request->user()->id) {
             $staysPrivileged = in_array($data['role'], [User::ROLE_SUPER_ADMIN, User::ROLE_ADMIN], true);
             if (!$staysPrivileged || !$request->boolean('is_active')) {
-                return back()->withErrors(['role' => 'You cannot demote or deactivate your own admin account.']);
+                return back()->withErrors(['role' => __('messages.cannot_demote_self')]);
             }
         }
 
@@ -127,7 +127,7 @@ class UserController extends Controller
 
         AuditLog::record($request->user()->id, 'update', User::class, $user->id, $old, $data);
 
-        return redirect()->route('users.index')->with('success', "Updated '{$user->username}'.");
+        return redirect()->route('users.index')->with('success', __('messages.user_updated', ['username' => $user->username]));
     }
 
     public function resetPassword(Request $request, User $user): RedirectResponse
@@ -142,7 +142,7 @@ class UserController extends Controller
 
         AuditLog::record($request->user()->id, 'reset_password', User::class, $user->id, null, ['target' => $user->username]);
 
-        return back()->with('success', "Password reset for '{$user->username}'.");
+        return back()->with('success', __('messages.password_reset', ['username' => $user->username]));
     }
 
     public function resetPin(Request $request, User $user): RedirectResponse
@@ -152,7 +152,7 @@ class UserController extends Controller
         $data = $request->validate(['pin' => 'required|digits:4']);
         $user->update(['pin' => $data['pin']]); // hashed via cast
         AuditLog::record($request->user()->id, 'reset_pin', User::class, $user->id);
-        return back()->with('success', "PIN reset for '{$user->username}'.");
+        return back()->with('success', __('messages.pin_reset', ['username' => $user->username]));
     }
 
     public function toggleActive(Request $request, User $user): RedirectResponse
@@ -160,14 +160,14 @@ class UserController extends Controller
         $this->guardPrivilegedTarget($request, $user);
 
         if ($user->id === $request->user()->id) {
-            return back()->withErrors(['active' => 'You cannot deactivate your own account.']);
+            return back()->withErrors(['active' => __('messages.cannot_deactivate_self')]);
         }
         $adminTier = [User::ROLE_SUPER_ADMIN, User::ROLE_ADMIN];
         if ($user->isPrivileged() && $user->is_active
             && User::whereIn('role', $adminTier)->where('is_active', true)->count() <= 1) {
-            return back()->withErrors(['active' => 'There must be at least one active admin.']);
+            return back()->withErrors(['active' => __('messages.need_one_admin')]);
         }
         $user->update(['is_active' => !$user->is_active]);
-        return back()->with('success', $user->is_active ? "Activated '{$user->username}'." : "Deactivated '{$user->username}'.");
+        return back()->with('success', $user->is_active ? __('messages.user_activated', ['username' => $user->username]) : __('messages.user_deactivated', ['username' => $user->username]));
     }
 }

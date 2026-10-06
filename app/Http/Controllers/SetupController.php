@@ -61,7 +61,7 @@ class SetupController extends Controller
         $request->session()->regenerate();
 
         return redirect()->route('dashboard')
-            ->with('success', "Owner account '{$user->username}' created. This setup screen is now closed.");
+            ->with('success', __('messages.setup_done', ['username' => $user->username]));
     }
 
     /**

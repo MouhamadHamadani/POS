@@ -108,14 +108,14 @@ class PosController extends Controller
     {
         $code = trim((string) $request->query('code'));
         if (!$code) {
-            return response()->json(['error' => 'No barcode'], 422);
+            return response()->json(['error' => __('messages.no_barcode')], 422);
         }
         $product = Product::with('tax:id,rate,is_inclusive')
             ->where('barcode', $code)
             ->where('is_active', true)
             ->first();
         if (!$product) {
-            return response()->json(['error' => 'Product not found'], 404);
+            return response()->json(['error' => __('messages.product_not_found')], 404);
         }
         return response()->json($this->hideCostFrom($request, $product));
     }

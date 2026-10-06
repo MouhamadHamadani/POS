@@ -50,7 +50,7 @@ class SaleController extends Controller
             ->first();
 
         if (!$shift) {
-            return response()->json(['error' => 'No open shift. Open a shift before selling.'], 409);
+            return response()->json(['error' => __('messages.no_open_shift')], 409);
         }
 
         $payment = array_merge([

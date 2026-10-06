@@ -55,12 +55,12 @@ class SaleService
         array $cartDiscount = [],
     ): Sale {
         if (empty($cart)) {
-            throw ValidationException::withMessages(['cart' => 'Cart is empty.']);
+            throw ValidationException::withMessages(['cart' => __('messages.cart_empty')]);
         }
 
         $shift = Shift::findOrFail($shiftId);
         if (!$shift->isOpen()) {
-            throw new RuntimeException('Cannot record a sale against a closed shift.');
+            throw new RuntimeException(__('messages.shift_closed_sale'));
         }
 
         $customer = $customerId ? Customer::find($customerId) : null;
@@ -86,12 +86,11 @@ class SaleService
                 $product = Product::find($pid);
                 if ($product && (float) $product->stock_qty < $needed) {
                     throw ValidationException::withMessages([
-                        'stock' => sprintf(
-                            'Insufficient stock for "%s": %s available, %s requested.',
-                            $product->name,
-                            rtrim(rtrim(number_format((float) $product->stock_qty, 4, '.', ''), '0'), '.'),
-                            rtrim(rtrim(number_format($needed, 4, '.', ''), '0'), '.'),
-                        ),
+                        'stock' => __('messages.insufficient_stock', [
+                            'product' => $product->localName(),
+                            'available' => rtrim(rtrim(number_format((float) $product->stock_qty, 4, '.', ''), '0'), '.'),
+                            'requested' => rtrim(rtrim(number_format($needed, 4, '.', ''), '0'), '.'),
+                        ]),
                     ]);
                 }
             }
@@ -108,15 +107,15 @@ class SaleService
             $totalPaid = $cashAsUsd + $card + $credit;
 
             if ($totalPaid + 0.001 < $grandTotal) {
-                throw ValidationException::withMessages(['payment' => 'Insufficient payment.']);
+                throw ValidationException::withMessages(['payment' => __('messages.payment_insufficient')]);
             }
 
             if ($credit > 0) {
                 if (!$customer) {
-                    throw ValidationException::withMessages(['customer' => 'A customer is required for credit sales.']);
+                    throw ValidationException::withMessages(['customer' => __('messages.credit_customer_required')]);
                 }
                 if (!$customer->hasAvailableCredit($credit)) {
-                    throw ValidationException::withMessages(['customer' => 'Customer credit limit exceeded.']);
+                    throw ValidationException::withMessages(['customer' => __('messages.credit_limit_exceeded')]);
                 }
             }
 
@@ -254,7 +253,7 @@ class SaleService
         foreach (array_values($cart) as $i => $row) {
             $product = $row['product'] ?? Product::find($row['product_id']);
             if (!$product) {
-                throw ValidationException::withMessages(['cart' => "Product #{$row['product_id']} not found."]);
+                throw ValidationException::withMessages(['cart' => __('messages.product_missing', ['id' => $row['product_id']])]);
             }
 
             $qty = (float) ($row['qty'] ?? 1);
@@ -267,12 +266,12 @@ class SaleService
 
             if ($lineDiscount > 0 && !$product->allow_discount) {
                 throw ValidationException::withMessages([
-                    "cart.$i.discount" => __('pos.errors.discount_not_allowed', ['product' => $product->name]),
+                    "cart.$i.discount" => __('pos.errors.discount_not_allowed', ['product' => $product->localName()]),
                 ]);
             }
             if ($lineDiscount > $gross + self::EPS) {
                 throw ValidationException::withMessages([
-                    "cart.$i.discount" => __('pos.errors.discount_exceeds_line', ['product' => $product->name]),
+                    "cart.$i.discount" => __('pos.errors.discount_exceeds_line', ['product' => $product->localName()]),
                 ]);
             }
 
@@ -390,7 +389,7 @@ class SaleService
             if ($line['discount_effective_pct'] > $limit + 0.01) {
                 throw ValidationException::withMessages([
                     "cart.$i.discount" => __('pos.errors.discount_limit', [
-                        'product' => $line['product']->name,
+                        'product' => $line['product']->localName(),
                         'pct' => round($line['discount_effective_pct'], 2),
                         'limit' => round($limit, 2),
                     ]),
@@ -403,7 +402,7 @@ class SaleService
     {
         return DB::transaction(function () use ($sale, $userId, $reason) {
             if ($sale->status === Sale::STATUS_VOIDED) {
-                throw new RuntimeException('Sale is already voided.');
+                throw new RuntimeException(__('messages.sale_already_voided'));
             }
 
             foreach ($sale->items as $item) {

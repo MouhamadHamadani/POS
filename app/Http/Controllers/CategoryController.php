@@ -27,7 +27,7 @@ class CategoryController extends Controller
         ]);
         $data['is_active'] = $request->boolean('is_active', true);
         Category::create($data);
-        return back()->with('success', "Created category '{$data['name']}'");
+        return back()->with('success', __('messages.category_created', ['name' => $data['name']]));
     }
 
     public function update(Request $request, Category $category): RedirectResponse
@@ -41,16 +41,16 @@ class CategoryController extends Controller
         ]);
         $data['is_active'] = $request->boolean('is_active', true);
         $category->update($data);
-        return back()->with('success', "Updated '{$category->name}'");
+        return back()->with('success', __('messages.category_updated', ['name' => $category->localName()]));
     }
 
     public function destroy(Category $category): RedirectResponse
     {
         if (Product::where('category_id', $category->id)->exists()) {
-            return back()->withErrors(['delete' => "Can't delete: products are assigned to this category."]);
+            return back()->withErrors(['delete' => __('messages.category_has_products')]);
         }
         $name = $category->name;
         $category->delete();
-        return back()->with('success', "Deleted '{$name}'");
+        return back()->with('success', __('messages.category_deleted', ['name' => $name]));
     }
 }

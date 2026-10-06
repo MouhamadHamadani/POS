@@ -48,7 +48,7 @@ class ReturnController extends Controller
             ->first();
 
         if (!$sale) {
-            return back()->withErrors(['query' => "No sale found for '{$term}'."]);
+            return back()->withErrors(['query' => __('messages.no_sale_found', ['term' => $term])]);
         }
 
         return redirect()->route('returns.create', ['sale' => $sale->id]);
@@ -57,7 +57,7 @@ class ReturnController extends Controller
     public function create(Sale $sale): View
     {
         if (in_array($sale->status, [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED], true)) {
-            abort(403, 'This sale cannot be returned (voided / on hold / fully refunded).');
+            abort(403, __('messages.sale_cannot_return_abort'));
         }
         $sale->load('items.product:id,name,name_ar,sku,track_stock', 'customer');
         return view('returns.create', compact('sale'));
@@ -66,7 +66,7 @@ class ReturnController extends Controller
     public function store(Request $request, Sale $sale): RedirectResponse
     {
         if (in_array($sale->status, [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED], true)) {
-            return redirect()->route('returns.index')->withErrors(['sale' => 'Sale cannot be returned.']);
+            return redirect()->route('returns.index')->withErrors(['sale' => __('messages.sale_cannot_return')]);
         }
 
         $data = $request->validate([
@@ -83,7 +83,7 @@ class ReturnController extends Controller
 
         $positiveItems = collect($data['items'])->filter(fn ($i) => (float) $i['qty_returned'] > 0);
         if ($positiveItems->isEmpty()) {
-            return back()->withErrors(['items' => 'Select at least one item with a positive return quantity.']);
+            return back()->withErrors(['items' => __('messages.select_return_item')]);
         }
 
         // Validate qty against remaining (sale_item.qty - returned_qty) and compute refund.
@@ -92,13 +92,13 @@ class ReturnController extends Controller
         foreach ($positiveItems as $i) {
             $saleItem = SaleItem::where('id', $i['sale_item_id'])->where('sale_id', $sale->id)->first();
             if (!$saleItem) {
-                return back()->withErrors(['items' => 'Invalid line item.']);
+                return back()->withErrors(['items' => __('messages.invalid_line')]);
             }
             $remaining = (float) $saleItem->qty - (float) $saleItem->returned_qty;
             $qty = (float) $i['qty_returned'];
             if ($qty > $remaining + 0.0001) {
                 return back()->withErrors([
-                    'items' => "Quantity exceeds remaining for {$saleItem->product_name} (remaining: " . rtrim(rtrim(number_format($remaining, 4, '.', ''), '0'), '.') . ').',
+                    'items' => __('messages.qty_exceeds', ['product' => $saleItem->product_name, 'remaining' => rtrim(rtrim(number_format($remaining, 4, '.', ''), '0'), '.')]),
                 ]);
             }
             $perUnit = (float) $saleItem->qty > 0 ? (float) $saleItem->line_total_usd / (float) $saleItem->qty : 0;
@@ -120,7 +120,7 @@ class ReturnController extends Controller
 
         // Credit refund needs a customer.
         if ($data['refund_method'] === 'account' && !$sale->customer_id) {
-            return back()->withErrors(['refund_method' => 'Account credit requires a customer on the original sale.']);
+            return back()->withErrors(['refund_method' => __('returns.account_needs_customer')]);
         }
 
         $user = $request->user();
@@ -167,8 +167,8 @@ class ReturnController extends Controller
         });
 
         $msg = $isAutoApprove
-            ? "Return {$return->return_number} processed ($" . number_format((float) $return->refund_amount_usd, 2) . ' refunded).'
-            : "Return {$return->return_number} created — pending manager approval.";
+            ? __('messages.return_processed', ['number' => $return->return_number, 'amount' => '$' . number_format((float) $return->refund_amount_usd, 2)])
+            : __('messages.return_pending', ['number' => $return->return_number]);
 
         return redirect()->route('returns.show', $return)->with('success', $msg);
     }
@@ -185,7 +185,7 @@ class ReturnController extends Controller
             abort(403);
         }
         if ($return->status !== ReturnTransaction::STATUS_PENDING) {
-            return back()->withErrors(['status' => 'Return is not pending.']);
+            return back()->withErrors(['status' => __('messages.return_not_pending')]);
         }
 
         DB::transaction(function () use ($return, $request) {
@@ -198,7 +198,7 @@ class ReturnController extends Controller
             AuditLog::record($request->user()->id, 'return_approve', ReturnTransaction::class, $return->id);
         });
 
-        return back()->with('success', "Return {$return->return_number} approved.");
+        return back()->with('success', __('messages.return_approved', ['number' => $return->return_number]));
     }
 
     public function reject(Request $request, ReturnTransaction $return): RedirectResponse
@@ -207,7 +207,7 @@ class ReturnController extends Controller
             abort(403);
         }
         if ($return->status !== ReturnTransaction::STATUS_PENDING) {
-            return back()->withErrors(['status' => 'Return is not pending.']);
+            return back()->withErrors(['status' => __('messages.return_not_pending')]);
         }
 
         $return->update([
@@ -216,7 +216,7 @@ class ReturnController extends Controller
             'approved_at' => now(),
         ]);
         AuditLog::record($request->user()->id, 'return_reject', ReturnTransaction::class, $return->id);
-        return back()->with('success', 'Return rejected.');
+        return back()->with('success', __('messages.return_rejected'));
     }
 
     /**
