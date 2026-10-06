@@ -21,3 +21,11 @@
     unicode-bidi: isolate;
     direction: ltr;
 }
+
+/* @tailwindcss/forms puts the select arrow on the right with right padding;
+   mirror it so the arrow and the text don't collide in RTL pages. */
+[dir='rtl'] select:not([multiple]):not([size]) {
+    background-position: left 0.5rem center;
+    padding-right: 0.75rem;
+    padding-left: 2.5rem;
+}

@@ -107,7 +107,7 @@
                             <h4 class="text-xs uppercase text-gray-500 mb-1">{{ __('products.import.will_create') }}</h4>
                             <table class="min-w-full text-sm">
                                 <thead class="text-xs uppercase text-gray-500 border-b">
-                                    <tr><th class="text-left py-2">{{ __('products.import.row') }}</th><th class="text-left">{{ __('common.name') }}</th><th class="text-left">{{ __('products.import.barcode') }}</th><th class="text-right">{{ __('products.price_usd') }}</th><th class="text-right">{{ __('reports.cols.stock') }}</th></tr>
+                                    <tr><th class="text-start py-2">{{ __('products.import.row') }}</th><th class="text-start">{{ __('common.name') }}</th><th class="text-start">{{ __('products.import.barcode') }}</th><th class="text-end">{{ __('products.price_usd') }}</th><th class="text-end">{{ __('reports.cols.stock') }}</th></tr>
                                 </thead>
                                 <tbody class="divide-y">
                                 @foreach (array_slice($report['new'], 0, 50) as $n)
@@ -115,8 +115,8 @@
                                         <td class="py-2 text-gray-500"><x-ltr>{{ $n['row'] }}</x-ltr></td>
                                         <td class="py-2" dir="auto">{{ $n['data']['name'] }}</td>
                                         <td class="py-2 font-mono text-xs">@isset($n['data']['barcode'])<x-ltr>{{ $n['data']['barcode'] }}</x-ltr>@else{{ __('products.import.generated') }}@endisset</td>
-                                        <td class="py-2 text-right"><x-ltr>{{ number_format((float) $n['data']['price_usd'], 2) }}</x-ltr></td>
-                                        <td class="py-2 text-right"><x-ltr>{{ $n['data']['stock_qty'] ?? 0 }}</x-ltr></td>
+                                        <td class="py-2 text-end"><x-ltr>{{ number_format((float) $n['data']['price_usd'], 2) }}</x-ltr></td>
+                                        <td class="py-2 text-end"><x-ltr>{{ $n['data']['stock_qty'] ?? 0 }}</x-ltr></td>
                                     </tr>
                                 @endforeach
                                 </tbody>

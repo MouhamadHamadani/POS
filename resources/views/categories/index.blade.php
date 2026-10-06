@@ -39,12 +39,12 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">{{ __('common.name') }}</th>
-                        <th class="p-3 text-left">{{ __('categories.arabic') }}</th>
-                        <th class="p-3 text-right">{{ __('categories.sort') }}</th>
-                        <th class="p-3 text-right">{{ __('categories.products') }}</th>
+                        <th class="p-3 text-start">{{ __('common.name') }}</th>
+                        <th class="p-3 text-start">{{ __('categories.arabic') }}</th>
+                        <th class="p-3 text-end">{{ __('categories.sort') }}</th>
+                        <th class="p-3 text-end">{{ __('categories.products') }}</th>
                         <th class="p-3 text-center">{{ __('common.active') }}</th>
-                        <th class="p-3 text-right">{{ __('common.actions') }}</th>
+                        <th class="p-3 text-end">{{ __('common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
@@ -54,24 +54,24 @@
                                 @csrf @method('PUT')
                                 <td class="p-2"><input name="name" dir="auto" value="{{ $c->name }}" class="w-full border-gray-200 rounded text-sm py-1"></td>
                                 <td class="p-2"><input name="name_ar" value="{{ $c->name_ar }}" dir="rtl" class="w-full border-gray-200 rounded text-sm py-1"></td>
-                                <td class="p-2 w-20"><input type="number" name="sort_order" dir="ltr" value="{{ $c->sort_order }}" class="w-full border-gray-200 rounded text-sm py-1 text-right"></td>
-                                <td class="p-2 text-right text-gray-700"><x-ltr>{{ $c->products_count }}</x-ltr></td>
+                                <td class="p-2 w-20"><input type="number" name="sort_order" dir="ltr" value="{{ $c->sort_order }}" class="w-full border-gray-200 rounded text-sm py-1 text-end"></td>
+                                <td class="p-2 text-end text-gray-700"><x-ltr>{{ $c->products_count }}</x-ltr></td>
                                 <td class="p-2 text-center">
                                     <input type="checkbox" name="is_active" value="1" @checked($c->is_active)>
                                 </td>
-                                <td class="p-2 text-right whitespace-nowrap">
+                                <td class="p-2 text-end whitespace-nowrap">
                                     <button class="text-xs text-brand-600 hover:underline">{{ __('common.save') }}</button>
                             </form>
                                     @if ($c->products_count > 0)
                                         {{-- A category with products can't be deleted (CategoryController
                                              refuses it too). Say so instead of rendering a red "Delete" that
                                              looks live and silently swallows the click. --}}
-                                        <span class="text-xs text-gray-400 ml-2 cursor-not-allowed"
+                                        <span class="text-xs text-gray-400 ms-2 cursor-not-allowed"
                                               title="{{ trans_choice('categories.cant_delete', $c->products_count) }}">
                                             {{ __('common.delete') }}
                                         </span>
                                     @else
-                                        <form method="POST" action="{{ route('categories.destroy', $c) }}" class="inline ml-2"
+                                        <form method="POST" action="{{ route('categories.destroy', $c) }}" class="inline ms-2"
                                               onsubmit="return confirm({{ Js::from(__('categories.confirm_delete', ['name' => $c->localName()])) }})">
                                             @csrf @method('DELETE')
                                             <button class="text-xs text-red-600 hover:underline">{{ __('common.delete') }}</button>

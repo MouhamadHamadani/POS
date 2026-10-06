@@ -27,12 +27,12 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">{{ __('common.name') }}</th>
-                        <th class="p-3 text-left">{{ __('suppliers.contact') }}</th>
-                        <th class="p-3 text-left">{{ __('common.phone') }}</th>
-                        <th class="p-3 text-left">{{ __('suppliers.terms') }}</th>
-                        <th class="p-3 text-right">{{ __('customers.balance') }}</th>
-                        <th class="p-3 text-right"></th>
+                        <th class="p-3 text-start">{{ __('common.name') }}</th>
+                        <th class="p-3 text-start">{{ __('suppliers.contact') }}</th>
+                        <th class="p-3 text-start">{{ __('common.phone') }}</th>
+                        <th class="p-3 text-start">{{ __('suppliers.terms') }}</th>
+                        <th class="p-3 text-end">{{ __('customers.balance') }}</th>
+                        <th class="p-3 text-end"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
@@ -45,8 +45,8 @@
                             <td class="p-3 text-xs">{{ $sp->contact_person ?? '—' }}</td>
                             <td class="p-3 text-xs text-gray-700">@if ($sp->phone)<x-ltr>{{ $sp->phone }}</x-ltr>@else — @endif</td>
                             <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ \App\Support\EnumLabel::get('payment_terms', $sp->payment_terms) }}</span></td>
-                            <td class="p-3 text-right {{ $sp->balance > 0 ? 'text-warning font-bold' : 'text-gray-700' }}"><x-ltr>${{ number_format((float) $sp->balance, 2) }}</x-ltr></td>
-                            <td class="p-3 text-right text-xs">
+                            <td class="p-3 text-end {{ $sp->balance > 0 ? 'text-warning font-bold' : 'text-gray-700' }}"><x-ltr>${{ number_format((float) $sp->balance, 2) }}</x-ltr></td>
+                            <td class="p-3 text-end text-xs">
                                 <a href="{{ route('suppliers.show', $sp) }}" class="text-brand-600 hover:underline">{{ __('common.view') }}</a>
                             </td>
                         </tr>

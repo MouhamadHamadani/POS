@@ -27,11 +27,11 @@
                         </div>
                         <template x-for="d in usdDenoms" :key="d">
                             <div class="flex items-center gap-2 text-sm">
-                                <label class="w-14 text-right text-gray-600" dir="ltr" x-text="'$' + d"></label>
+                                <label class="w-14 text-end text-gray-600" dir="ltr" x-text="'$' + d"></label>
                                 <span class="text-xs text-gray-400">×</span>
                                 <input type="number" min="0" step="1" :name="`denominations[usd][${d}]`" dir="ltr"
                                        x-model.number="usd[d]"
-                                       class="w-20 text-right border-gray-300 rounded text-sm" />
+                                       class="w-20 text-end border-gray-300 rounded text-sm" />
                                 <span class="text-xs text-gray-500" dir="ltr" x-text="'= $' + ((usd[d] || 0) * d).toFixed(0)"></span>
                             </div>
                         </template>
@@ -44,11 +44,11 @@
                         </div>
                         <template x-for="d in lbpDenoms" :key="d">
                             <div class="flex items-center gap-2 text-sm">
-                                <label class="w-20 text-right text-gray-600 text-xs" dir="ltr" x-text="d.toLocaleString('en-US')"></label>
+                                <label class="w-20 text-end text-gray-600 text-xs" dir="ltr" x-text="d.toLocaleString('en-US')"></label>
                                 <span class="text-xs text-gray-400">×</span>
                                 <input type="number" min="0" step="1" :name="`denominations[lbp][${d}]`" dir="ltr"
                                        x-model.number="lbp[d]"
-                                       class="w-20 text-right border-gray-300 rounded text-sm" />
+                                       class="w-20 text-end border-gray-300 rounded text-sm" />
                                 <span class="text-[11px] text-gray-500" dir="ltr" x-text="'= ' + ((lbp[d] || 0) * d).toLocaleString('en-US')"></span>
                             </div>
                         </template>

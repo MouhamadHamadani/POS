@@ -108,7 +108,7 @@
                     <h3 class="font-semibold mb-3 text-sm">{{ __('settings.tax_rates') }}</h3>
                     <table class="min-w-full text-sm mb-4">
                         <thead class="text-xs uppercase text-gray-500 border-b">
-                            <tr><th class="text-left py-2">{{ __('common.name') }}</th><th class="text-left">{{ __('categories.arabic') }}</th><th class="text-right">{{ __('settings.rate') }}</th><th class="text-center">{{ __('settings.inclusive') }}</th><th class="text-center">{{ __('settings.default') }}</th><th class="text-center">{{ __('common.active') }}</th><th></th></tr>
+                            <tr><th class="text-start py-2">{{ __('common.name') }}</th><th class="text-start">{{ __('categories.arabic') }}</th><th class="text-end">{{ __('settings.rate') }}</th><th class="text-center">{{ __('settings.inclusive') }}</th><th class="text-center">{{ __('settings.default') }}</th><th class="text-center">{{ __('common.active') }}</th><th></th></tr>
                         </thead>
                         <tbody class="divide-y">
                         @foreach ($taxes as $t)
@@ -117,13 +117,13 @@
                                     @csrf @method('PUT')
                                     <td class="py-2"><input name="name" dir="auto" value="{{ $t->name }}" class="w-full border-gray-200 rounded text-sm py-1"></td>
                                     <td class="py-2"><input name="name_ar" value="{{ $t->name_ar }}" dir="rtl" class="w-full border-gray-200 rounded text-sm py-1"></td>
-                                    <td class="py-2 w-24"><input type="number" step="0.0001" min="0" max="1" name="rate" dir="ltr" value="{{ $t->rate }}" class="w-full text-right border-gray-200 rounded text-sm py-1"></td>
+                                    <td class="py-2 w-24"><input type="number" step="0.0001" min="0" max="1" name="rate" dir="ltr" value="{{ $t->rate }}" class="w-full text-end border-gray-200 rounded text-sm py-1"></td>
                                     <td class="py-2 text-center"><input type="checkbox" name="is_inclusive" value="1" @checked($t->is_inclusive)></td>
                                     <td class="py-2 text-center"><input type="checkbox" name="is_default" value="1" @checked($t->is_default)></td>
                                     <td class="py-2 text-center"><input type="checkbox" name="is_active" value="1" @checked($t->is_active)></td>
-                                    <td class="py-2 text-right"><button class="text-xs text-brand-600">{{ __('common.save') }}</button>
+                                    <td class="py-2 text-end"><button class="text-xs text-brand-600">{{ __('common.save') }}</button>
                                 </form>
-                                    <form method="POST" action="{{ route('settings.tax.destroy', $t) }}" class="inline ml-2" onsubmit="return confirm({{ Js::from(__('settings.confirm_delete_tax', ['name' => $t->name])) }})">
+                                    <form method="POST" action="{{ route('settings.tax.destroy', $t) }}" class="inline ms-2" onsubmit="return confirm({{ Js::from(__('settings.confirm_delete_tax', ['name' => $t->name])) }})">
                                         @csrf @method('DELETE')
                                         <button class="text-xs text-red-600" title="{{ __('common.delete') }}">×</button>
                                     </form>
@@ -309,15 +309,15 @@
                     <h3 class="font-semibold mb-2 text-sm border-t pt-4">{{ __('settings.existing_backups') }}</h3>
                     <table class="min-w-full text-sm">
                         <thead class="text-xs uppercase text-gray-500 border-b">
-                            <tr><th class="text-left py-2">{{ __('settings.file') }}</th><th class="text-right">{{ __('settings.size') }}</th><th class="text-right">{{ __('dashboard.when') }}</th><th class="text-right">{{ __('common.actions') }}</th></tr>
+                            <tr><th class="text-start py-2">{{ __('settings.file') }}</th><th class="text-end">{{ __('settings.size') }}</th><th class="text-end">{{ __('dashboard.when') }}</th><th class="text-end">{{ __('common.actions') }}</th></tr>
                         </thead>
                         <tbody class="divide-y">
                         @forelse ($backups as $b)
                             <tr>
                                 <td class="py-2 font-mono text-xs"><x-ltr>{{ $b['name'] }}</x-ltr></td>
-                                <td class="text-right text-xs"><x-ltr>{{ $b['bytes'] }}</x-ltr></td>
-                                <td class="text-right text-xs text-gray-500"><x-ltr>{{ date('Y-m-d H:i', $b['date']) }}</x-ltr></td>
-                                <td class="text-right space-x-2 whitespace-nowrap">
+                                <td class="text-end text-xs"><x-ltr>{{ $b['bytes'] }}</x-ltr></td>
+                                <td class="text-end text-xs text-gray-500"><x-ltr>{{ date('Y-m-d H:i', $b['date']) }}</x-ltr></td>
+                                <td class="text-end space-x-2 rtl:space-x-reverse whitespace-nowrap">
                                     <a href="{{ route('settings.backup.download', $b['name']) }}" class="text-xs text-brand-600 hover:underline">{{ __('settings.download') }}</a>
                                     <form method="POST" action="{{ route('settings.backup.restore', $b['name']) }}" class="inline"
                                           onsubmit="return confirm({{ Js::from(__('settings.confirm_restore')) }})">

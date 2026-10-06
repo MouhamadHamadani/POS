@@ -14,7 +14,7 @@
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800">
                 <x-ltr>{{ $return->return_number }}</x-ltr>
-                <span class="ml-2 text-xs px-2 py-0.5 rounded {{ $statusClass }}">{{ $return->statusLabel() }}</span>
+                <span class="ms-2 text-xs px-2 py-0.5 rounded {{ $statusClass }}">{{ $return->statusLabel() }}</span>
             </h2>
             <a href="{{ route('returns.index') }}" class="text-sm text-gray-600 hover:underline"><span class="inline-block rtl:-scale-x-100" aria-hidden="true">←</span> {{ __('returns.all_returns') }}</a>
         </div>
@@ -59,21 +59,21 @@
             <table class="min-w-full text-sm">
                 <thead class="text-xs uppercase text-gray-500 border-b">
                     <tr>
-                        <th class="text-left py-2">{{ __('dashboard.product') }}</th>
-                        <th class="text-right py-2">{{ __('purchases.qty') }}</th>
+                        <th class="text-start py-2">{{ __('dashboard.product') }}</th>
+                        <th class="text-end py-2">{{ __('purchases.qty') }}</th>
                         <th class="text-center py-2">{{ __('returns.restocked') }}</th>
                         <th class="text-center py-2">{{ __('returns.condition') }}</th>
-                        <th class="text-right py-2">{{ __('returns.refund') }}</th>
+                        <th class="text-end py-2">{{ __('returns.refund') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
                 @foreach ($return->items as $i)
                     <tr>
                         <td class="py-2">{{ $i->product?->localName() ?? '—' }}</td>
-                        <td class="py-2 text-right"><x-ltr>{{ rtrim(rtrim(number_format((float) $i->qty_returned, 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                        <td class="py-2 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $i->qty_returned, 4, '.', ''), '0'), '.') }}</x-ltr></td>
                         <td class="py-2 text-center">{{ $i->restock ? __('common.yes') : __('common.no') }}</td>
                         <td class="py-2 text-center text-xs">{{ $i->conditionLabel() }}</td>
-                        <td class="py-2 text-right font-medium"><x-ltr>${{ number_format((float) $i->refund_amount_usd, 2) }}</x-ltr></td>
+                        <td class="py-2 text-end font-medium"><x-ltr>${{ number_format((float) $i->refund_amount_usd, 2) }}</x-ltr></td>
                     </tr>
                 @endforeach
                 </tbody>

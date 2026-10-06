@@ -37,13 +37,13 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">{{ __('common.name') }}</th>
-                        <th class="p-3 text-left">{{ __('common.phone') }}</th>
-                        <th class="p-3 text-left">{{ __('customers.group') }}</th>
-                        <th class="p-3 text-right">{{ __('customers.balance') }}</th>
-                        <th class="p-3 text-right">{{ __('customers.credit_limit') }}</th>
-                        <th class="p-3 text-right">{{ __('customers.loyalty') }}</th>
-                        <th class="p-3 text-right"></th>
+                        <th class="p-3 text-start">{{ __('common.name') }}</th>
+                        <th class="p-3 text-start">{{ __('common.phone') }}</th>
+                        <th class="p-3 text-start">{{ __('customers.group') }}</th>
+                        <th class="p-3 text-end">{{ __('customers.balance') }}</th>
+                        <th class="p-3 text-end">{{ __('customers.credit_limit') }}</th>
+                        <th class="p-3 text-end">{{ __('customers.loyalty') }}</th>
+                        <th class="p-3 text-end"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
@@ -55,13 +55,13 @@
                             </td>
                             <td class="p-3 text-xs text-gray-700">@if ($c->phone)<x-ltr>{{ $c->phone }}</x-ltr>@else — @endif</td>
                             <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ $c->groupLabel() }}</span></td>
-                            <td class="p-3 text-right {{ $c->balance > 0 ? 'text-danger font-bold' : 'text-gray-700' }}"><x-ltr>${{ number_format((float) $c->balance, 2) }}</x-ltr></td>
-                            <td class="p-3 text-right"><x-ltr>${{ number_format((float) $c->credit_limit, 2) }}</x-ltr></td>
-                            <td class="p-3 text-right">
+                            <td class="p-3 text-end {{ $c->balance > 0 ? 'text-danger font-bold' : 'text-gray-700' }}"><x-ltr>${{ number_format((float) $c->balance, 2) }}</x-ltr></td>
+                            <td class="p-3 text-end"><x-ltr>${{ number_format((float) $c->credit_limit, 2) }}</x-ltr></td>
+                            <td class="p-3 text-end">
                                 {{ __('customers.points', ['count' => number_format($c->loyalty_points)]) }}
-                                <span class="text-xs text-gray-500 ml-1">({{ $c->tierLabel() }})</span>
+                                <span class="text-xs text-gray-500 ms-1">({{ $c->tierLabel() }})</span>
                             </td>
-                            <td class="p-3 text-right text-xs">
+                            <td class="p-3 text-end text-xs">
                                 <a href="{{ route('customers.show', $c) }}" class="text-brand-600 hover:underline">{{ __('common.view') }}</a>
                             </td>
                         </tr>

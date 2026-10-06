@@ -61,16 +61,16 @@
             <h3 class="font-semibold mb-3 text-sm">{{ __('suppliers.recent_pos') }}</h3>
             <table class="w-full text-sm">
                 <thead class="text-gray-500 text-xs uppercase">
-                    <tr class="border-b"><th class="text-left py-2">{{ __('suppliers.po_number') }}</th><th class="text-left">{{ __('common.status') }}</th><th class="text-right">{{ __('dashboard.total') }}</th><th class="text-right">{{ __('suppliers.expected') }}</th><th></th></tr>
+                    <tr class="border-b"><th class="text-start py-2">{{ __('suppliers.po_number') }}</th><th class="text-start">{{ __('common.status') }}</th><th class="text-end">{{ __('dashboard.total') }}</th><th class="text-end">{{ __('suppliers.expected') }}</th><th></th></tr>
                 </thead>
                 <tbody class="divide-y">
                 @forelse ($pos as $po)
                     <tr>
                         <td class="py-2 font-mono text-xs"><x-ltr>{{ $po->po_number }}</x-ltr></td>
                         <td><span class="text-xs px-2 py-0.5 rounded bg-brand-100 text-brand-700">{{ $po->statusLabel() }}</span></td>
-                        <td class="text-right font-medium"><x-ltr>${{ number_format((float) $po->total_usd, 2) }}</x-ltr></td>
-                        <td class="text-right text-gray-500">@if ($po->expected_at)<x-ltr>{{ $po->expected_at->format('Y-m-d') }}</x-ltr>@else — @endif</td>
-                        <td class="text-right text-xs"><a href="{{ route('purchases.show', $po) }}" class="text-brand-600">{{ __('common.view') }}</a></td>
+                        <td class="text-end font-medium"><x-ltr>${{ number_format((float) $po->total_usd, 2) }}</x-ltr></td>
+                        <td class="text-end text-gray-500">@if ($po->expected_at)<x-ltr>{{ $po->expected_at->format('Y-m-d') }}</x-ltr>@else — @endif</td>
+                        <td class="text-end text-xs"><a href="{{ route('purchases.show', $po) }}" class="text-brand-600">{{ __('common.view') }}</a></td>
                     </tr>
                 @empty
                     <tr><td colspan="5" class="py-6 text-center text-gray-400">{{ __('suppliers.no_pos') }}</td></tr>

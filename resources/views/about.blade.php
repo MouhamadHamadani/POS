@@ -21,7 +21,7 @@
                 ] as $key => $value)
                     <div class="flex justify-between gap-4 py-2">
                         <dt class="text-gray-500">{{ __("about.$key") }}</dt>
-                        <dd class="text-gray-800 font-mono text-xs text-right break-all" dir="ltr">{{ $value }}</dd>
+                        <dd class="text-gray-800 font-mono text-xs text-end break-all" dir="ltr">{{ $value }}</dd>
                     </div>
                 @endforeach
             </dl>

@@ -79,9 +79,9 @@
                                    @input.debounce.400ms="checkBarcode()"
                                    placeholder="{{ __('products.barcode_placeholder') }}"
                                    autocomplete="off"
-                                   class="w-full border-gray-300 rounded text-sm pr-16" />
+                                   class="w-full border-gray-300 rounded text-sm pe-16" />
                             <button type="button" @click="focusScan()"
-                                    class="absolute right-1 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200"
+                                    class="absolute end-1 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200"
                                     title="{{ __('products.scan_title') }}">
                                 {{ __('products.scan') }}
                             </button>
@@ -272,7 +272,7 @@
                         <input type="text" name="reason" dir="auto" placeholder="{{ __('products.reason_placeholder') }}" required
                                class="w-full border-gray-300 rounded text-sm" />
                     </div>
-                    <div class="md:col-span-4 text-right">
+                    <div class="md:col-span-4 text-end">
                         <button class="px-4 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700">{{ __('products.adjust_stock') }}</button>
                     </div>
                 </form>

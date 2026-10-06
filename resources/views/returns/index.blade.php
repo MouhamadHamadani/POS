@@ -28,13 +28,13 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">{{ __('returns.return_number') }}</th>
-                        <th class="p-3 text-left">{{ __('returns.original_sale') }}</th>
-                        <th class="p-3 text-left">{{ __('returns.reason') }}</th>
-                        <th class="p-3 text-left">{{ __('customers.method') }}</th>
-                        <th class="p-3 text-right">{{ __('returns.amount') }}</th>
+                        <th class="p-3 text-start">{{ __('returns.return_number') }}</th>
+                        <th class="p-3 text-start">{{ __('returns.original_sale') }}</th>
+                        <th class="p-3 text-start">{{ __('returns.reason') }}</th>
+                        <th class="p-3 text-start">{{ __('customers.method') }}</th>
+                        <th class="p-3 text-end">{{ __('returns.amount') }}</th>
                         <th class="p-3 text-center">{{ __('common.status') }}</th>
-                        <th class="p-3 text-right">{{ __('dashboard.when') }}</th>
+                        <th class="p-3 text-end">{{ __('dashboard.when') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
@@ -53,9 +53,9 @@
                         <td class="p-3 font-mono text-xs text-gray-600">@if ($r->sale?->receipt_number)<x-ltr>{{ $r->sale->receipt_number }}</x-ltr>@else — @endif</td>
                         <td class="p-3 text-xs">{{ $r->reasonLabel() }}</td>
                         <td class="p-3 text-xs">{{ $r->refundMethodLabel() }}</td>
-                        <td class="p-3 text-right font-medium"><x-ltr>${{ number_format((float) $r->refund_amount_usd, 2) }}</x-ltr></td>
+                        <td class="p-3 text-end font-medium"><x-ltr>${{ number_format((float) $r->refund_amount_usd, 2) }}</x-ltr></td>
                         <td class="p-3 text-center"><span class="text-xs px-2 py-0.5 rounded {{ $statusClass }}">{{ $r->statusLabel() }}</span></td>
-                        <td class="p-3 text-right text-xs text-gray-500">{{ $r->created_at->diffForHumans() }}</td>
+                        <td class="p-3 text-end text-xs text-gray-500">{{ $r->created_at->diffForHumans() }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="7" class="p-10 text-center text-gray-500">{{ __('returns.none_yet') }}</td></tr>

@@ -61,13 +61,13 @@
                                 <form method="POST" action="{{ route('demo.reset') }}"
                                       onsubmit="return confirm(@js(__('nav.reset_demo_confirm')))">
                                     @csrf
-                                    <button class="block w-full text-left px-3 py-2 hover:bg-amber-50 text-amber-700 font-medium">{{ __('nav.reset_demo') }}</button>
+                                    <button class="block w-full text-start px-3 py-2 hover:bg-amber-50 text-amber-700 font-medium">{{ __('nav.reset_demo') }}</button>
                                 </form>
                             @endif
                             <hr class="my-1">
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
-                                <button class="block w-full text-left px-3 py-2 hover:bg-gray-100 text-danger">{{ __('nav.logout') }}</button>
+                                <button class="block w-full text-start px-3 py-2 hover:bg-gray-100 text-danger">{{ __('nav.logout') }}</button>
                             </form>
                         </div>
                     </div>

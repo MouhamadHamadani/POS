@@ -49,7 +49,7 @@
             @endphp
             @if ($allowed)
                 <a href="{{ $path }}"
-                   class="flex items-center gap-3 px-3 py-2 text-sm hover:bg-brand-600 transition border-l-4 {{ $active ? 'bg-brand-600 border-accent-light text-white' : 'border-transparent text-brand-100' }}">
+                   class="flex items-center gap-3 px-3 py-2 text-sm hover:bg-brand-600 transition border-s-4 {{ $active ? 'bg-brand-600 border-accent-light text-white' : 'border-transparent text-brand-100' }}">
                     <span class="text-lg flex-shrink-0 w-5 text-center">{{ $icon }}</span>
                     <span x-show="open" class="whitespace-nowrap">{{ __("nav.$key") }}</span>
                 </a>
@@ -87,7 +87,7 @@
         </a>
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-            <button class="w-full text-left text-brand-200 hover:text-white" :title="open ? '' : @js(__('nav.logout'))">
+            <button class="w-full text-start text-brand-200 hover:text-white" :title="open ? '' : @js(__('nav.logout'))">
                 <span class="inline-block w-7 text-center">⎋</span>
                 <span x-show="open">{{ __('nav.logout') }}</span>
             </button>

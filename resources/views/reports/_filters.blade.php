@@ -25,5 +25,5 @@
         <a href="{{ url()->current() }}?{{ http_build_query(array_merge(request()->query(), ['format' => 'xlsx'])) }}"
            class="px-3 py-1.5 bg-green-600 text-white rounded text-xs">{{ __('reports.export_format', ['format' => strtoupper(\App\Support\Spreadsheet::extension())]) }}</a>
     @endif
-    <a href="{{ route('reports.index') }}" class="text-xs text-gray-500 hover:underline ml-auto"><span class="inline-block rtl:-scale-x-100" aria-hidden="true">←</span> {{ __('reports.all_reports') }}</a>
+    <a href="{{ route('reports.index') }}" class="text-xs text-gray-500 hover:underline ms-auto"><span class="inline-block rtl:-scale-x-100" aria-hidden="true">←</span> {{ __('reports.all_reports') }}</a>
 </form>

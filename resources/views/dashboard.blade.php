@@ -46,15 +46,15 @@
                 @php $recent = Sale::with('customer:id,name', 'user:id,name')->latest()->limit(8)->get(); @endphp
                 <table class="w-full text-xs">
                     <thead class="text-gray-500 text-xs uppercase">
-                        <tr class="border-b"><th class="text-left py-2">{{ __('dashboard.receipt') }}</th><th class="text-left">{{ __('dashboard.cashier') }}</th><th class="text-right">{{ __('dashboard.total') }}</th><th class="text-right">{{ __('dashboard.when') }}</th></tr>
+                        <tr class="border-b"><th class="text-start py-2">{{ __('dashboard.receipt') }}</th><th class="text-start">{{ __('dashboard.cashier') }}</th><th class="text-end">{{ __('dashboard.total') }}</th><th class="text-end">{{ __('dashboard.when') }}</th></tr>
                     </thead>
                     <tbody class="divide-y">
                     @forelse ($recent as $s)
                         <tr>
                             <td class="py-2"><x-ltr>{{ $s->receipt_number }}</x-ltr></td>
                             <td>{{ $s->user?->name ?? '—' }}</td>
-                            <td class="text-right font-medium"><x-ltr>${{ number_format((float) $s->total_usd, 2) }}</x-ltr></td>
-                            <td class="text-right text-gray-500">{{ $s->created_at->diffForHumans() }}</td>
+                            <td class="text-end font-medium"><x-ltr>${{ number_format((float) $s->total_usd, 2) }}</x-ltr></td>
+                            <td class="text-end text-gray-500">{{ $s->created_at->diffForHumans() }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="4" class="py-6 text-center text-gray-400">{{ __('dashboard.no_sales') }}</td></tr>
@@ -69,15 +69,15 @@
                         ->whereColumn('stock_qty', '<=', 'min_stock')->limit(8)->get(); @endphp
                 <table class="w-full text-xs">
                     <thead class="text-gray-500 text-xs uppercase">
-                        <tr class="border-b"><th class="text-left py-2">{{ __('dashboard.product') }}</th><th class="text-right">{{ __('dashboard.in_stock') }}</th><th class="text-right">{{ __('dashboard.min') }}</th><th></th></tr>
+                        <tr class="border-b"><th class="text-start py-2">{{ __('dashboard.product') }}</th><th class="text-end">{{ __('dashboard.in_stock') }}</th><th class="text-end">{{ __('dashboard.min') }}</th><th></th></tr>
                     </thead>
                     <tbody class="divide-y">
                     @forelse ($low as $p)
                         <tr>
                             <td class="py-2">{{ $p->localName() }}</td>
-                            <td class="text-right {{ $p->stock_qty <= 0 ? 'text-danger font-bold' : 'text-warning font-medium' }}"><x-ltr>{{ rtrim(rtrim(number_format((float) $p->stock_qty, 4, '.', ''), '0'), '.') }}</x-ltr> {{ \App\Support\EnumLabel::get('unit', $p->unit) }}</td>
-                            <td class="text-right text-gray-500"><x-ltr>{{ rtrim(rtrim(number_format((float) $p->min_stock, 4, '.', ''), '0'), '.') }}</x-ltr></td>
-                            <td class="text-right"><a href="{{ route('products.edit', $p) }}" class="text-accent text-xs">{{ __('dashboard.reorder') }}</a></td>
+                            <td class="text-end {{ $p->stock_qty <= 0 ? 'text-danger font-bold' : 'text-warning font-medium' }}"><x-ltr>{{ rtrim(rtrim(number_format((float) $p->stock_qty, 4, '.', ''), '0'), '.') }}</x-ltr> {{ \App\Support\EnumLabel::get('unit', $p->unit) }}</td>
+                            <td class="text-end text-gray-500"><x-ltr>{{ rtrim(rtrim(number_format((float) $p->min_stock, 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                            <td class="text-end"><a href="{{ route('products.edit', $p) }}" class="text-accent text-xs">{{ __('dashboard.reorder') }}</a></td>
                         </tr>
                     @empty
                         <tr><td colspan="4" class="py-6 text-center text-gray-400">{{ __('dashboard.all_healthy') }}</td></tr>

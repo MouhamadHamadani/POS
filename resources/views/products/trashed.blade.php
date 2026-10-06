@@ -16,11 +16,11 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">{{ __('products.trashed.name') }}</th>
-                        <th class="p-3 text-left">{{ __('products.trashed.old_sku') }}</th>
-                        <th class="p-3 text-left">{{ __('products.trashed.old_barcode') }}</th>
-                        <th class="p-3 text-left">{{ __('products.trashed.category') }}</th>
-                        <th class="p-3 text-left">{{ __('products.trashed.deleted_at') }}</th>
+                        <th class="p-3 text-start">{{ __('products.trashed.name') }}</th>
+                        <th class="p-3 text-start">{{ __('products.trashed.old_sku') }}</th>
+                        <th class="p-3 text-start">{{ __('products.trashed.old_barcode') }}</th>
+                        <th class="p-3 text-start">{{ __('products.trashed.category') }}</th>
+                        <th class="p-3 text-start">{{ __('products.trashed.deleted_at') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">

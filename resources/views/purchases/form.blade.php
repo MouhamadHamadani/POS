@@ -88,11 +88,11 @@
                 <table class="min-w-full text-sm">
                     <thead class="text-xs uppercase text-gray-500 border-b">
                         <tr>
-                            <th class="text-left py-2">{{ __('dashboard.product') }}</th>
-                            <th class="text-right py-2 w-24">{{ __('purchases.qty') }}</th>
-                            <th class="text-right py-2 w-32">{{ __('purchases.cost_usd') }}</th>
-                            <th class="text-right py-2 w-20">{{ __('purchases.tax_pct') }}</th>
-                            <th class="text-right py-2 w-32">{{ __('purchases.line_total') }}</th>
+                            <th class="text-start py-2">{{ __('dashboard.product') }}</th>
+                            <th class="text-end py-2 w-24">{{ __('purchases.qty') }}</th>
+                            <th class="text-end py-2 w-32">{{ __('purchases.cost_usd') }}</th>
+                            <th class="text-end py-2 w-20">{{ __('purchases.tax_pct') }}</th>
+                            <th class="text-end py-2 w-32">{{ __('purchases.line_total') }}</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -104,20 +104,20 @@
                                     <input type="hidden" :name="`items[${idx}][product_id]`" :value="line.product_id">
                                     <div class="font-medium" x-text="line.product_name"></div>
                                 </td>
-                                <td class="py-2 text-right">
+                                <td class="py-2 text-end">
                                     <input type="number" step="0.0001" min="0.0001" :name="`items[${idx}][qty_ordered]`" dir="ltr"
-                                           x-model.number="line.qty_ordered" class="w-20 text-right border-gray-300 rounded text-sm">
+                                           x-model.number="line.qty_ordered" class="w-20 text-end border-gray-300 rounded text-sm">
                                 </td>
-                                <td class="py-2 text-right">
+                                <td class="py-2 text-end">
                                     <input type="number" step="0.01" min="0" :name="`items[${idx}][cost_usd]`" dir="ltr"
-                                           x-model.number="line.cost_usd" class="w-24 text-right border-gray-300 rounded text-sm">
+                                           x-model.number="line.cost_usd" class="w-24 text-end border-gray-300 rounded text-sm">
                                 </td>
-                                <td class="py-2 text-right">
+                                <td class="py-2 text-end">
                                     <input type="number" step="0.0001" min="0" :name="`items[${idx}][tax_rate]`" dir="ltr"
-                                           x-model.number="line.tax_rate" class="w-16 text-right border-gray-300 rounded text-sm">
+                                           x-model.number="line.tax_rate" class="w-16 text-end border-gray-300 rounded text-sm">
                                 </td>
-                                <td class="py-2 text-right font-medium"><x-ltr>$<span x-text="lineTotal(line).toFixed(2)"></span></x-ltr></td>
-                                <td class="py-2 text-right">
+                                <td class="py-2 text-end font-medium"><x-ltr>$<span x-text="lineTotal(line).toFixed(2)"></span></x-ltr></td>
+                                <td class="py-2 text-end">
                                     <button type="button" @click="removeLine(idx)" class="text-red-500 text-sm">×</button>
                                 </td>
                             </tr>
@@ -125,9 +125,9 @@
                         <tr x-show="lines.length === 0"><td colspan="6" class="py-6 text-center text-gray-400 text-sm">{{ __('purchases.no_lines') }}</td></tr>
                     </tbody>
                     <tfoot class="border-t-2 text-sm">
-                        <tr><td colspan="4" class="py-2 text-right text-gray-500">{{ __('purchases.subtotal') }}</td><td class="py-2 text-right"><x-ltr>$<span x-text="totals().subtotal.toFixed(2)"></span></x-ltr></td><td></td></tr>
-                        <tr><td colspan="4" class="py-1 text-right text-gray-500">{{ __('purchases.tax') }}</td><td class="py-1 text-right"><x-ltr>$<span x-text="totals().tax.toFixed(2)"></span></x-ltr></td><td></td></tr>
-                        <tr><td colspan="4" class="py-2 text-right font-bold">{{ __('purchases.total_excl_shipping') }}</td><td class="py-2 text-right font-bold text-brand-700"><x-ltr>$<span x-text="totals().total.toFixed(2)"></span></x-ltr></td><td></td></tr>
+                        <tr><td colspan="4" class="py-2 text-end text-gray-500">{{ __('purchases.subtotal') }}</td><td class="py-2 text-end"><x-ltr>$<span x-text="totals().subtotal.toFixed(2)"></span></x-ltr></td><td></td></tr>
+                        <tr><td colspan="4" class="py-1 text-end text-gray-500">{{ __('purchases.tax') }}</td><td class="py-1 text-end"><x-ltr>$<span x-text="totals().tax.toFixed(2)"></span></x-ltr></td><td></td></tr>
+                        <tr><td colspan="4" class="py-2 text-end font-bold">{{ __('purchases.total_excl_shipping') }}</td><td class="py-2 text-end font-bold text-brand-700"><x-ltr>$<span x-text="totals().total.toFixed(2)"></span></x-ltr></td><td></td></tr>
                     </tfoot>
                 </table>
             </div>

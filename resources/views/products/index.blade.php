@@ -48,7 +48,7 @@
                         <input type="checkbox" name="low_stock" value="1" @checked(request('low_stock'))>
                         {{ __('products.low_stock') }}
                     </label>
-                    <button class="ml-auto px-3 py-1.5 bg-gray-800 text-white rounded text-xs">{{ __('common.filter') }}</button>
+                    <button class="ms-auto px-3 py-1.5 bg-gray-800 text-white rounded text-xs">{{ __('common.filter') }}</button>
                 </div>
             </form>
         </div>
@@ -57,14 +57,14 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">{{ __('products.image') }}</th>
-                        <th class="p-3 text-left">{{ __('common.name') }}</th>
-                        <th class="p-3 text-left">{{ __('products.sku_barcode') }}</th>
-                        <th class="p-3 text-left">{{ __('products.category') }}</th>
-                        <th class="p-3 text-right">{{ __('products.price_usd') }}</th>
-                        <th class="p-3 text-right">{{ __('reports.cols.stock') }}</th>
+                        <th class="p-3 text-start">{{ __('products.image') }}</th>
+                        <th class="p-3 text-start">{{ __('common.name') }}</th>
+                        <th class="p-3 text-start">{{ __('products.sku_barcode') }}</th>
+                        <th class="p-3 text-start">{{ __('products.category') }}</th>
+                        <th class="p-3 text-end">{{ __('products.price_usd') }}</th>
+                        <th class="p-3 text-end">{{ __('reports.cols.stock') }}</th>
                         <th class="p-3 text-center">{{ __('common.status') }}</th>
-                        <th class="p-3 text-right">{{ __('common.actions') }}</th>
+                        <th class="p-3 text-end">{{ __('common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
@@ -88,8 +88,8 @@
                                 <div class="text-gray-400">@if ($p->barcode)<x-ltr>{{ $p->barcode }}</x-ltr>@else — @endif</div>
                             </td>
                             <td class="p-3 text-gray-700">{{ $p->category?->localName() ?? '—' }}</td>
-                            <td class="p-3 text-right font-medium"><x-ltr>${{ number_format((float) $p->price_usd, 2) }}</x-ltr></td>
-                            <td class="p-3 text-right">
+                            <td class="p-3 text-end font-medium"><x-ltr>${{ number_format((float) $p->price_usd, 2) }}</x-ltr></td>
+                            <td class="p-3 text-end">
                                 @if ($p->track_stock)
                                     <span @class([
                                         'text-red-600 font-bold' => $p->stock_qty <= 0,
@@ -109,9 +109,9 @@
                                     <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{{ __('common.inactive') }}</span>
                                 @endif
                             </td>
-                            <td class="p-3 text-right">
+                            <td class="p-3 text-end">
                                 <a href="{{ route('products.edit', $p) }}" class="text-brand-600 hover:underline text-xs">{{ __('common.edit') }}</a>
-                                <form method="POST" action="{{ route('products.destroy', $p) }}" class="inline ml-2"
+                                <form method="POST" action="{{ route('products.destroy', $p) }}" class="inline ms-2"
                                       onsubmit="return confirm({{ Js::from(__('products.confirm_delete', ['name' => $p->localName()])) }})">
                                     @csrf @method('DELETE')
                                     <button class="text-red-600 hover:underline text-xs">{{ __('common.delete') }}</button>

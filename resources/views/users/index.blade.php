@@ -38,14 +38,14 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">{{ __('common.name') }}</th>
-                        <th class="p-3 text-left">{{ __('users.username') }}</th>
-                        <th class="p-3 text-left">{{ __('users.email') }}</th>
-                        <th class="p-3 text-left">{{ __('users.role') }}</th>
-                        <th class="p-3 text-left">{{ __('users.lang') }}</th>
-                        <th class="p-3 text-left">{{ __('users.last_login') }}</th>
+                        <th class="p-3 text-start">{{ __('common.name') }}</th>
+                        <th class="p-3 text-start">{{ __('users.username') }}</th>
+                        <th class="p-3 text-start">{{ __('users.email') }}</th>
+                        <th class="p-3 text-start">{{ __('users.role') }}</th>
+                        <th class="p-3 text-start">{{ __('users.lang') }}</th>
+                        <th class="p-3 text-start">{{ __('users.last_login') }}</th>
                         <th class="p-3 text-center">{{ __('common.status') }}</th>
-                        <th class="p-3 text-right">{{ __('common.actions') }}</th>
+                        <th class="p-3 text-end">{{ __('common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
@@ -64,7 +64,7 @@
                                     <span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">{{ __('common.inactive') }}</span>
                                 @endif
                             </td>
-                            <td class="p-3 text-right space-x-2 whitespace-nowrap">
+                            <td class="p-3 text-end space-x-2 rtl:space-x-reverse whitespace-nowrap">
                                 @if ($u->isPrivileged() && !auth()->user()->isSuperAdmin())
                                     <span class="text-xs text-gray-400">{{ __('users.managed_by_super_admin') }}</span>
                                 @else

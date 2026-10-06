@@ -14,7 +14,7 @@
                         default => 'bg-gray-100 text-gray-700',
                     };
                 @endphp
-                <span class="ml-2 text-xs px-2 py-0.5 rounded {{ $color }}">{{ $po->statusLabel() }}</span>
+                <span class="ms-2 text-xs px-2 py-0.5 rounded {{ $color }}">{{ $po->statusLabel() }}</span>
             </h2>
             <div class="flex gap-2">
                 @if (in_array($po->status, ['draft','sent']))
@@ -70,12 +70,12 @@
             <table class="min-w-full text-sm">
                 <thead class="text-xs uppercase text-gray-500 border-b">
                     <tr>
-                        <th class="text-left py-2">{{ __('dashboard.product') }}</th>
-                        <th class="text-right py-2">{{ __('purchases.ordered') }}</th>
-                        <th class="text-right py-2">{{ __('purchases.received') }}</th>
-                        <th class="text-right py-2">{{ __('purchases.cost') }}</th>
-                        <th class="text-right py-2">{{ __('purchases.tax') }}</th>
-                        <th class="text-right py-2">{{ __('purchases.line_total') }}</th>
+                        <th class="text-start py-2">{{ __('dashboard.product') }}</th>
+                        <th class="text-end py-2">{{ __('purchases.ordered') }}</th>
+                        <th class="text-end py-2">{{ __('purchases.received') }}</th>
+                        <th class="text-end py-2">{{ __('purchases.cost') }}</th>
+                        <th class="text-end py-2">{{ __('purchases.tax') }}</th>
+                        <th class="text-end py-2">{{ __('purchases.line_total') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
@@ -85,13 +85,13 @@
                             {{ $it->product?->localName() ?? $it->product_name }}
                             <div class="text-xs text-gray-500"><x-ltr>{{ $it->product?->sku ?? '' }}</x-ltr> · {{ __('purchases.in_stock') }}: <x-ltr>{{ rtrim(rtrim(number_format((float) ($it->product?->stock_qty ?? 0), 4, '.', ''), '0'), '.') }}</x-ltr></div>
                         </td>
-                        <td class="py-2 text-right"><x-ltr>{{ rtrim(rtrim(number_format((float) $it->qty_ordered, 4, '.', ''), '0'), '.') }}</x-ltr></td>
-                        <td class="py-2 text-right {{ $it->qty_received >= $it->qty_ordered ? 'text-success' : ($it->qty_received > 0 ? 'text-warning' : 'text-gray-400') }}">
+                        <td class="py-2 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $it->qty_ordered, 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                        <td class="py-2 text-end {{ $it->qty_received >= $it->qty_ordered ? 'text-success' : ($it->qty_received > 0 ? 'text-warning' : 'text-gray-400') }}">
                             <x-ltr>{{ rtrim(rtrim(number_format((float) $it->qty_received, 4, '.', ''), '0'), '.') }}</x-ltr>
                         </td>
-                        <td class="py-2 text-right"><x-ltr>${{ number_format((float) $it->cost_usd, 4) }}</x-ltr></td>
-                        <td class="py-2 text-right"><x-ltr>{{ number_format((float) $it->tax_rate * 100, 2) }}%</x-ltr></td>
-                        <td class="py-2 text-right"><x-ltr>${{ number_format((float) $it->line_total_usd, 2) }}</x-ltr></td>
+                        <td class="py-2 text-end"><x-ltr>${{ number_format((float) $it->cost_usd, 4) }}</x-ltr></td>
+                        <td class="py-2 text-end"><x-ltr>{{ number_format((float) $it->tax_rate * 100, 2) }}%</x-ltr></td>
+                        <td class="py-2 text-end"><x-ltr>${{ number_format((float) $it->line_total_usd, 2) }}</x-ltr></td>
                     </tr>
                 @endforeach
                 </tbody>
@@ -106,12 +106,12 @@
                     <table class="min-w-full text-sm">
                         <thead class="text-xs uppercase text-gray-500 border-b">
                             <tr>
-                                <th class="text-left py-2">{{ __('dashboard.product') }}</th>
-                                <th class="text-right py-2">{{ __('purchases.remaining') }}</th>
-                                <th class="text-right py-2">{{ __('purchases.receive_qty') }}</th>
-                                <th class="text-right py-2">{{ __('purchases.cost_override') }}</th>
-                                <th class="text-right py-2">{{ __('purchases.batch') }}</th>
-                                <th class="text-right py-2">{{ __('purchases.expiry') }}</th>
+                                <th class="text-start py-2">{{ __('dashboard.product') }}</th>
+                                <th class="text-end py-2">{{ __('purchases.remaining') }}</th>
+                                <th class="text-end py-2">{{ __('purchases.receive_qty') }}</th>
+                                <th class="text-end py-2">{{ __('purchases.cost_override') }}</th>
+                                <th class="text-end py-2">{{ __('purchases.batch') }}</th>
+                                <th class="text-end py-2">{{ __('purchases.expiry') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y">
@@ -120,20 +120,20 @@
                             @if ($remaining > 0)
                             <tr>
                                 <td class="py-2">{{ $it->product?->localName() ?? $it->product_name }}</td>
-                                <td class="py-2 text-right"><x-ltr>{{ rtrim(rtrim(number_format($remaining, 4, '.', ''), '0'), '.') }}</x-ltr></td>
-                                <td class="py-2 text-right">
+                                <td class="py-2 text-end"><x-ltr>{{ rtrim(rtrim(number_format($remaining, 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                                <td class="py-2 text-end">
                                     <input type="hidden" name="receipts[{{ $idx }}][item_id]" value="{{ $it->id }}">
                                     <input type="number" step="0.0001" min="0" max="{{ $remaining }}" value="0" dir="ltr"
-                                           name="receipts[{{ $idx }}][qty]" class="w-24 text-right border-gray-300 rounded text-sm" />
+                                           name="receipts[{{ $idx }}][qty]" class="w-24 text-end border-gray-300 rounded text-sm" />
                                 </td>
-                                <td class="py-2 text-right">
+                                <td class="py-2 text-end">
                                     <input type="number" step="0.01" min="0" placeholder="{{ number_format((float) $it->cost_usd, 4) }}" dir="ltr"
-                                           name="receipts[{{ $idx }}][cost_usd]" class="w-24 text-right border-gray-300 rounded text-sm" />
+                                           name="receipts[{{ $idx }}][cost_usd]" class="w-24 text-end border-gray-300 rounded text-sm" />
                                 </td>
-                                <td class="py-2 text-right">
-                                    <input type="text" name="receipts[{{ $idx }}][batch]" dir="ltr" class="w-24 text-right border-gray-300 rounded text-sm" />
+                                <td class="py-2 text-end">
+                                    <input type="text" name="receipts[{{ $idx }}][batch]" dir="ltr" class="w-24 text-end border-gray-300 rounded text-sm" />
                                 </td>
-                                <td class="py-2 text-right">
+                                <td class="py-2 text-end">
                                     <input type="date" name="receipts[{{ $idx }}][expiry]" dir="ltr" class="border-gray-300 rounded text-sm" />
                                 </td>
                             </tr>
@@ -141,7 +141,7 @@
                         @endforeach
                         </tbody>
                     </table>
-                    <div class="text-right mt-4">
+                    <div class="text-end mt-4">
                         <button class="px-4 py-2 bg-success text-white rounded text-sm hover:bg-green-700">{{ __('purchases.receive_into_stock') }}</button>
                     </div>
                 </form>

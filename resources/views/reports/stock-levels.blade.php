@@ -26,7 +26,7 @@
                 <a href="{{ url()->current() }}?{{ http_build_query(array_merge(request()->query(), ['format' => 'xlsx'])) }}"
                    class="px-3 py-1.5 bg-green-600 text-white rounded text-xs">{{ __('reports.export_format', ['format' => strtoupper(\App\Support\Spreadsheet::extension())]) }}</a>
             @endif
-            <a href="{{ route('reports.index') }}" class="text-xs text-gray-500 hover:underline ml-auto"><span class="inline-block rtl:-scale-x-100" aria-hidden="true">←</span> {{ __('reports.all_reports') }}</a>
+            <a href="{{ route('reports.index') }}" class="text-xs text-gray-500 hover:underline ms-auto"><span class="inline-block rtl:-scale-x-100" aria-hidden="true">←</span> {{ __('reports.all_reports') }}</a>
         </form>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -49,13 +49,13 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">{{ __('dashboard.product') }}</th>
-                        <th class="p-3 text-left">SKU</th>
-                        <th class="p-3 text-right">{{ __('reports.cols.stock') }}</th>
-                        <th class="p-3 text-right">{{ __('dashboard.min') }}</th>
-                        <th class="p-3 text-right">{{ __('purchases.cost') }}</th>
-                        <th class="p-3 text-right">{{ __('reports.cols.cost_value') }}</th>
-                        <th class="p-3 text-right">{{ __('reports.cols.retail_value') }}</th>
+                        <th class="p-3 text-start">{{ __('dashboard.product') }}</th>
+                        <th class="p-3 text-start">SKU</th>
+                        <th class="p-3 text-end">{{ __('reports.cols.stock') }}</th>
+                        <th class="p-3 text-end">{{ __('dashboard.min') }}</th>
+                        <th class="p-3 text-end">{{ __('purchases.cost') }}</th>
+                        <th class="p-3 text-end">{{ __('reports.cols.cost_value') }}</th>
+                        <th class="p-3 text-end">{{ __('reports.cols.retail_value') }}</th>
                         <th class="p-3 text-center">{{ __('common.status') }}</th>
                     </tr>
                 </thead>
@@ -64,11 +64,11 @@
                     <tr>
                         <td class="p-3">{{ $r['local_name'] ?? $r['name'] }}</td>
                         <td class="p-3 text-xs text-gray-500"><x-ltr>{{ $r['sku'] }}</x-ltr></td>
-                        <td class="p-3 text-right"><x-ltr>{{ rtrim(rtrim(number_format((float) $r['stock_qty'], 4, '.', ''), '0'), '.') }}</x-ltr> {{ \App\Support\EnumLabel::get('unit', $r['unit']) }}</td>
-                        <td class="p-3 text-right text-gray-500"><x-ltr>{{ rtrim(rtrim(number_format((float) $r['min_stock'], 4, '.', ''), '0'), '.') }}</x-ltr></td>
-                        <td class="p-3 text-right text-xs"><x-ltr>${{ number_format((float) $r['cost_usd'], 4) }}</x-ltr></td>
-                        <td class="p-3 text-right"><x-ltr>${{ number_format((float) $r['stock_value_cost'], 2) }}</x-ltr></td>
-                        <td class="p-3 text-right"><x-ltr>${{ number_format((float) $r['stock_value_retail'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $r['stock_qty'], 4, '.', ''), '0'), '.') }}</x-ltr> {{ \App\Support\EnumLabel::get('unit', $r['unit']) }}</td>
+                        <td class="p-3 text-end text-gray-500"><x-ltr>{{ rtrim(rtrim(number_format((float) $r['min_stock'], 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                        <td class="p-3 text-end text-xs"><x-ltr>${{ number_format((float) $r['cost_usd'], 4) }}</x-ltr></td>
+                        <td class="p-3 text-end"><x-ltr>${{ number_format((float) $r['stock_value_cost'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-end"><x-ltr>${{ number_format((float) $r['stock_value_retail'], 2) }}</x-ltr></td>
                         <td class="p-3 text-center">
                             @if ($r['status'] === 'out')
                                 <span class="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700">{{ __('enums.stock_status.out') }}</span>

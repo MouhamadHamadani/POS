@@ -28,14 +28,14 @@
                 <table class="min-w-full text-sm">
                     <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                         <tr>
-                            <th class="p-2 text-left">{{ __('dashboard.product') }}</th>
-                            <th class="p-2 text-right">{{ __('returns.sold') }}</th>
-                            <th class="p-2 text-right">{{ __('returns.already_returned') }}</th>
-                            <th class="p-2 text-right">{{ __('purchases.remaining') }}</th>
-                            <th class="p-2 text-right">{{ __('returns.unit_price') }}</th>
-                            <th class="p-2 text-right">{{ __('returns.return_qty') }}</th>
+                            <th class="p-2 text-start">{{ __('dashboard.product') }}</th>
+                            <th class="p-2 text-end">{{ __('returns.sold') }}</th>
+                            <th class="p-2 text-end">{{ __('returns.already_returned') }}</th>
+                            <th class="p-2 text-end">{{ __('purchases.remaining') }}</th>
+                            <th class="p-2 text-end">{{ __('returns.unit_price') }}</th>
+                            <th class="p-2 text-end">{{ __('returns.return_qty') }}</th>
                             <th class="p-2 text-center">{{ __('returns.restock') }}</th>
-                            <th class="p-2 text-right">{{ __('returns.refund') }}</th>
+                            <th class="p-2 text-end">{{ __('returns.refund') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
@@ -50,29 +50,29 @@
                                 <div class="font-medium">{{ $item->product?->localName() ?? $item->product_name }}</div>
                                 <div class="text-xs text-gray-500"><x-ltr>{{ $item->product?->sku ?? $item->product_sku }}</x-ltr></div>
                             </td>
-                            <td class="p-2 text-right"><x-ltr>{{ rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.') }}</x-ltr></td>
-                            <td class="p-2 text-right text-gray-500"><x-ltr>{{ rtrim(rtrim(number_format((float) $item->returned_qty, 4, '.', ''), '0'), '.') }}</x-ltr></td>
-                            <td class="p-2 text-right font-medium"><x-ltr>{{ rtrim(rtrim(number_format($remaining, 4, '.', ''), '0'), '.') }}</x-ltr></td>
-                            <td class="p-2 text-right text-xs"><x-ltr>${{ number_format($perUnit, 4) }}</x-ltr></td>
-                            <td class="p-2 text-right">
+                            <td class="p-2 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                            <td class="p-2 text-end text-gray-500"><x-ltr>{{ rtrim(rtrim(number_format((float) $item->returned_qty, 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                            <td class="p-2 text-end font-medium"><x-ltr>{{ rtrim(rtrim(number_format($remaining, 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                            <td class="p-2 text-end text-xs"><x-ltr>${{ number_format($perUnit, 4) }}</x-ltr></td>
+                            <td class="p-2 text-end">
                                 <input type="number" step="0.0001" min="0" max="{{ $remaining }}" value="0" dir="ltr"
                                        name="items[{{ $idx }}][qty_returned]"
                                        x-model.number="lines[{{ $idx }}].qty"
                                        @input="recompute({{ $idx }}, {{ $perUnit }})"
                                        :disabled="{{ $remaining <= 0 ? 'true' : 'false' }}"
-                                       class="w-20 text-right border-gray-300 rounded text-sm" />
+                                       class="w-20 text-end border-gray-300 rounded text-sm" />
                             </td>
                             <td class="p-2 text-center">
                                 <input type="checkbox" name="items[{{ $idx }}][restock]" value="1" checked
                                        x-model="lines[{{ $idx }}].restock" />
                             </td>
-                            <td class="p-2 text-right font-medium"><x-ltr>$<span x-text="(lines[{{ $idx }}].refund || 0).toFixed(2)"></span></x-ltr></td>
+                            <td class="p-2 text-end font-medium"><x-ltr>$<span x-text="(lines[{{ $idx }}].refund || 0).toFixed(2)"></span></x-ltr></td>
                         </tr>
                     @endforeach
                     </tbody>
                     <tfoot class="border-t-2 text-sm">
-                        <tr><td colspan="7" class="p-2 text-right font-bold">{{ __('returns.refund_total') }}</td>
-                            <td class="p-2 text-right font-bold text-brand-700"><x-ltr>$<span x-text="refundTotal().toFixed(2)"></span></x-ltr></td></tr>
+                        <tr><td colspan="7" class="p-2 text-end font-bold">{{ __('returns.refund_total') }}</td>
+                            <td class="p-2 text-end font-bold text-brand-700"><x-ltr>$<span x-text="refundTotal().toFixed(2)"></span></x-ltr></td></tr>
                     </tfoot>
                 </table>
             </div>

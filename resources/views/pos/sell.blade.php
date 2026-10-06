@@ -47,7 +47,7 @@
                             <template x-for="p in filtered" :key="p.id">
                                 <button type="button" @click="addToCart(p)"
                                         :disabled="p.track_stock && p.stock_qty <= 0"
-                                        class="p-2 bg-white border rounded-lg hover:bg-brand-50 hover:border-brand-300 text-left disabled:opacity-40 disabled:cursor-not-allowed">
+                                        class="p-2 bg-white border rounded-lg hover:bg-brand-50 hover:border-brand-300 text-start disabled:opacity-40 disabled:cursor-not-allowed">
                                     <div class="text-xs font-medium text-gray-900 line-clamp-2" x-text="pname(p)"></div>
                                     <div class="text-[11px] text-gray-500 mt-0.5" x-text="p.sku || p.barcode || ''"></div>
                                     <div class="mt-1 text-sm font-bold text-brand-700"><x-ltr>$<span x-text="priceFor(p).toFixed(2)"></span></x-ltr></div>
@@ -138,7 +138,7 @@
                                                class="w-12 text-center border-gray-300 rounded text-sm py-0.5" />
                                         <button type="button" @click="incQty(idx)" class="w-6 h-6 bg-gray-100 rounded">+</button>
                                     </div>
-                                    <div class="w-16 text-right font-medium"><x-ltr>$<span x-text="lineCalc(idx).total.toFixed(2)"></span></x-ltr></div>
+                                    <div class="w-16 text-end font-medium"><x-ltr>$<span x-text="lineCalc(idx).total.toFixed(2)"></span></x-ltr></div>
                                     <button type="button" @click="removeLine(idx)" class="text-red-500 text-xs">×</button>
                                 </div>
                             </template>
@@ -192,7 +192,7 @@
                                 </button>
                                 <button type="button" @click="openHeldList()"
                                         class="flex-1 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
-                                    {{ __('pos.ui.recall') }} <span x-show="heldCount > 0" class="text-xs bg-amber-400 text-slate-900 rounded px-1 ml-1" x-text="heldCount"></span> (F6)
+                                    {{ __('pos.ui.recall') }} <span x-show="heldCount > 0" class="text-xs bg-amber-400 text-slate-900 rounded px-1 ms-1" x-text="heldCount"></span> (F6)
                                 </button>
                             </div>
                         </div>
@@ -222,7 +222,7 @@
                                  x-show="customerResults.length">
                                 <template x-for="c in customerResults" :key="c.id">
                                     <button type="button" @click="selectCustomer(c)"
-                                            class="w-full text-left p-2 hover:bg-brand-50">
+                                            class="w-full text-start p-2 hover:bg-brand-50">
                                         <div class="font-medium" x-text="c.name"></div>
                                         <div class="text-xs text-gray-500 flex flex-wrap gap-x-2">
                                             <span x-show="c.phone" x-text="c.phone"></span>
@@ -484,14 +484,14 @@
                                         <span class="font-medium"><x-ltr>$<span x-text="Number(changePreview.change.change_usd).toFixed(2)"></span></x-ltr></span>
                                     </div>
                                     <template x-if="changePreview.usd_denoms.length">
-                                        <div class="text-[10px] text-gray-500 pl-3" x-text="changePreview.usd_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
+                                        <div class="text-[10px] text-gray-500 ps-3" x-text="changePreview.usd_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
                                     </template>
                                     <div class="flex justify-between">
                                         <span>{{ __('pos.ui.lbp_balance') }}</span>
                                         <span class="font-medium" x-text="formatLbp(Number(changePreview.change.change_lbp))"></span>
                                     </div>
                                     <template x-if="changePreview.lbp_denoms.length">
-                                        <div class="text-[10px] text-gray-500 pl-3" x-text="changePreview.lbp_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
+                                        <div class="text-[10px] text-gray-500 ps-3" x-text="changePreview.lbp_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
                                     </template>
                                 </div>
                             </template>

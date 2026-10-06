@@ -75,15 +75,15 @@
                 <h3 class="font-semibold mb-3 text-sm">{{ __('customers.recent_loyalty') }}</h3>
                 <table class="w-full text-xs">
                     <thead class="text-gray-500 text-xs uppercase">
-                        <tr class="border-b"><th class="text-left py-2">{{ __('common.type') }}</th><th class="text-right">{{ __('customers.points_col') }}</th><th class="text-right">{{ __('customers.balance') }}</th><th class="text-right">{{ __('dashboard.when') }}</th></tr>
+                        <tr class="border-b"><th class="text-start py-2">{{ __('common.type') }}</th><th class="text-end">{{ __('customers.points_col') }}</th><th class="text-end">{{ __('customers.balance') }}</th><th class="text-end">{{ __('dashboard.when') }}</th></tr>
                     </thead>
                     <tbody class="divide-y">
                     @forelse ($loyalty as $lt)
                         <tr>
                             <td class="py-2"><span class="text-xs px-2 py-0.5 rounded {{ $lt->points > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }}">{{ $lt->typeLabel() }}</span></td>
-                            <td class="text-right"><x-ltr>{{ $lt->points > 0 ? '+' : '' }}{{ $lt->points }}</x-ltr></td>
-                            <td class="text-right text-gray-700"><x-ltr>{{ $lt->balance_after }}</x-ltr></td>
-                            <td class="text-right text-gray-500">{{ $lt->created_at->diffForHumans() }}</td>
+                            <td class="text-end"><x-ltr>{{ $lt->points > 0 ? '+' : '' }}{{ $lt->points }}</x-ltr></td>
+                            <td class="text-end text-gray-700"><x-ltr>{{ $lt->balance_after }}</x-ltr></td>
+                            <td class="text-end text-gray-500">{{ $lt->created_at->diffForHumans() }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="4" class="py-6 text-center text-gray-400">{{ __('customers.no_loyalty') }}</td></tr>
@@ -97,16 +97,16 @@
             <h3 class="font-semibold mb-3 text-sm">{{ __('customers.recent_sales') }}</h3>
             <table class="w-full text-sm">
                 <thead class="text-gray-500 text-xs uppercase">
-                    <tr class="border-b"><th class="text-left py-2">{{ __('dashboard.receipt') }}</th><th class="text-left">{{ __('customers.method') }}</th><th class="text-right">{{ __('dashboard.total') }}</th><th class="text-right">{{ __('common.status') }}</th><th class="text-right">{{ __('dashboard.when') }}</th></tr>
+                    <tr class="border-b"><th class="text-start py-2">{{ __('dashboard.receipt') }}</th><th class="text-start">{{ __('customers.method') }}</th><th class="text-end">{{ __('dashboard.total') }}</th><th class="text-end">{{ __('common.status') }}</th><th class="text-end">{{ __('dashboard.when') }}</th></tr>
                 </thead>
                 <tbody class="divide-y">
                 @forelse ($sales as $s)
                     <tr>
                         <td class="py-2 font-mono text-xs"><x-ltr>{{ $s->receipt_number }}</x-ltr></td>
                         <td class="text-xs">{{ $s->paymentMethodLabel() }}</td>
-                        <td class="text-right font-medium"><x-ltr>${{ number_format((float) $s->total_usd, 2) }}</x-ltr></td>
-                        <td class="text-right text-xs">{{ $s->statusLabel() }}</td>
-                        <td class="text-right text-gray-500">{{ $s->created_at->diffForHumans() }}</td>
+                        <td class="text-end font-medium"><x-ltr>${{ number_format((float) $s->total_usd, 2) }}</x-ltr></td>
+                        <td class="text-end text-xs">{{ $s->statusLabel() }}</td>
+                        <td class="text-end text-gray-500">{{ $s->created_at->diffForHumans() }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="5" class="py-6 text-center text-gray-400">{{ __('dashboard.no_sales') }}</td></tr>

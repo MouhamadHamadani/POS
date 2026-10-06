@@ -37,12 +37,12 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">{{ __('suppliers.po_number') }}</th>
-                        <th class="p-3 text-left">{{ __('purchases.supplier') }}</th>
-                        <th class="p-3 text-left">{{ __('common.status') }}</th>
-                        <th class="p-3 text-right">{{ __('dashboard.total') }}</th>
-                        <th class="p-3 text-right">{{ __('suppliers.expected') }}</th>
-                        <th class="p-3 text-right">{{ __('purchases.created') }}</th>
+                        <th class="p-3 text-start">{{ __('suppliers.po_number') }}</th>
+                        <th class="p-3 text-start">{{ __('purchases.supplier') }}</th>
+                        <th class="p-3 text-start">{{ __('common.status') }}</th>
+                        <th class="p-3 text-end">{{ __('dashboard.total') }}</th>
+                        <th class="p-3 text-end">{{ __('suppliers.expected') }}</th>
+                        <th class="p-3 text-end">{{ __('purchases.created') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
@@ -62,9 +62,9 @@
                         <td class="p-3"><a href="{{ route('purchases.show', $po) }}" class="font-mono text-xs text-brand-700 hover:underline"><x-ltr>{{ $po->po_number }}</x-ltr></a></td>
                         <td class="p-3">{{ $po->supplier?->name ?? '—' }}</td>
                         <td class="p-3"><span class="px-2 py-0.5 rounded text-xs {{ $color }}">{{ $po->statusLabel() }}</span></td>
-                        <td class="p-3 text-right font-medium"><x-ltr>${{ number_format((float) $po->total_usd, 2) }}</x-ltr></td>
-                        <td class="p-3 text-right text-xs text-gray-500">@if ($po->expected_at)<x-ltr>{{ $po->expected_at->format('Y-m-d') }}</x-ltr>@else — @endif</td>
-                        <td class="p-3 text-right text-xs text-gray-500">{{ $po->created_at->diffForHumans() }}</td>
+                        <td class="p-3 text-end font-medium"><x-ltr>${{ number_format((float) $po->total_usd, 2) }}</x-ltr></td>
+                        <td class="p-3 text-end text-xs text-gray-500">@if ($po->expected_at)<x-ltr>{{ $po->expected_at->format('Y-m-d') }}</x-ltr>@else — @endif</td>
+                        <td class="p-3 text-end text-xs text-gray-500">{{ $po->created_at->diffForHumans() }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="6" class="p-10 text-center text-gray-500">{{ __('suppliers.no_pos') }}</td></tr>
