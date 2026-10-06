@@ -1,0 +1,33 @@
+<?php
+
+/** English source for lang/ar/receipt.php — keep both in sync (LangParityTest enforces it). */
+return [
+    'receipt' => 'Receipt',
+    'date' => 'Date',
+    'cashier' => 'Cashier',
+    'customer' => 'Customer',
+    'vat_number' => 'VAT #',
+    'subtotal' => 'Subtotal',
+    'discount' => 'Discount',
+    'vat' => 'VAT',
+    'total' => 'TOTAL',
+    'lbp_equiv' => 'LBP equiv.',
+    'payment' => 'Payment',
+    'cash_usd_tendered' => 'Cash USD tendered',
+    'cash_lbp_tendered' => 'Cash LBP tendered',
+    'card' => 'Card',
+    'on_account' => 'On account',
+    'change_usd' => 'Change USD',
+    'change_lbp' => 'Change LBP',
+    'disc' => 'disc:',
+    'loyalty_earned' => '+:count loyalty points earned',
+    'receipt_no' => 'Receipt #',
+    'default_footer' => 'Thank you for your business!',
+    'test_print' => 'TEST PRINT',
+    'demo_receipt' => 'DEMO RECEIPT',
+    'not_valid' => 'NOT A VALID RECEIPT',
+    'test_ar' => 'طباعة تجريبية — ليست فاتورة',
+    'demo_ar' => 'إيصال تجريبي — غير صالح',
+    'print' => 'Print',
+    'close' => 'Close',
+];

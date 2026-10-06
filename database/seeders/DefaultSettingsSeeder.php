@@ -39,6 +39,7 @@ class DefaultSettingsSeeder extends Seeder
             ['receipt', 'paper_width_char', '48', 'int'],
             ['receipt', 'receipt_header', "LebaSouk\nThank you for your business", 'string'],
             ['receipt', 'receipt_footer', 'Visit us again!', 'string'],
+            ['receipt', 'receipt_language', 'bilingual', 'string'],
 
             // numbering
             ['numbering', 'receipt_prefix', 'REC-' . date('Y') . '-', 'string'],

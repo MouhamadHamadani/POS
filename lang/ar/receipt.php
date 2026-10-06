@@ -1,0 +1,33 @@
+<?php
+
+/** Arabic counterpart of lang/en/receipt.php — keep both in sync (LangParityTest enforces it). */
+return [
+    'receipt' => 'إيصال',
+    'date' => 'التاريخ',
+    'cashier' => 'كاشير',
+    'customer' => 'الزبون',
+    'vat_number' => 'الرقم الضريبي',
+    'subtotal' => 'المجموع الفرعي',
+    'discount' => 'حسم',
+    'vat' => 'ض.ق.م',
+    'total' => 'المجموع',
+    'lbp_equiv' => 'ما يعادله بالليرة',
+    'payment' => 'الدفع',
+    'cash_usd_tendered' => 'المقبوض دولار',
+    'cash_lbp_tendered' => 'المقبوض ليرة',
+    'card' => 'بطاقة',
+    'on_account' => 'دَين',
+    'change_usd' => 'الباقي دولار',
+    'change_lbp' => 'الباقي ليرة',
+    'disc' => 'حسم:',
+    'loyalty_earned' => '+:count نقطة ولاء مكتسبة',
+    'receipt_no' => 'إيصال رقم',
+    'default_footer' => 'شكراً لزيارتكم',
+    'test_print' => 'طباعة تجريبية',
+    'demo_receipt' => 'إيصال تجريبي',
+    'not_valid' => 'ليس إيصالاً صالحاً',
+    'test_ar' => 'طباعة تجريبية — ليست فاتورة',
+    'demo_ar' => 'إيصال تجريبي — غير صالح',
+    'print' => 'طباعة',
+    'close' => 'إغلاق',
+];

@@ -80,7 +80,7 @@ class SettingController extends Controller
             'cashier_can_change_price_tier' => 'bool',
             'max_cashier_discount_pct' => 'float', 'idle_timeout_min' => 'int',
             // receipt
-            'receipt_width' => 'int', 'paper_width_char' => 'int',
+            'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
             'receipt_header' => 'string', 'receipt_footer' => 'string',
             // numbering
             'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
@@ -130,20 +130,24 @@ class SettingController extends Controller
         // Mirrors SaleService::totalsFromCart with the default exclusive 11% VAT:
         // subtotal = gross, discount = line discounts, line_total = net + tax.
         $lines = [
-            ['Sample Item A', 2, 4.50, 0.00, 0.11],
-            ['Sample Item B — a longer product name to test wrapping', 1, 12.00, 2.00, 0.11],
-            ['Sample Item C (tax exempt)', 0.75, 6.00, 0.00, 0.0],
+            ['Sample Item A', 2, 4.50, 0.00, 0.11, 'صنف تجريبي أ'],
+            ['Sample Item B — a longer product name to test wrapping', 1, 12.00, 2.00, 0.11, 'صنف تجريبي ب — اسم منتج أطول لاختبار التفاف السطر'],
+            ['Sample Item C (tax exempt)', 0.75, 6.00, 0.00, 0.0, 'صنف تجريبي ج (معفى من الضريبة)'],
         ];
         $items = collect($lines)->map(function ($l) {
-            [$name, $qty, $price, $disc, $rate] = $l;
+            [$name, $qty, $price, $disc, $rate, $nameAr] = $l;
             $net = $qty * $price - $disc;
             $tax = round($net * $rate, 4);
 
-            return new SaleItem([
+            $item = new SaleItem([
                 'product_name' => $name, 'qty' => $qty, 'unit_price_usd' => $price,
                 'discount_amount_usd' => $disc, 'tax_rate' => $rate, 'tax_amount_usd' => $tax,
                 'line_total_usd' => $net + $tax, 'is_taxable' => $rate > 0,
             ]);
+            // In-memory only: lets the sample show the Arabic name line in bilingual/Arabic mode.
+            $item->setRelation('product', new \App\Models\Product(['name' => $name, 'name_ar' => $nameAr]));
+
+            return $item;
         });
 
         $total = round($items->sum('line_total_usd'), 4);
@@ -179,7 +183,8 @@ class SettingController extends Controller
             ],
             'width' => in_array($width, [58, 80], true) ? $width : 80,
             'header' => (string) $input('receipt_header', ''),
-            'footer' => (string) $input('receipt_footer', 'Thank you for your business!'),
+            'footer' => (string) $input('receipt_footer', ''),
+            'receiptLang' => (string) $input('receipt_language', 'bilingual'),
             'autoPrint' => true,
             'isTest' => true,
         ]);

@@ -22,7 +22,7 @@ class ReceiptController extends Controller
         $isManagerial = $user->isManagerial();
         abort_unless($isOwner || $isManagerial, 403);
 
-        $sale->load('items', 'customer', 'user:id,name');
+        $sale->load('items.product:id,name,name_ar', 'customer', 'user:id,name');
 
         return view('receipts.thermal', [
             'sale' => $sale,
@@ -35,7 +35,8 @@ class ReceiptController extends Controller
             ],
             'width' => (int) Setting::get('receipt_width', 80),
             'header' => (string) Setting::get('receipt_header', ''),
-            'footer' => (string) Setting::get('receipt_footer', 'Thank you for your business!'),
+            'footer' => (string) Setting::get('receipt_footer', ''),
+            'receiptLang' => (string) Setting::get('receipt_language', 'bilingual'),
             'autoPrint' => $request->boolean('auto', true),
         ]);
     }

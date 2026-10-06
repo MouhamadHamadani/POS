@@ -6,5 +6,4 @@ return [
     'accounts' => 'Demo accounts',
     'password_for_all' => 'Password for all four:',
     'sample_data_only' => 'Sample data only. Closing the app restores the seeded catalogue.',
-    'watermark' => 'DEMO — NOT A VALID RECEIPT',
 ];
