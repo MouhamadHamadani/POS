@@ -25,7 +25,7 @@ class ProductController extends Controller
 
     public function index(Request $request): View
     {
-        $q = Product::with('category:id,name', 'tax:id,name,rate');
+        $q = Product::with('category:id,name,name_ar', 'tax:id,name,name_ar,rate');
 
         if ($s = $request->query('search')) {
             $q->where(function ($w) use ($s) {
@@ -51,7 +51,7 @@ class ProductController extends Controller
         }
 
         $products = $q->orderBy('name')->paginate(25)->withQueryString();
-        $categories = Category::orderBy('sort_order')->get(['id', 'name']);
+        $categories = Category::orderBy('sort_order')->get(['id', 'name', 'name_ar']);
 
         return view('products.index', compact('products', 'categories'));
     }
@@ -68,7 +68,7 @@ class ProductController extends Controller
     public function trashed(): View
     {
         $products = Product::onlyTrashed()
-            ->with('category:id,name')
+            ->with('category:id,name,name_ar')
             ->orderByDesc('deleted_at')
             ->paginate(25);
 
@@ -115,7 +115,7 @@ class ProductController extends Controller
 
         return response()->json([
             'exists' => (bool) $product,
-            'product_name' => $product?->name,
+            'product_name' => $product?->localName(),
         ]);
     }
 

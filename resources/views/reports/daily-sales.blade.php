@@ -6,6 +6,7 @@
 
         <div class="bg-white rounded-lg shadow-card p-5">
             <canvas id="salesChart" height="80"
+                    data-label="{{ __('reports.revenue_usd') }}"
                     data-labels='@json(collect($rows)->pluck('day'))'
                     data-values='@json(collect($rows)->pluck('total')->map(fn($v) => round((float) $v, 2)))'></canvas>
         </div>
@@ -14,36 +15,36 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">Day</th>
-                        <th class="p-3 text-right">Transactions</th>
-                        <th class="p-3 text-right">Subtotal</th>
-                        <th class="p-3 text-right">Discount</th>
-                        <th class="p-3 text-right">Tax</th>
-                        <th class="p-3 text-right">Total</th>
+                        <th class="p-3 text-left">{{ __('reports.cols.day') }}</th>
+                        <th class="p-3 text-right">{{ __('reports.cols.transactions') }}</th>
+                        <th class="p-3 text-right">{{ __('reports.cols.subtotal') }}</th>
+                        <th class="p-3 text-right">{{ __('reports.cols.discount') }}</th>
+                        <th class="p-3 text-right">{{ __('reports.cols.tax') }}</th>
+                        <th class="p-3 text-right">{{ __('reports.cols.total') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
                 @forelse ($rows as $r)
                     <tr>
-                        <td class="p-3">{{ $r['day'] }}</td>
-                        <td class="p-3 text-right">{{ $r['txn_count'] }}</td>
-                        <td class="p-3 text-right">${{ number_format((float) $r['subtotal'], 2) }}</td>
-                        <td class="p-3 text-right text-gray-500">${{ number_format((float) $r['discount'], 2) }}</td>
-                        <td class="p-3 text-right text-gray-500">${{ number_format((float) $r['tax'], 2) }}</td>
-                        <td class="p-3 text-right font-medium">${{ number_format((float) $r['total'], 2) }}</td>
+                        <td class="p-3"><x-ltr>{{ $r['day'] }}</x-ltr></td>
+                        <td class="p-3 text-right"><x-ltr>{{ $r['txn_count'] }}</x-ltr></td>
+                        <td class="p-3 text-right"><x-ltr>${{ number_format((float) $r['subtotal'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-right text-gray-500"><x-ltr>${{ number_format((float) $r['discount'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-right text-gray-500"><x-ltr>${{ number_format((float) $r['tax'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-right font-medium"><x-ltr>${{ number_format((float) $r['total'], 2) }}</x-ltr></td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="p-10 text-center text-gray-500">No sales in this date range.</td></tr>
+                    <tr><td colspan="6" class="p-10 text-center text-gray-500">{{ __('reports.no_sales_range') }}</td></tr>
                 @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50 font-bold border-t-2">
                     <tr>
-                        <td class="p-3">Totals</td>
-                        <td class="p-3 text-right">{{ $totals['txn_count'] }}</td>
-                        <td class="p-3 text-right">${{ number_format((float) $totals['subtotal'], 2) }}</td>
-                        <td class="p-3 text-right">${{ number_format((float) $totals['discount'], 2) }}</td>
-                        <td class="p-3 text-right">${{ number_format((float) $totals['tax'], 2) }}</td>
-                        <td class="p-3 text-right text-brand-700">${{ number_format((float) $totals['total'], 2) }}</td>
+                        <td class="p-3">{{ __('reports.cols.totals') }}</td>
+                        <td class="p-3 text-right"><x-ltr>{{ $totals['txn_count'] }}</x-ltr></td>
+                        <td class="p-3 text-right"><x-ltr>${{ number_format((float) $totals['subtotal'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-right"><x-ltr>${{ number_format((float) $totals['discount'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-right"><x-ltr>${{ number_format((float) $totals['tax'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-right text-brand-700"><x-ltr>${{ number_format((float) $totals['total'], 2) }}</x-ltr></td>
                     </tr>
                 </tfoot>
             </table>

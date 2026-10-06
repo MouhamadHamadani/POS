@@ -1,0 +1,79 @@
+<?php
+
+/** Arabic counterpart of lang/en/enums.php — keep both in sync (LangParityTest enforces it). */
+return [
+    'role' => [
+        'super_admin' => 'دعم Build Syntax',
+        'admin' => 'مدير النظام',
+        'manager' => 'مدير',
+        'cashier' => 'كاشير',
+        'stock' => 'أمين المستودع',
+    ],
+    'customer_group' => [
+        'retail' => 'مفرق',
+        'wholesale' => 'جملة',
+        'vip' => 'VIP',
+    ],
+    'payment_method' => [
+        'cash_usd' => 'نقداً (دولار)',
+        'cash_lbp' => 'نقداً (ل.ل.)',
+        'card' => 'بطاقة',
+        'bank_transfer' => 'تحويل مصرفي',
+        'other' => 'أخرى',
+        'cheque' => 'شيك',
+    ],
+    'purchase_status' => [
+        'draft' => 'مسودة',
+        'sent' => 'مُرسل',
+        'partial' => 'جزئي',
+        'received' => 'مستلم',
+        'closed' => 'مغلق',
+        'cancelled' => 'ملغى',
+    ],
+    'payment_terms' => [
+        'NET15' => 'صافي 15 يوماً',
+        'NET30' => 'صافي 30 يوماً',
+        'NET60' => 'صافي 60 يوماً',
+        'COD' => 'الدفع عند الاستلام',
+        'prepaid' => 'مدفوع مسبقاً',
+    ],
+    'return_status' => [
+        'pending' => 'قيد الانتظار',
+        'approved' => 'تمت الموافقة',
+        'completed' => 'مكتمل',
+        'rejected' => 'مرفوض',
+    ],
+    'return_reason' => [
+        'defective' => 'معيب',
+        'wrong_item' => 'صنف خاطئ',
+        'customer_preference' => 'غيّر الزبون رأيه',
+        'other' => 'أخرى',
+    ],
+    'stock_status' => [
+        'out' => 'نفد',
+        'low' => 'منخفض',
+        'ok' => 'جيد',
+    ],
+    'product_type' => [
+        'simple' => 'عادي',
+        'service' => 'خدمة (بدون مخزون)',
+        'bundle' => 'حزمة',
+        'variant' => 'منتج رئيسي بمتغيرات',
+    ],
+    'unit' => [
+        'pcs' => 'قطعة',
+        'kg' => 'كغ',
+        'g' => 'غ',
+        'L' => 'ل',
+        'mL' => 'مل',
+        'box' => 'علبة',
+        'pair' => 'زوج',
+        'set' => 'طقم',
+        'm' => 'م',
+    ],
+    'backup_frequency' => [
+        'off' => 'متوقف',
+        'daily' => 'يومي',
+        'weekly' => 'أسبوعي',
+    ],
+];

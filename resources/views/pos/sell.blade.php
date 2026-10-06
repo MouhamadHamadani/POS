@@ -20,15 +20,15 @@
                     <div class="bg-white rounded-lg shadow-sm p-3">
                         <div class="flex gap-2 mb-1">
                             <input type="text" x-model="search" @input.debounce.250ms="filter()"
-                                   placeholder="Search by name, SKU, or scan barcode + Enter"
+                                   placeholder="{{ __('pos.ui.search_placeholder') }}"
                                    @keydown.enter="onBarcodeEnter($event)"
                                    x-ref="search" class="flex-1 border-gray-300 rounded-md text-sm" autofocus />
                             <button type="button" @click="activeCategory=null;filter()"
-                                    class="px-3 py-1 text-xs bg-gray-100 rounded">All</button>
+                                    class="px-3 py-1 text-xs bg-gray-100 rounded">{{ __('common.all') }}</button>
                         </div>
 
                         <p class="text-[11px] text-gray-400 mb-3">
-                            Tip: scan a barcode, then type a quantity and press Enter to set the count for that item.
+                            {{ __('pos.ui.tip') }}
                         </p>
 
                         {{-- Category tabs --}}
@@ -37,7 +37,7 @@
                                 <button type="button" @click="activeCategory = cat.id; filter()"
                                         :class="activeCategory === cat.id ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-700'"
                                         class="px-3 py-1 text-xs rounded">
-                                    <span x-text="cat.name"></span>
+                                    <span x-text="cname(cat)"></span>
                                 </button>
                             </template>
                         </div>
@@ -48,14 +48,14 @@
                                 <button type="button" @click="addToCart(p)"
                                         :disabled="p.track_stock && p.stock_qty <= 0"
                                         class="p-2 bg-white border rounded-lg hover:bg-brand-50 hover:border-brand-300 text-left disabled:opacity-40 disabled:cursor-not-allowed">
-                                    <div class="text-xs font-medium text-gray-900 line-clamp-2" x-text="p.name"></div>
+                                    <div class="text-xs font-medium text-gray-900 line-clamp-2" x-text="pname(p)"></div>
                                     <div class="text-[11px] text-gray-500 mt-0.5" x-text="p.sku || p.barcode || ''"></div>
-                                    <div class="mt-1 text-sm font-bold text-brand-700">$<span x-text="priceFor(p).toFixed(2)"></span></div>
-                                    <div class="text-[11px] text-gray-500" x-text="`Stock: ${Number(p.stock_qty).toFixed(0)} ${p.unit}`"></div>
+                                    <div class="mt-1 text-sm font-bold text-brand-700"><x-ltr>$<span x-text="priceFor(p).toFixed(2)"></span></x-ltr></div>
+                                    <div class="text-[11px] text-gray-500" x-text="t('stock_line', { qty: Number(p.stock_qty).toFixed(0), unit: unitLabel(p.unit) })"></div>
                                 </button>
                             </template>
                             <div x-show="filtered.length === 0" class="col-span-full text-center text-gray-500 py-6 text-sm">
-                                No products match.
+                                {{ __('pos.ui.no_products') }}
                             </div>
                         </div>
                     </div>
@@ -66,7 +66,7 @@
                     <div class="bg-white rounded-lg shadow-sm">
                         <div class="p-3 border-b flex flex-wrap justify-between items-center gap-2">
                             <div class="flex items-center gap-2">
-                                <h3 class="font-medium">Cart (<span x-text="cart.length"></span>)</h3>
+                                <h3 class="font-medium">{{ __('pos.ui.cart') }} (<span x-text="cart.length"></span>)</h3>
                                 <span x-show="priceTier !== 'retail'" x-cloak
                                       :class="priceTier === 'vip' ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800'"
                                       class="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase"
@@ -87,14 +87,14 @@
                             </div>
 
                             <button type="button" @click="clearCart()" x-show="cart.length"
-                                    class="text-xs text-red-600 hover:underline">Clear</button>
+                                    class="text-xs text-red-600 hover:underline">{{ __('pos.ui.clear') }}</button>
                         </div>
 
                         {{-- Customer: "+ Add customer" until one is attached, then a chip. --}}
                         <div class="px-3 py-2 border-b">
                             <button type="button" x-show="!customer" @click="openCustomerModal()"
                                     class="w-full py-1.5 text-sm text-brand-700 border border-dashed border-brand-300 rounded hover:bg-brand-50">
-                                + Add customer (F3)
+                                {{ __('pos.ui.add_customer') }} (F3)
                             </button>
 
                             <div x-show="customer" x-cloak class="flex items-start gap-2 bg-brand-50 rounded p-2">
@@ -102,14 +102,14 @@
                                     <div class="text-sm font-medium truncate" x-text="customer?.name"></div>
                                     <div class="text-xs text-gray-600 flex flex-wrap gap-x-2">
                                         <span x-show="customer?.phone" x-text="customer?.phone"></span>
-                                        <span class="uppercase tracking-wide" x-text="customer?.customer_group"></span>
+                                        <span class="uppercase tracking-wide" x-text="t(customer?.customer_group)"></span>
                                         <span x-show="Number(customer?.balance) > 0" class="text-red-600 font-medium"
-                                              x-text="'Owes $' + Number(customer?.balance).toFixed(2)"></span>
+                                              x-text="t('owes', { amount: '$' + Number(customer?.balance).toFixed(2) })"></span>
                                     </div>
                                 </div>
                                 <button type="button" @click="openCustomerModal()"
-                                        class="text-xs text-brand-700 hover:underline shrink-0">Change</button>
-                                <button type="button" @click="removeCustomer()" title="Remove customer"
+                                        class="text-xs text-brand-700 hover:underline shrink-0">{{ __('pos.ui.change_customer') }}</button>
+                                <button type="button" @click="removeCustomer()" title="{{ __('pos.ui.remove_customer') }}"
                                         class="text-red-500 text-sm leading-none shrink-0">&times;</button>
                             </div>
                         </div>
@@ -122,8 +122,8 @@
                                                 class="font-medium text-start hover:underline" x-text="line.name"></button>
                                         <div class="text-xs text-gray-500">
                                             <span dir="ltr" class="inline-block">
-                                                $<span x-text="Number(line.unit_price).toFixed(2)"></span>
-                                                <span x-show="line.unit_price !== line.retail_price" class="line-through text-gray-400">$<span x-text="Number(line.retail_price).toFixed(2)"></span></span>
+                                                <x-ltr>$<span x-text="Number(line.unit_price).toFixed(2)"></span></x-ltr>
+                                                <span x-show="line.unit_price !== line.retail_price" class="line-through text-gray-400"><x-ltr>$<span x-text="Number(line.retail_price).toFixed(2)"></span></x-ltr></span>
                                                 × <span x-text="line.qty"></span>
                                             </span>
                                         </div>
@@ -138,40 +138,40 @@
                                                class="w-12 text-center border-gray-300 rounded text-sm py-0.5" />
                                         <button type="button" @click="incQty(idx)" class="w-6 h-6 bg-gray-100 rounded">+</button>
                                     </div>
-                                    <div class="w-16 text-right font-medium">$<span x-text="lineCalc(idx).total.toFixed(2)"></span></div>
+                                    <div class="w-16 text-right font-medium"><x-ltr>$<span x-text="lineCalc(idx).total.toFixed(2)"></span></x-ltr></div>
                                     <button type="button" @click="removeLine(idx)" class="text-red-500 text-xs">×</button>
                                 </div>
                             </template>
                             <div x-show="cart.length === 0" class="p-6 text-center text-sm text-gray-500">
-                                Cart is empty. Tap a product to start.
+                                {{ __('pos.ui.cart_empty') }}
                             </div>
                         </div>
 
                         <div class="p-3 border-t space-y-1 text-sm">
                             <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Subtotal
+                                <span class="text-gray-500">{{ __('purchases.subtotal') }}
                                     <button type="button" @click="openCartEditor()" :disabled="cart.length === 0"
                                             :title="t('cart_discount') + ' (Shift+F8)'"
                                             class="ms-2 px-1.5 py-0.5 text-xs text-brand-700 border border-brand-300 rounded hover:bg-brand-50 disabled:opacity-40 disabled:cursor-not-allowed"
                                             x-text="t('discount')"></button>
                                 </span>
-                                <span>$<span x-text="totals.subtotal.toFixed(2)"></span></span>
+                                <span><x-ltr>$<span x-text="totals.subtotal.toFixed(2)"></span></x-ltr></span>
                             </div>
-                            <div class="flex justify-between text-gray-500"><span x-text="t('discount')"></span><span>-$<span x-text="totals.discount.toFixed(2)"></span></span></div>
+                            <div class="flex justify-between text-gray-500"><span x-text="t('discount')"></span><span><x-ltr>-$<span x-text="totals.discount.toFixed(2)"></span></x-ltr></span></div>
                             <div x-show="totals.cartDisc > 0" x-cloak class="flex justify-between text-gray-500 text-xs ps-3">
                                 <span>
                                     <span x-text="t('of_which_cart') + (cartDiscount.type === 'pct' ? ' (' + Number(cartDiscount.value) + '%)' : '')"></span>
                                     <button type="button" @click="clearCartDiscount()" :title="t('remove_discount')" class="text-red-500 leading-none">&times;</button>
                                 </span>
-                                <span>-$<span x-text="totals.cartDisc.toFixed(2)"></span></span>
+                                <span><x-ltr>-$<span x-text="totals.cartDisc.toFixed(2)"></span></x-ltr></span>
                             </div>
-                            <div class="flex justify-between text-gray-500"><span x-text="vatLabel"></span><span>$<span x-text="totals.tax.toFixed(2)"></span></span></div>
+                            <div class="flex justify-between text-gray-500"><span x-text="vatLabel"></span><span><x-ltr>$<span x-text="totals.tax.toFixed(2)"></span></x-ltr></span></div>
                             <div class="flex justify-between text-lg font-bold border-t pt-2 mt-2">
-                                <span>Total</span>
-                                <span class="text-brand-700">$<span x-text="totals.total.toFixed(2)"></span></span>
+                                <span>{{ __('dashboard.total') }}</span>
+                                <span class="text-brand-700"><x-ltr>$<span x-text="totals.total.toFixed(2)"></span></x-ltr></span>
                             </div>
                             <div class="flex justify-between text-xs text-gray-500">
-                                <span>LBP equiv.</span>
+                                <span>{{ __('pos.ui.lbp_equiv') }}</span>
                                 <span x-text="formatLbp(totals.total * exchangeRate)"></span>
                             </div>
 
@@ -182,17 +182,17 @@
 
                             <button type="button" @click="openPayment()" :disabled="cart.length === 0 || issues.length > 0"
                                     class="w-full mt-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium">
-                                Pay (F4)
+                                {{ __('pos.ui.pay') }} (F4)
                             </button>
 
                             <div class="flex gap-2 mt-2">
                                 <button type="button" @click="openHold()" :disabled="cart.length === 0"
                                         class="flex-1 py-2 bg-amber-500 text-white rounded text-sm hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                                    Hold (F5)
+                                    {{ __('pos.ui.hold') }} (F5)
                                 </button>
                                 <button type="button" @click="openHeldList()"
                                         class="flex-1 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-800">
-                                    Recall <span x-show="heldCount > 0" class="text-xs bg-amber-400 text-slate-900 rounded px-1 ml-1" x-text="heldCount"></span> (F6)
+                                    {{ __('pos.ui.recall') }} <span x-show="heldCount > 0" class="text-xs bg-amber-400 text-slate-900 rounded px-1 ml-1" x-text="heldCount"></span> (F6)
                                 </button>
                             </div>
                         </div>
@@ -205,17 +205,17 @@
                  class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
                 <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-lg font-bold">Customer</h3>
+                        <h3 class="text-lg font-bold">{{ __('pos.ui.customer') }}</h3>
                         <button type="button" @click="showCustomerModal=false" class="text-gray-400 hover:text-gray-700 text-xl">&times;</button>
                     </div>
 
                     <div class="space-y-3 text-sm">
                         {{-- Search existing --}}
                         <div x-show="!showNewCustomer">
-                            <label class="block text-xs font-medium text-gray-600">Search by name or phone</label>
+                            <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.search_customer') }}</label>
                             <input type="text" x-ref="customerSearch" x-model="customerQuery"
                                    @input="onCustomerQuery()" maxlength="60"
-                                   placeholder="At least 2 characters"
+                                   placeholder="{{ __('pos.ui.min_chars') }}" dir="auto"
                                    class="w-full border-gray-300 rounded mt-1 text-sm" />
 
                             <div class="mt-2 max-h-56 overflow-y-auto divide-y border rounded"
@@ -226,52 +226,52 @@
                                         <div class="font-medium" x-text="c.name"></div>
                                         <div class="text-xs text-gray-500 flex flex-wrap gap-x-2">
                                             <span x-show="c.phone" x-text="c.phone"></span>
-                                            <span class="uppercase" x-text="c.customer_group"></span>
+                                            <span class="uppercase" x-text="t(c.customer_group)"></span>
                                             <span x-show="Number(c.balance) > 0" class="text-red-600"
-                                                  x-text="'Owes $' + Number(c.balance).toFixed(2)"></span>
+                                                  x-text="t('owes', { amount: '$' + Number(c.balance).toFixed(2) })"></span>
                                         </div>
                                     </button>
                                 </template>
                             </div>
 
-                            <div x-show="customerSearching" class="text-xs text-gray-500 mt-2">Searching…</div>
+                            <div x-show="customerSearching" class="text-xs text-gray-500 mt-2">{{ __('pos.ui.searching') }}</div>
                             <div x-show="!customerSearching && customerQuery.trim().length >= 2 && customerResults.length === 0"
                                  class="text-xs text-gray-500 mt-2">
-                                No match. Use “+ New customer” below.
+                                {{ __('pos.ui.no_match') }}
                             </div>
 
                             <button type="button" @click="startNewCustomer()"
-                                    class="mt-3 text-sm text-brand-700 hover:underline">+ New customer</button>
+                                    class="mt-3 text-sm text-brand-700 hover:underline">{{ __('pos.ui.new_customer') }}</button>
                         </div>
 
                         {{-- Quick-add --}}
                         <div x-show="showNewCustomer" x-cloak class="space-y-3">
                             <div>
-                                <label class="block text-xs font-medium text-gray-600">Name *</label>
-                                <input type="text" x-ref="newCustomerName" x-model="newCustomer.name" maxlength="120"
+                                <label class="block text-xs font-medium text-gray-600">{{ __('common.name') }} *</label>
+                                <input type="text" dir="auto" x-ref="newCustomerName" x-model="newCustomer.name" maxlength="120"
                                        class="w-full border-gray-300 rounded mt-1 text-sm" />
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600">Phone (optional)</label>
-                                <input type="text" x-model="newCustomer.phone" maxlength="30"
+                                <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.phone_optional') }}</label>
+                                <input type="text" dir="ltr" x-model="newCustomer.phone" maxlength="30"
                                        placeholder="03 123 456"
                                        class="w-full border-gray-300 rounded mt-1 text-sm" />
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-600">Group</label>
+                                <label class="block text-xs font-medium text-gray-600">{{ __('customers.group') }}</label>
                                 <select x-model="newCustomer.customer_group" class="w-full border-gray-300 rounded mt-1 text-sm">
-                                    <option value="retail">Retail</option>
-                                    <option value="wholesale">Wholesale</option>
-                                    <option value="vip">VIP</option>
+                                    <option value="retail">{{ __('pos.ui.retail') }}</option>
+                                    <option value="wholesale">{{ __('pos.ui.wholesale') }}</option>
+                                    <option value="vip">{{ __('pos.ui.vip') }}</option>
                                 </select>
                             </div>
                             <div class="flex gap-2">
                                 <button type="button" @click="showNewCustomer=false; customerError=''"
-                                        class="px-3 py-2 bg-gray-100 rounded text-sm">Back to search</button>
+                                        class="px-3 py-2 bg-gray-100 rounded text-sm">{{ __('pos.ui.back_to_search') }}</button>
                                 <button type="button" @click="saveNewCustomer()" :disabled="customerProcessing"
                                         class="flex-1 py-2 bg-brand-600 text-white rounded font-medium hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                                    <span x-show="!customerProcessing">Create &amp; attach</span>
-                                    <span x-show="customerProcessing">Saving…</span>
+                                    <span x-show="!customerProcessing">{{ __('pos.ui.create_attach') }}</span>
+                                    <span x-show="customerProcessing">{{ __('pos.ui.saving') }}</span>
                                 </button>
                             </div>
                         </div>
@@ -286,27 +286,27 @@
                  class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
                 <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-lg font-bold">Hold this sale</h3>
+                        <h3 class="text-lg font-bold">{{ __('pos.ui.hold_this_sale') }}</h3>
                         <button type="button" @click="showHoldModal=false" class="text-gray-400 hover:text-gray-700 text-xl">×</button>
                     </div>
-                    <p class="text-sm text-gray-600 mb-3">Give the cart a label so you can recall it. No stock is reserved.</p>
+                    <p class="text-sm text-gray-600 mb-3">{{ __('pos.ui.hold_help') }}</p>
                     <div class="space-y-3 text-sm">
                         <div>
-                            <label class="block text-xs font-medium text-gray-600">Label (optional)</label>
-                            <input type="text" x-model="holdDraft.label" maxlength="80"
-                                   placeholder="e.g. Table 5, Mr. Khoury"
+                            <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.label_optional') }}</label>
+                            <input type="text" dir="auto" x-model="holdDraft.label" maxlength="80"
+                                   placeholder="{{ __('pos.ui.label_placeholder') }}"
                                    class="w-full border-gray-300 rounded mt-1 text-sm" />
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-600">Notes (optional)</label>
-                            <textarea x-model="holdDraft.notes" rows="2" maxlength="500"
+                            <label class="block text-xs font-medium text-gray-600">{{ __('shifts.notes_optional') }}</label>
+                            <textarea dir="auto" x-model="holdDraft.notes" rows="2" maxlength="500"
                                       class="w-full border-gray-300 rounded mt-1 text-sm"></textarea>
                         </div>
                         <div x-show="errorMsg" x-cloak class="text-sm text-red-600 bg-red-50 p-2 rounded" x-text="errorMsg"></div>
                         <button type="button" @click="submitHold()" :disabled="holdProcessing"
                                 class="w-full py-3 bg-amber-500 text-white rounded font-bold hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                            <span x-show="!holdProcessing">Hold Sale</span>
-                            <span x-show="holdProcessing">Holding…</span>
+                            <span x-show="!holdProcessing">{{ __('pos.ui.hold_sale') }}</span>
+                            <span x-show="holdProcessing">{{ __('pos.ui.holding') }}</span>
                         </button>
                     </div>
                 </div>
@@ -317,29 +317,29 @@
                  class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
                 <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-5 max-h-[80vh] overflow-y-auto">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-lg font-bold">Held sales</h3>
+                        <h3 class="text-lg font-bold">{{ __('pos.ui.held_sales') }}</h3>
                         <button type="button" @click="showHeldList=false" class="text-gray-400 hover:text-gray-700 text-xl">×</button>
                     </div>
-                    <div x-show="heldList.length === 0" class="py-8 text-center text-sm text-gray-500">No held sales right now.</div>
+                    <div x-show="heldList.length === 0" class="py-8 text-center text-sm text-gray-500">{{ __('pos.ui.no_held') }}</div>
                     <div class="space-y-2">
                         <template x-for="h in heldList" :key="h.id">
                             <div class="border rounded p-3 flex items-center gap-3 text-sm">
                                 <div class="flex-1">
                                     <div class="font-medium">
-                                        <span x-text="h.label || ('Hold #' + h.id)"></span>
+                                        <span x-text="h.label || t('hold_n', { n: h.id })"></span>
                                         <span x-show="h.customer" class="text-xs text-gray-500" x-text="'· ' + (h.customer?.name)"></span>
                                     </div>
                                     <div class="text-xs text-gray-500">
-                                        <span x-text="h.item_count + ' items'"></span>
-                                        · $<span x-text="Number(h.subtotal).toFixed(2)"></span>
-                                        · <span x-text="new Date(h.held_at).toLocaleTimeString()"></span>
+                                        <span x-text="t('n_items', { n: h.item_count })"></span>
+                                        · <x-ltr>$<span x-text="Number(h.subtotal).toFixed(2)"></span></x-ltr>
+                                        · <span x-text="new Date(h.held_at).toLocaleTimeString('en-US')"></span>
                                     </div>
                                     <div x-show="h.notes" class="text-xs italic text-gray-500" x-text="h.notes"></div>
                                 </div>
                                 <button type="button" @click="recallHold(h.id)"
-                                        class="px-3 py-1.5 bg-green-600 text-white rounded text-xs hover:bg-green-700">Recall</button>
+                                        class="px-3 py-1.5 bg-green-600 text-white rounded text-xs hover:bg-green-700">{{ __('pos.ui.recall_one') }}</button>
                                 <button type="button" @click="discardHold(h.id)"
-                                        class="px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">Discard</button>
+                                        class="px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">{{ __('pos.ui.discard') }}</button>
                             </div>
                         </template>
                     </div>
@@ -394,42 +394,42 @@
                  class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
                 <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-lg font-bold">Payment</h3>
+                        <h3 class="text-lg font-bold">{{ __('pos.ui.payment') }}</h3>
                         <button type="button" @click="showPayment=false" class="text-gray-400 hover:text-gray-700 text-xl">×</button>
                     </div>
 
                     <div class="text-center py-3 bg-brand-50 rounded mb-4">
-                        <div class="text-sm text-gray-600">Total Due</div>
-                        <div class="text-3xl font-bold text-brand-700">$<span x-text="totals.total.toFixed(2)"></span></div>
+                        <div class="text-sm text-gray-600">{{ __('pos.ui.total_due') }}</div>
+                        <div class="text-3xl font-bold text-brand-700"><x-ltr>$<span x-text="totals.total.toFixed(2)"></span></x-ltr></div>
                         <div class="text-xs text-gray-500" x-text="formatLbp(totals.total * exchangeRate)"></div>
                     </div>
 
                     <div class="space-y-3 text-sm">
                         <div>
-                            <label class="block text-xs font-medium text-gray-600">Method</label>
+                            <label class="block text-xs font-medium text-gray-600">{{ __('customers.method') }}</label>
                             <select x-model="payment.method" class="w-full border-gray-300 rounded mt-1 text-sm">
-                                <option value="cash_usd">Cash (USD)</option>
-                                <option value="cash_lbp">Cash (LBP)</option>
-                                <option value="mixed">Mixed Cash USD + LBP</option>
-                                <option value="card">Card</option>
+                                <option value="cash_usd">{{ __('enums.payment_method.cash_usd') }}</option>
+                                <option value="cash_lbp">{{ __('enums.payment_method.cash_lbp') }}</option>
+                                <option value="mixed">{{ __('pos.ui.mixed') }}</option>
+                                <option value="card">{{ __('enums.payment_method.card') }}</option>
                             </select>
                         </div>
 
                         <div x-show="['cash_usd','mixed'].includes(payment.method)">
-                            <label class="block text-xs font-medium text-gray-600">Cash USD tendered</label>
-                            <input type="number" step="0.01" min="0" x-model.number="payment.amount_usd" @input="refreshChangePreview()"
+                            <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.cash_usd_tendered') }}</label>
+                            <input type="number" dir="ltr" step="0.01" min="0" x-model.number="payment.amount_usd" @input="refreshChangePreview()"
                                    class="w-full border-gray-300 rounded mt-1 text-sm" />
                             <div class="flex gap-1 mt-1">
                                 <template x-for="d in [1,5,10,20,50,100]">
                                     <button type="button" @click="payment.amount_usd = (payment.amount_usd||0) + d; refreshChangePreview()"
-                                            class="text-xs px-2 py-1 bg-gray-100 rounded">+$<span x-text="d"></span></button>
+                                            class="text-xs px-2 py-1 bg-gray-100 rounded"><x-ltr>+$<span x-text="d"></span></x-ltr></button>
                                 </template>
                             </div>
                         </div>
 
                         <div x-show="['cash_lbp','mixed'].includes(payment.method)">
-                            <label class="block text-xs font-medium text-gray-600">Cash LBP tendered</label>
-                            <input type="number" step="1000" min="0" x-model.number="payment.amount_lbp" @input="refreshChangePreview()"
+                            <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.cash_lbp_tendered') }}</label>
+                            <input type="number" dir="ltr" step="1000" min="0" x-model.number="payment.amount_lbp" @input="refreshChangePreview()"
                                    class="w-full border-gray-300 rounded mt-1 text-sm" />
                             <div class="flex gap-1 mt-1 flex-wrap">
                                 <template x-for="d in [50000, 100000, 250000, 500000, 1000000]">
@@ -440,54 +440,54 @@
                         </div>
 
                         <div x-show="payment.method === 'card'">
-                            <label class="block text-xs font-medium text-gray-600">Card amount (USD)</label>
-                            <input type="number" step="0.01" min="0" x-model.number="payment.amount_card"
+                            <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.card_amount') }}</label>
+                            <input type="number" dir="ltr" step="0.01" min="0" x-model.number="payment.amount_card"
                                    class="w-full border-gray-300 rounded mt-1 text-sm" />
-                            <label class="block text-xs font-medium text-gray-600 mt-2">Card type / Ref</label>
+                            <label class="block text-xs font-medium text-gray-600 mt-2">{{ __('pos.ui.card_type_ref') }}</label>
                             <div class="flex gap-2">
                                 <select x-model="payment.card_type" class="border-gray-300 rounded text-sm">
                                     <option value="Visa">Visa</option><option value="MasterCard">MasterCard</option>
-                                    <option value="Amex">Amex</option><option value="Other">Other</option>
+                                    <option value="Amex">Amex</option><option value="Other">{{ __('enums.payment_method.other') }}</option>
                                 </select>
-                                <input type="text" x-model="payment.card_reference" placeholder="Approval ref"
+                                <input type="text" x-model="payment.card_reference" dir="ltr" placeholder="{{ __('pos.ui.approval_ref') }}"
                                        class="flex-1 border-gray-300 rounded text-sm" />
                             </div>
                         </div>
 
                         <div class="bg-gray-50 p-2 rounded text-xs space-y-1">
-                            <div class="flex justify-between"><span>Tendered (USD eq.)</span><span>$<span x-text="tenderedUsd().toFixed(2)"></span></span></div>
+                            <div class="flex justify-between"><span>{{ __('pos.ui.tendered') }}</span><span><x-ltr>$<span x-text="tenderedUsd().toFixed(2)"></span></x-ltr></span></div>
                             <div class="flex justify-between font-semibold" :class="changeUsd() >= 0 ? 'text-green-700' : 'text-red-600'">
-                                <span x-text="changeUsd() >= 0 ? 'Total change owed' : 'Short'"></span>
-                                <span>$<span x-text="Math.abs(changeUsd()).toFixed(2)"></span></span>
+                                <span x-text="changeUsd() >= 0 ? t('change_owed') : t('short')"></span>
+                                <span><x-ltr>$<span x-text="Math.abs(changeUsd()).toFixed(2)"></span></x-ltr></span>
                             </div>
                         </div>
 
                         {{-- Split-change section: cashier decides how much USD to give back --}}
                         <div x-show="changeUsd() > 0.005" class="border border-brand-200 bg-brand-50 p-2 rounded text-xs space-y-2">
                             <div class="flex justify-between items-center">
-                                <span class="font-semibold text-brand-800">Change to return</span>
+                                <span class="font-semibold text-brand-800">{{ __('pos.ui.change_to_return') }}</span>
                                 <div class="flex gap-1">
-                                    <button type="button" @click="setSplit('all_usd')" class="px-2 py-0.5 bg-white border rounded text-[10px]">All USD</button>
-                                    <button type="button" @click="setSplit('all_lbp')" class="px-2 py-0.5 bg-white border rounded text-[10px]">All LBP</button>
+                                    <button type="button" @click="setSplit('all_usd')" class="px-2 py-0.5 bg-white border rounded text-[10px]">{{ __('pos.ui.all_usd') }}</button>
+                                    <button type="button" @click="setSplit('all_lbp')" class="px-2 py-0.5 bg-white border rounded text-[10px]">{{ __('pos.ui.all_lbp') }}</button>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-[11px] text-gray-600">Give USD</label>
-                                <input type="number" step="0.01" min="0" :max="changeUsd().toFixed(2)"
+                                <label class="block text-[11px] text-gray-600">{{ __('pos.ui.give_usd') }}</label>
+                                <input type="number" dir="ltr" step="0.01" min="0" :max="changeUsd().toFixed(2)"
                                        x-model.number="payment.change_usd_out" @input="refreshChangePreview()"
                                        class="w-full border-gray-300 rounded text-sm" />
                             </div>
                             <template x-if="changePreview">
                                 <div class="space-y-1">
                                     <div class="flex justify-between">
-                                        <span>USD portion</span>
-                                        <span class="font-medium">$<span x-text="Number(changePreview.change.change_usd).toFixed(2)"></span></span>
+                                        <span>{{ __('pos.ui.usd_portion') }}</span>
+                                        <span class="font-medium"><x-ltr>$<span x-text="Number(changePreview.change.change_usd).toFixed(2)"></span></x-ltr></span>
                                     </div>
                                     <template x-if="changePreview.usd_denoms.length">
                                         <div class="text-[10px] text-gray-500 pl-3" x-text="changePreview.usd_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
                                     </template>
                                     <div class="flex justify-between">
-                                        <span>LBP balance</span>
+                                        <span>{{ __('pos.ui.lbp_balance') }}</span>
                                         <span class="font-medium" x-text="formatLbp(Number(changePreview.change.change_lbp))"></span>
                                     </div>
                                     <template x-if="changePreview.lbp_denoms.length">
@@ -501,8 +501,8 @@
 
                         <button type="button" @click="submit()" :disabled="processing || changeUsd() < -0.005"
                                 class="w-full py-3 bg-green-600 text-white rounded font-bold hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                            <span x-show="!processing">Complete Sale (F12)</span>
-                            <span x-show="processing">Processing…</span>
+                            <span x-show="!processing">{{ __('pos.ui.complete_sale') }} (F12)</span>
+                            <span x-show="processing">{{ __('pos.ui.processing') }}</span>
                         </button>
                     </div>
                 </div>
@@ -512,18 +512,18 @@
             <div x-show="lastSale" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
                 <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-5 text-center">
                     <div class="text-green-600 text-5xl mb-2">✓</div>
-                    <h3 class="text-xl font-bold mb-1">Sale Completed</h3>
-                    <div class="text-sm text-gray-500 mb-3" x-text="lastSale?.receipt_number"></div>
-                    <div class="text-3xl font-bold text-brand-700 mb-1">$<span x-text="Number(lastSale?.total_usd || 0).toFixed(2)"></span></div>
+                    <h3 class="text-xl font-bold mb-1">{{ __('pos.ui.sale_completed') }}</h3>
+                    <div class="text-sm text-gray-500 mb-3" dir="ltr" x-text="lastSale?.receipt_number"></div>
+                    <div class="text-3xl font-bold text-brand-700 mb-1"><x-ltr>$<span x-text="Number(lastSale?.total_usd || 0).toFixed(2)"></span></x-ltr></div>
                     <div class="text-xs text-gray-500 mb-1" x-text="formatLbp((lastSale?.total_usd || 0) * exchangeRate)"></div>
                     <template x-if="lastSale && Number(lastSale.change_usd) > 0">
-                        <div class="text-sm text-gray-700 mt-2">Change: $<span x-text="Number(lastSale.change_usd).toFixed(2)"></span></div>
+                        <div class="text-sm text-gray-700 mt-2">{{ __('pos.ui.change') }}: <x-ltr>$<span x-text="Number(lastSale.change_usd).toFixed(2)"></span></x-ltr></div>
                     </template>
                     <div class="flex gap-2 mt-4">
                         <button type="button" @click="reprintLast()"
-                                class="flex-1 py-2 bg-slate-600 text-white rounded text-sm hover:bg-slate-700">Reprint</button>
+                                class="flex-1 py-2 bg-slate-600 text-white rounded text-sm hover:bg-slate-700">{{ __('pos.ui.reprint') }}</button>
                         <button type="button" @click="lastSale=null"
-                                class="flex-1 py-2 bg-brand-600 text-white rounded">New Sale</button>
+                                class="flex-1 py-2 bg-brand-600 text-white rounded">{{ __('pos.ui.new_sale') }}</button>
                     </div>
                 </div>
             </div>
@@ -541,6 +541,7 @@
                 lbpStep: {{ $lbpStep }},
                 autoPrint: {{ $autoPrint ? 'true' : 'false' }},
                 strings: @json(__('pos.ui')),
+                units: @json(__('enums.unit')),
                 tiers: ['retail', 'wholesale', 'vip'],
                 priceTier: 'retail',        // active price list; the server re-checks it (SaleService::resolvePriceTier)
                 canChangeTier: @json($canChangeTier),
@@ -618,7 +619,7 @@
                     const e = data.error ?? data.errors ?? data.message;
                     if (typeof e === 'string') return e;
                     if (e && typeof e === 'object') return Object.values(e).flat().join(' ');
-                    return 'Something went wrong.';
+                    return this.t('generic_error');
                 },
 
                 anyModalOpen() {
@@ -670,7 +671,7 @@
                         if (q !== this.customerQuery.trim()) return;
                         this.customerResults = res.ok ? await res.json() : [];
                     } catch (e) {
-                        this.customerError = 'Network error: ' + e.message;
+                        this.customerError = this.t('network_error', { msg: e.message });
                         this.customerResults = [];
                     } finally {
                         if (q === this.customerQuery.trim()) this.customerSearching = false;
@@ -700,7 +701,7 @@
                 async saveNewCustomer() {
                     if (this.customerProcessing) return;
                     if (!this.newCustomer.name.trim()) {
-                        this.customerError = 'Name is required.';
+                        this.customerError = this.t('name_required');
                         return;
                     }
                     this.customerProcessing = true;
@@ -723,12 +724,12 @@
                         if (!res.ok) {
                             this.customerError = data.message
                                 || Object.values(data.errors || {}).flat().join(' ')
-                                || 'Could not create the customer.';
+                                || this.t('customer_create_failed');
                             return;
                         }
                         this.selectCustomer(data);
                     } catch (e) {
-                        this.customerError = 'Network error: ' + e.message;
+                        this.customerError = this.t('network_error', { msg: e.message });
                     } finally {
                         this.customerProcessing = false;
                     }
@@ -772,14 +773,14 @@
                         });
                         const data = await res.json();
                         if (!res.ok) {
-                            this.errorMsg = typeof data.error === 'string' ? data.error : 'Could not hold the sale.';
+                            this.errorMsg = typeof data.error === 'string' ? data.error : this.t('hold_failed');
                             return;
                         }
                         this.resetSale();
                         this.showHoldModal = false;
                         await this.refreshHeldCount();
                     } catch (e) {
-                        this.errorMsg = 'Network error: ' + e.message;
+                        this.errorMsg = this.t('network_error', { msg: e.message });
                     } finally {
                         this.holdProcessing = false;
                     }
@@ -791,7 +792,7 @@
                 },
 
                 async recallHold(id) {
-                    if (this.cart.length > 0 && !confirm('Current cart will be cleared. Continue?')) return;
+                    if (this.cart.length > 0 && !confirm(this.t('confirm_replace_cart'))) return;
                     try {
                         const res = await fetch(`/pos/api/holds/${id}/recall`, {
                             method: 'POST',
@@ -803,7 +804,7 @@
                         });
                         const data = await res.json();
                         if (!res.ok) {
-                            this.errorMsg = data.error || data.message || 'Could not recall.';
+                            this.errorMsg = data.error || data.message || this.t('recall_failed');
                             return;
                         }
                         // Reconstitute cart from the held payload. A hold keeps no prices: every
@@ -827,12 +828,12 @@
                         this.showHeldList = false;
                         await this.refreshHeldCount();
                     } catch (e) {
-                        this.errorMsg = 'Network error: ' + e.message;
+                        this.errorMsg = this.t('network_error', { msg: e.message });
                     }
                 },
 
                 async discardHold(id) {
-                    if (!confirm('Discard this held sale?')) return;
+                    if (!confirm(this.t('confirm_discard_hold'))) return;
                     try {
                         const res = await fetch(`/pos/api/holds/${id}`, {
                             method: 'DELETE',
@@ -880,7 +881,7 @@
                         .then(r => r.ok ? r.json() : Promise.reject())
                         .then(p => { this.addToCart(p); this.search = ''; this.filter(); })
                         .catch(() => {
-                            this.errorMsg = `Barcode "${raw}" not found.`;
+                            this.errorMsg = this.t('barcode_not_found', { code: raw });
                             setTimeout(() => { this.errorMsg = ''; }, 3000);
                             this.search = '';
                         });
@@ -888,14 +889,14 @@
 
                 addToCart(p) {
                     if (p.track_stock && p.stock_qty <= 0) {
-                        this.errorMsg = `"${p.name}" is out of stock.`;
+                        this.errorMsg = this.t('out_of_stock', { name: this.pname(p) });
                         setTimeout(() => { this.errorMsg = ''; }, 2500);
                         return;
                     }
                     const existing = this.cart.find(l => l.product_id === p.id);
                     if (existing) {
                         if (!this.canAdd(existing, 1)) {
-                            this.errorMsg = `Only ${p.stock_qty} ${p.unit} of "${p.name}" in stock.`;
+                            this.errorMsg = this.t('only_in_stock', { qty: p.stock_qty, unit: this.unitLabel(p.unit), name: this.pname(p) });
                             setTimeout(() => { this.errorMsg = ''; }, 2500);
                             return;
                         }
@@ -941,7 +942,7 @@
                 makeLine(p, qty = 1, saved = {}) {
                     const tp = this.tierPrices(p);
                     return {
-                        product_id: p.id, name: p.name,
+                        product_id: p.id, name: this.pname(p),
                         unit_price: tp[this.priceTier], retail_price: tp.retail, tier_prices: tp,
                         qty,
                         discount_pct: Number(saved.discount_pct || 0),
@@ -967,7 +968,7 @@
                     if (!line) return;
                     this.lastScannedIndex = i;
                     if (line.track_stock && qty > line.stock_available) {
-                        this.errorMsg = `Only ${line.stock_available} ${line.unit} of "${line.name}" in stock.`;
+                        this.errorMsg = this.t('only_in_stock', { qty: line.stock_available, unit: this.unitLabel(line.unit), name: line.name });
                         setTimeout(() => { this.errorMsg = ''; }, 2500);
                         qty = line.stock_available;
                     }
@@ -980,7 +981,7 @@
                     this.lastScannedIndex = i;
                     const line = this.cart[i];
                     if (!this.canAdd(line, 1)) {
-                        this.errorMsg = `Only ${line.stock_available} ${line.unit} of "${line.name}" in stock.`;
+                        this.errorMsg = this.t('only_in_stock', { qty: line.stock_available, unit: this.unitLabel(line.unit), name: line.name });
                         setTimeout(() => { this.errorMsg = ''; }, 2500);
                         return;
                     }
@@ -991,7 +992,7 @@
                     this.lastScannedIndex = i;
                     const line = this.cart[i];
                     if (line.track_stock && line.qty > line.stock_available) {
-                        this.errorMsg = `Only ${line.stock_available} ${line.unit} of "${line.name}" in stock.`;
+                        this.errorMsg = this.t('only_in_stock', { qty: line.stock_available, unit: this.unitLabel(line.unit), name: line.name });
                         setTimeout(() => { this.errorMsg = ''; }, 2500);
                         line.qty = line.stock_available;
                     }
@@ -1006,7 +1007,7 @@
                     this.recompute();
                 },
                 clearCart() {
-                    if (!this.cart.length || confirm('Clear cart?')) {
+                    if (!this.cart.length || confirm(this.t('confirm_clear_cart'))) {
                         this.cart = [];
                         this.cartDiscount = { type: 'pct', value: 0 };
                         this.lastScannedIndex = null;
@@ -1314,7 +1315,7 @@
                             this._printReceipt(this.lastSale.id);
                         }
                     } catch (e) {
-                        this.errorMsg = 'Network error: ' + e.message;
+                        this.errorMsg = this.t('network_error', { msg: e.message });
                     } finally {
                         this.processing = false;
                     }
@@ -1347,10 +1348,17 @@
                     if (this.lastSale?.id) this._printReceipt(this.lastSale.id);
                 },
 
+                // Western digits in every language; only the unit is translated.
                 formatLbp(n) {
-                    if (!n) return '0 LBP';
-                    return new Intl.NumberFormat().format(Math.round(n / this.lbpStep) * this.lbpStep) + ' LBP';
+                    if (!n) return '0 ' + this.t('lbp');
+                    return new Intl.NumberFormat('en-US').format(Math.round(n / this.lbpStep) * this.lbpStep) + ' ' + this.t('lbp');
                 },
+
+                // Bilingual product / category names: Arabic UI prefers name_ar when there is one.
+                _ar() { return document.documentElement.lang.startsWith('ar'); },
+                pname(p) { return this._ar() && p.name_ar ? p.name_ar : p.name; },
+                cname(c) { return this._ar() && c.name_ar ? c.name_ar : c.name; },
+                unitLabel(u) { return this.units[u] ?? u; },
             }
         }
     </script>

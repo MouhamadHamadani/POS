@@ -1,7 +1,30 @@
 <?php
 
+/** English source for lang/ar/common.php — keep both in sync (LangParityTest enforces it). */
 return [
     'pagination_nav' => 'Pagination Navigation',
     'go_to_page' => 'Go to page :page',
     'pagination_summary' => 'Showing :from to :to of :total results',
+    'search' => 'Search',
+    'all' => 'All',
+    'filter' => 'Filter',
+    'name' => 'Name',
+    'status' => 'Status',
+    'actions' => 'Actions',
+    'edit' => 'Edit',
+    'active' => 'Active',
+    'inactive' => 'Inactive',
+    'back' => 'Back',
+    'cancel' => 'Cancel',
+    'save' => 'Save',
+    'save_changes' => 'Save Changes',
+    'delete' => 'Delete',
+    'add' => 'Add',
+    'phone' => 'Phone',
+    'address' => 'Address',
+    'notes' => 'Notes',
+    'view' => 'View',
+    'type' => 'Type',
+    'yes' => 'Yes',
+    'no' => 'No',
 ];

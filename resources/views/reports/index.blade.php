@@ -3,29 +3,29 @@
 
     <div class="py-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
         <p class="text-sm text-gray-600">
-            Pick a report.
+            {{ __('reports.pick') }}
             @if (\App\Support\Demo::enabled())
-                Exports are disabled in the demo build — reports are viewable on screen.
+                {{ __('reports.demo_no_exports') }}
             @else
-                All reports export to PDF and {{ strtoupper(\App\Support\Spreadsheet::extension()) }} from inside.
+                {{ __('reports.exports_note', ['format' => strtoupper(\App\Support\Spreadsheet::extension())]) }}
             @endif
         </p>
 
         @php
             $reports = [
-                ['Daily Sales Summary', 'reports.daily-sales', 'Sales totals per day with discount and VAT breakdown.', '📈'],
-                ['Sales by Product', 'reports.sales-by-product', 'Top-sellers by units, revenue, profit, and margin %.', '🏆'],
-                ['Inventory Stock Levels', 'reports.stock-levels', 'Current stock with cost / retail valuation totals.', '📦'],
-                ['Profit & Loss', 'reports.pnl', 'Gross revenue, COGS, discounts, tax, gross profit, margin.', '💵'],
+                ['daily_sales', 'reports.daily-sales', '📈'],
+                ['sales_by_product', 'reports.sales-by-product', '🏆'],
+                ['stock_levels', 'reports.stock-levels', '📦'],
+                ['pnl', 'reports.pnl', '💵'],
             ];
         @endphp
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            @foreach ($reports as [$label, $route, $desc, $icon])
+            @foreach ($reports as [$key, $route, $icon])
                 <a href="{{ route($route) }}" class="bg-white rounded-lg shadow-card p-5 hover:shadow-pop hover:border-brand-300 border border-transparent transition">
                     <div class="text-2xl mb-2">{{ $icon }}</div>
-                    <div class="font-semibold text-brand-700">{{ $label }}</div>
-                    <p class="text-xs text-gray-500 mt-1">{{ $desc }}</p>
+                    <div class="font-semibold text-brand-700">{{ __("reports.titles.$key") }}</div>
+                    <p class="text-xs text-gray-500 mt-1">{{ __("reports.descriptions.$key") }}</p>
                 </a>
             @endforeach
         </div>

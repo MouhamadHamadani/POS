@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <title>LebaSouk{{ \App\Support\Demo::titleSuffix() }} — {{ $title ?? 'Sales' }}</title>
+        <title>LebaSouk{{ \App\Support\Demo::titleSuffix() }} — {{ $title ?? __('nav.sales') }}</title>
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
@@ -25,21 +25,21 @@
                     <span class="text-sm">LebaSouk</span>
                 </div>
 
-                <div class="hidden md:flex items-center gap-3 ml-4 text-xs">
+                <div class="hidden md:flex items-center gap-3 ms-4 text-xs">
                     <span class="px-2 py-1 bg-brand-600 rounded">
-                        Rate: 1 USD = <strong>{{ number_format($rate) }}</strong> LBP
+                        {{ __('nav.rate') }}: <x-ltr>1 USD = <strong>{{ number_format($rate) }}</strong> LBP</x-ltr>
                     </span>
                     @if ($shift)
                         <span class="px-2 py-1 bg-success/20 text-green-100 rounded">
-                            ● Shift open since {{ $shift->opened_at->format('H:i') }}
+                            ● {{ __('nav.shift_open_since', ['time' => $shift->opened_at->format('H:i')]) }}
                         </span>
                     @endif
                 </div>
 
-                <div class="ml-auto flex items-center gap-2 text-xs">
+                <div class="ms-auto flex items-center gap-2 text-xs">
                     <a href="{{ route('shifts.close') }}"
                        class="px-3 py-1.5 bg-danger hover:bg-red-700 rounded transition">
-                       Close Shift
+                       {{ __('nav.close_shift') }}
                     </a>
 
                     <div x-data="{ open: false }" class="relative">
@@ -53,21 +53,21 @@
 
                         <div x-show="open" @click.outside="open = false" x-cloak
                              class="absolute end-0 mt-1 w-44 bg-white text-gray-800 rounded-lg shadow-pop py-1 text-sm z-50">
-                            <a href="{{ route('profile.edit') }}" class="block px-3 py-2 hover:bg-gray-100">Profile</a>
-                            <a href="{{ route('dashboard') }}" class="block px-3 py-2 hover:bg-gray-100">Management</a>
+                            <a href="{{ route('profile.edit') }}" class="block px-3 py-2 hover:bg-gray-100">{{ __('Profile') }}</a>
+                            <a href="{{ route('dashboard') }}" class="block px-3 py-2 hover:bg-gray-100">{{ __('nav.management') }}</a>
                             <div class="px-3 py-2"><x-lang-switch class="text-gray-600" /></div>
                             @if (\App\Support\Demo::enabled())
                                 <hr class="my-1">
                                 <form method="POST" action="{{ route('demo.reset') }}"
-                                      onsubmit="return confirm('Reset the demo to the seeded catalogue? Anything rung up in this session is discarded and you will be logged out — finish or cancel the sale on screen first.')">
+                                      onsubmit="return confirm(@js(__('nav.reset_demo_confirm')))">
                                     @csrf
-                                    <button class="block w-full text-left px-3 py-2 hover:bg-amber-50 text-amber-700 font-medium">Reset Demo Data</button>
+                                    <button class="block w-full text-left px-3 py-2 hover:bg-amber-50 text-amber-700 font-medium">{{ __('nav.reset_demo') }}</button>
                                 </form>
                             @endif
                             <hr class="my-1">
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
-                                <button class="block w-full text-left px-3 py-2 hover:bg-gray-100 text-danger">Log out</button>
+                                <button class="block w-full text-left px-3 py-2 hover:bg-gray-100 text-danger">{{ __('nav.logout') }}</button>
                             </form>
                         </div>
                     </div>

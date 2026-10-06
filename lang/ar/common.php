@@ -1,7 +1,30 @@
 <?php
 
+/** Arabic counterpart of lang/en/common.php — keep both in sync (LangParityTest enforces it). */
 return [
     'pagination_nav' => 'التنقّل بين الصفحات',
     'go_to_page' => 'الانتقال إلى الصفحة :page',
     'pagination_summary' => 'عرض :from إلى :to من أصل :total نتيجة',
+    'search' => 'بحث',
+    'all' => 'الكل',
+    'filter' => 'تصفية',
+    'name' => 'الاسم',
+    'status' => 'الحالة',
+    'actions' => 'إجراءات',
+    'edit' => 'تعديل',
+    'active' => 'فعّال',
+    'inactive' => 'غير فعّال',
+    'back' => 'رجوع',
+    'cancel' => 'إلغاء',
+    'save' => 'حفظ',
+    'save_changes' => 'حفظ التغييرات',
+    'delete' => 'حذف',
+    'add' => 'إضافة',
+    'phone' => 'الهاتف',
+    'address' => 'العنوان',
+    'notes' => 'ملاحظات',
+    'view' => 'عرض',
+    'type' => 'النوع',
+    'yes' => 'نعم',
+    'no' => 'لا',
 ];

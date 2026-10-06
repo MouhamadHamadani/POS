@@ -3,24 +3,24 @@
     $role = $user?->role;
 
     $nav = [
-        ['POS',             '/pos',              'cashier,manager,admin,stock', '🛒'],
-        ['Dashboard',       '/dashboard',        'manager,admin',               '📊'],
-        ['Products',        '/products',         'stock,manager,admin',         '📦'],
-        ['Categories',      '/categories',       'stock,manager,admin',         '🏷️'],
-        ['Customers',       '/customers',        'manager,admin',               '👥'],
-        ['Suppliers',       '/suppliers',        'manager,admin',               '🚚'],
-        ['Purchase Orders', '/purchase-orders',  'manager,admin',               '📑'],
-        ['Returns',         '/returns',          'cashier,manager,admin',       '↩️'],
-        ['Reports',         '/reports',          'manager,admin',               '📈'],
-        ['Users',           '/users',            'admin',                        '👤'],
-        ['Settings',        '/settings',         'admin',                        '⚙️'],
+        ['pos',             '/pos',              'cashier,manager,admin,stock', '🛒'],
+        ['dashboard',       '/dashboard',        'manager,admin',               '📊'],
+        ['products',        '/products',         'stock,manager,admin',         '📦'],
+        ['categories',      '/categories',       'stock,manager,admin',         '🏷️'],
+        ['customers',       '/customers',        'manager,admin',               '👥'],
+        ['suppliers',       '/suppliers',        'manager,admin',               '🚚'],
+        ['purchases',       '/purchase-orders',  'manager,admin',               '📑'],
+        ['returns',         '/returns',          'cashier,manager,admin',       '↩️'],
+        ['reports',         '/reports',          'manager,admin',               '📈'],
+        ['users',           '/users',            'admin',                        '👤'],
+        ['settings',        '/settings',         'admin',                        '⚙️'],
     ];
 
     // Bulk upload is off by default and switched on per role by a super-admin,
     // so it can't be expressed as a role list. Hiding it is cosmetic — the
     // routes are gated by `can:bulk-upload-products` regardless.
     if ($user?->canBulkUploadProducts()) {
-        array_splice($nav, 3, 0, [['Bulk Upload', '/products/import', $role, '📤']]);
+        array_splice($nav, 3, 0, [['bulk_upload', '/products/import', $role, '📤']]);
     }
 @endphp
 
@@ -34,14 +34,14 @@
             <x-brand-mark class="w-8 h-8 rounded flex-shrink-0" />
             <div x-show="open" class="font-semibold whitespace-nowrap">LebaSouk</div>
         </div>
-        <button @click="open = !open" class="text-brand-200 hover:text-white p-1" title="Toggle sidebar">
-            <svg x-show="open"  class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-            <svg x-show="!open" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <button @click="open = !open" class="text-brand-200 hover:text-white p-1" title="{{ __('nav.toggle_sidebar') }}">
+            <svg x-show="open"  class="w-4 h-4 rtl:-scale-x-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            <svg x-show="!open" class="w-4 h-4 rtl:-scale-x-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </button>
     </div>
 
     <nav class="flex-1 overflow-y-auto py-2">
-        @foreach ($nav as [$label, $path, $rolesCsv, $icon])
+        @foreach ($nav as [$key, $path, $rolesCsv, $icon])
             @php
                 $roles = array_filter(array_map('trim', explode(',', $rolesCsv)));
                 $allowed = !$role || $role === \App\Models\User::ROLE_SUPER_ADMIN || in_array($role, $roles, true);
@@ -51,7 +51,7 @@
                 <a href="{{ $path }}"
                    class="flex items-center gap-3 px-3 py-2 text-sm hover:bg-brand-600 transition border-l-4 {{ $active ? 'bg-brand-600 border-accent-light text-white' : 'border-transparent text-brand-100' }}">
                     <span class="text-lg flex-shrink-0 w-5 text-center">{{ $icon }}</span>
-                    <span x-show="open" class="whitespace-nowrap">{{ $label }}</span>
+                    <span x-show="open" class="whitespace-nowrap">{{ __("nav.$key") }}</span>
                 </a>
             @endif
         @endforeach
@@ -62,12 +62,12 @@
             {{-- Demo builds only. The confirm() is the guard against firing this
                  mid-sale: the reset replaces the database file underneath the app. --}}
             <form method="POST" action="{{ route('demo.reset') }}"
-                  onsubmit="return confirm('Reset the demo to the seeded catalogue? Anything rung up in this session is discarded and you will be logged out — finish or cancel the sale on screen first.')">
+                  onsubmit="return confirm(@js(__('nav.reset_demo_confirm')))">
                 @csrf
                 <button class="w-full flex items-center gap-2 px-2 py-2 rounded bg-amber-400 text-amber-950 font-semibold hover:bg-amber-300 transition"
-                        :title="open ? '' : 'Reset Demo Data'">
+                        :title="open ? '' : @js(__('nav.reset_demo'))">
                     <span class="inline-block w-5 text-center">&#8634;</span>
-                    <span x-show="open">Reset Demo Data</span>
+                    <span x-show="open">{{ __('nav.reset_demo') }}</span>
                 </button>
             </form>
         @endif
@@ -76,7 +76,7 @@
 
         <a href="{{ route('profile.edit') }}"
            class="flex items-center gap-2 hover:text-accent-light"
-           :title="open ? '' : '{{ $user?->name }}'">
+           :title="open ? '' : @js($user?->name)">
             <div class="w-7 h-7 rounded-full bg-accent text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                 {{ strtoupper(substr($user?->name ?? '?', 0, 1)) }}
             </div>
@@ -87,9 +87,9 @@
         </a>
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-            <button class="w-full text-left text-brand-200 hover:text-white" :title="open ? '' : 'Log out'">
+            <button class="w-full text-left text-brand-200 hover:text-white" :title="open ? '' : @js(__('nav.logout'))">
                 <span class="inline-block w-7 text-center">⎋</span>
-                <span x-show="open">Log out</span>
+                <span x-show="open">{{ __('nav.logout') }}</span>
             </button>
         </form>
     </div>

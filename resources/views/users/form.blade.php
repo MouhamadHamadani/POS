@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800">{{ $isEdit ? "Edit User" : "New User" }}</h2>
-            <a href="{{ route('users.index') }}" class="text-sm text-gray-600 hover:underline">← Back</a>
+            <h2 class="font-semibold text-xl text-gray-800">{{ $isEdit ? __('users.edit_user') : __('users.new_user_title') }}</h2>
+            <a href="{{ route('users.index') }}" class="text-sm text-gray-600 hover:underline"><span class="inline-block rtl:-scale-x-100" aria-hidden="true">←</span> {{ __('common.back') }}</a>
         </div>
     </x-slot>
 
@@ -23,19 +23,19 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Full name *</label>
-                    <input type="text" name="name" value="{{ old('name', $user->name) }}" required class="w-full border-gray-300 rounded text-sm" />
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.full_name') }} *</label>
+                    <input type="text" name="name" dir="auto" value="{{ old('name', $user->name) }}" required class="w-full border-gray-300 rounded text-sm" />
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Username *</label>
-                    <input type="text" name="username" value="{{ old('username', $user->username) }}" required class="w-full border-gray-300 rounded text-sm" />
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.username') }} *</label>
+                    <input type="text" name="username" dir="ltr" value="{{ old('username', $user->username) }}" required class="w-full border-gray-300 rounded text-sm" />
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Email (optional)</label>
-                    <input type="email" name="email" value="{{ old('email', $user->email) }}" class="w-full border-gray-300 rounded text-sm" />
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.email_optional') }}</label>
+                    <input type="email" name="email" dir="ltr" value="{{ old('email', $user->email) }}" class="w-full border-gray-300 rounded text-sm" />
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Role *</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.role') }} *</label>
                     <select name="role" required class="w-full border-gray-300 rounded text-sm">
                         @foreach (auth()->user()->isSuperAdmin() ? \App\Models\User::ROLES : \App\Models\User::STAFF_ROLES as $v => $l)
                             <option value="{{ $v }}" @selected(old('role', $user->role) === $v)>{{ $l }}</option>
@@ -43,15 +43,15 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Language</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Language') }}</label>
                     <select name="language" class="w-full border-gray-300 rounded text-sm">
                         <option value="en" @selected(old('language', $user->language) === 'en')>English</option>
                         <option value="ar" @selected(old('language', $user->language) === 'ar')>العربية</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Max discount % at POS</label>
-                    <input type="number" step="0.01" min="0" max="100" name="max_discount_pct"
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.max_discount') }}</label>
+                    <input type="number" step="0.01" min="0" max="100" name="max_discount_pct" dir="ltr"
                            value="{{ old('max_discount_pct', $user->max_discount_pct ?? 0) }}"
                            class="w-full border-gray-300 rounded text-sm" />
                     <p class="mt-1 text-[11px] text-gray-500">{{ __('pos.users.max_discount_hint') }}</p>
@@ -59,61 +59,61 @@
 
                 @unless ($isEdit)
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Password *</label>
-                        <input type="password" name="password" required class="w-full border-gray-300 rounded text-sm" />
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Password') }} *</label>
+                        <input type="password" name="password" dir="ltr" required class="w-full border-gray-300 rounded text-sm" />
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Confirm password *</label>
-                        <input type="password" name="password_confirmation" required class="w-full border-gray-300 rounded text-sm" />
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Confirm password') }} *</label>
+                        <input type="password" name="password_confirmation" dir="ltr" required class="w-full border-gray-300 rounded text-sm" />
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">PIN (4 digits, optional)</label>
-                        <input type="text" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4"
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.pin_optional') }}</label>
+                        <input type="text" name="pin" dir="ltr" inputmode="numeric" pattern="[0-9]{4}" maxlength="4"
                                class="w-full border-gray-300 rounded text-sm tracking-widest" />
                     </div>
                 @endunless
 
                 <div class="md:col-span-2 flex items-center gap-2">
                     <input type="checkbox" name="is_active" id="is_active" value="1" @checked(old('is_active', $user->is_active))>
-                    <label for="is_active" class="text-sm">Active</label>
+                    <label for="is_active" class="text-sm">{{ __('common.active') }}</label>
                 </div>
             </div>
 
             <div class="flex justify-end gap-2">
-                <a href="{{ route('users.index') }}" class="px-4 py-2 bg-gray-100 rounded text-sm">Cancel</a>
+                <a href="{{ route('users.index') }}" class="px-4 py-2 bg-gray-100 rounded text-sm">{{ __('common.cancel') }}</a>
                 <button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">
-                    {{ $isEdit ? 'Save Changes' : 'Create User' }}
+                    {{ $isEdit ? __('common.save_changes') : __('users.create_user') }}
                 </button>
             </div>
         </form>
 
         @if ($isEdit)
             <div class="bg-white rounded-lg shadow-card p-6">
-                <h3 class="font-semibold mb-3">Reset password</h3>
+                <h3 class="font-semibold mb-3">{{ __('users.reset_password') }}</h3>
                 <form method="POST" action="{{ route('users.reset-password', $user) }}" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                     @csrf
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">New password</label>
-                        <input type="password" name="password" required class="w-full border-gray-300 rounded text-sm" />
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.new_password') }}</label>
+                        <input type="password" name="password" dir="ltr" required class="w-full border-gray-300 rounded text-sm" />
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Confirm</label>
-                        <input type="password" name="password_confirmation" required class="w-full border-gray-300 rounded text-sm" />
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.confirm') }}</label>
+                        <input type="password" name="password_confirmation" dir="ltr" required class="w-full border-gray-300 rounded text-sm" />
                     </div>
-                    <button class="px-3 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700">Reset Password</button>
+                    <button class="px-3 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700">{{ __('users.reset_password') }}</button>
                 </form>
             </div>
 
             <div class="bg-white rounded-lg shadow-card p-6">
-                <h3 class="font-semibold mb-3">Reset PIN</h3>
+                <h3 class="font-semibold mb-3">{{ __('users.reset_pin') }}</h3>
                 <form method="POST" action="{{ route('users.reset-pin', $user) }}" class="flex gap-3 items-end">
                     @csrf
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">New 4-digit PIN</label>
-                        <input type="text" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" minlength="4" required
+                        <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.new_pin') }}</label>
+                        <input type="text" name="pin" dir="ltr" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" minlength="4" required
                                class="w-32 border-gray-300 rounded text-sm tracking-widest text-center" />
                     </div>
-                    <button class="px-3 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700">Reset PIN</button>
+                    <button class="px-3 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700">{{ __('users.reset_pin') }}</button>
                 </form>
             </div>
         @endif

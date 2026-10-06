@@ -50,12 +50,14 @@ class ReportService
     {
         $rows = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->leftJoin('products', 'products.id', '=', 'sale_items.product_id')
             ->where('sales.status', Sale::STATUS_COMPLETED)
             ->whereBetween('sales.created_at', [$from, $to])
-            ->groupBy('sale_items.product_id', 'sale_items.product_name')
+            ->groupBy('sale_items.product_id', 'sale_items.product_name', 'products.name_ar')
             ->select(
                 'sale_items.product_id',
                 'sale_items.product_name',
+                'products.name_ar as product_name_ar',
                 DB::raw('SUM(sale_items.qty) as units'),
                 // Revenue net of VAT: line_total carries the tax for an
                 // exclusive rate and contains it for an inclusive one, so
@@ -68,6 +70,7 @@ class ReportService
             ->limit($limit)
             ->get()
             ->map(function ($r) {
+                $r->local_name = app()->getLocale() === 'ar' && $r->product_name_ar ? $r->product_name_ar : $r->product_name;
                 $r->profit = (float) $r->revenue - (float) $r->cogs;
                 $r->margin_pct = $r->revenue > 0 ? round($r->profit / $r->revenue * 100, 2) : 0;
                 return $r;
@@ -89,8 +92,9 @@ class ReportService
             $q->where('stock_qty', '<=', 0);
         }
         $rows = $q->orderBy('name')->get([
-            'id', 'name', 'sku', 'barcode', 'unit', 'stock_qty', 'min_stock', 'max_stock', 'cost_usd', 'price_usd',
+            'id', 'name', 'name_ar', 'sku', 'barcode', 'unit', 'stock_qty', 'min_stock', 'max_stock', 'cost_usd', 'price_usd',
         ])->map(function ($p) {
+            $p->local_name = $p->localName();
             $p->stock_value_cost = round((float) $p->stock_qty * (float) $p->cost_usd, 2);
             $p->stock_value_retail = round((float) $p->stock_qty * (float) $p->price_usd, 2);
             $p->status = $p->stock_qty <= 0 ? 'out' : ($p->stock_qty <= $p->min_stock ? 'low' : 'ok');

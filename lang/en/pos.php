@@ -1,20 +1,12 @@
 <?php
 
-/**
- * Strings for the sell screen's price lists and discounts. Arabic counterpart:
- * lang/ar/pos.php — keep both in sync (tests/Unit/PosLangParityTest.php fails
- * if a key is missing from either).
- *
- * `ui` is handed to the sell screen as JSON and read with t(key, {vars});
- * `:name` placeholders are substituted in JS there, by Laravel everywhere else.
- */
+/** English source for lang/ar/pos.php — keep both in sync (LangParityTest enforces it). */
 return [
     'tier' => [
         'retail' => 'Retail',
         'wholesale' => 'Wholesale',
         'vip' => 'VIP',
     ],
-
     'errors' => [
         'price_tier_locked' => 'You are not allowed to change the price list.',
         'discount_not_allowed' => 'Discounts are not allowed on ":product".',
@@ -22,21 +14,17 @@ return [
         'discount_limit' => 'A :pct% discount on ":product" is above your limit of :limit%.',
         'cart_discount_exceeds' => 'The cart discount is more than the total of the items that allow discounts.',
     ],
-
     'receipt' => [
         'price_list' => 'Price list',
         'item_discounts' => 'Item discounts',
         'cart_discount' => 'Cart discount',
     ],
-
     'settings' => [
         'cashier_can_change_price_tier' => 'Cashiers can switch the price list (retail / wholesale / VIP)',
     ],
-
     'users' => [
         'max_discount_hint' => '0 = use the store default from Settings. Managers and admins are not limited.',
     ],
-
     'ui' => [
         'price_list' => 'Price list',
         'tier_locked' => 'Only a manager can change the price list.',
@@ -63,5 +51,78 @@ return [
         'of_which_cart' => 'Cart discount',
         'vat' => 'VAT',
         'fix_discounts' => 'Fix the discounts above before paying.',
+        'search_placeholder' => 'Search by name, SKU, or scan barcode + Enter',
+        'tip' => 'Tip: scan a barcode, then type a quantity and press Enter to set the count for that item.',
+        'no_products' => 'No products match.',
+        'stock_line' => 'Stock: :qty :unit',
+        'cart' => 'Cart',
+        'clear' => 'Clear',
+        'add_customer' => '+ Add customer',
+        'owes' => 'Owes :amount',
+        'change_customer' => 'Change',
+        'remove_customer' => 'Remove customer',
+        'cart_empty' => 'Cart is empty. Tap a product to start.',
+        'lbp_equiv' => 'LBP equiv.',
+        'pay' => 'Pay',
+        'hold' => 'Hold',
+        'recall' => 'Recall',
+        'customer' => 'Customer',
+        'search_customer' => 'Search by name or phone',
+        'min_chars' => 'At least 2 characters',
+        'searching' => 'Searching…',
+        'no_match' => 'No match. Use “+ New customer” below.',
+        'new_customer' => '+ New customer',
+        'phone_optional' => 'Phone (optional)',
+        'back_to_search' => 'Back to search',
+        'create_attach' => 'Create & attach',
+        'saving' => 'Saving…',
+        'hold_this_sale' => 'Hold this sale',
+        'hold_help' => 'Give the cart a label so you can recall it. No stock is reserved.',
+        'label_optional' => 'Label (optional)',
+        'label_placeholder' => 'e.g. Table 5, Mr. Khoury',
+        'hold_sale' => 'Hold Sale',
+        'holding' => 'Holding…',
+        'held_sales' => 'Held sales',
+        'no_held' => 'No held sales right now.',
+        'hold_n' => 'Hold #:n',
+        'n_items' => ':n items',
+        'recall_one' => 'Recall',
+        'discard' => 'Discard',
+        'payment' => 'Payment',
+        'total_due' => 'Total Due',
+        'mixed' => 'Mixed Cash USD + LBP',
+        'cash_usd_tendered' => 'Cash USD tendered',
+        'cash_lbp_tendered' => 'Cash LBP tendered',
+        'card_amount' => 'Card amount (USD)',
+        'card_type_ref' => 'Card type / Ref',
+        'approval_ref' => 'Approval ref',
+        'tendered' => 'Tendered (USD eq.)',
+        'change_owed' => 'Total change owed',
+        'short' => 'Short',
+        'change_to_return' => 'Change to return',
+        'all_usd' => 'All USD',
+        'all_lbp' => 'All LBP',
+        'give_usd' => 'Give USD',
+        'usd_portion' => 'USD portion',
+        'lbp_balance' => 'LBP balance',
+        'complete_sale' => 'Complete Sale',
+        'processing' => 'Processing…',
+        'sale_completed' => 'Sale Completed',
+        'change' => 'Change',
+        'reprint' => 'Reprint',
+        'new_sale' => 'New Sale',
+        'generic_error' => 'Something went wrong.',
+        'network_error' => 'Network error: :msg',
+        'name_required' => 'Name is required.',
+        'customer_create_failed' => 'Could not create the customer.',
+        'hold_failed' => 'Could not hold the sale.',
+        'confirm_replace_cart' => 'Current cart will be cleared. Continue?',
+        'recall_failed' => 'Could not recall.',
+        'confirm_discard_hold' => 'Discard this held sale?',
+        'barcode_not_found' => 'Barcode ":code" not found.',
+        'out_of_stock' => '":name" is out of stock.',
+        'only_in_stock' => 'Only :qty :unit of ":name" in stock.',
+        'confirm_clear_cart' => 'Clear cart?',
+        'lbp' => 'LBP',
     ],
 ];

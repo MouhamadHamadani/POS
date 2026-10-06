@@ -1,5 +1,5 @@
 <x-app-layout>
-    <x-slot name="header"><h2 class="font-semibold text-xl text-gray-800">{{ __('About') }}</h2></x-slot>
+    <x-slot name="header"><h2 class="font-semibold text-xl text-gray-800">{{ __('about.title') }}</h2></x-slot>
 
     <div class="py-6 max-w-lg mx-auto px-4 sm:px-6 lg:px-8">
         <div class="bg-white rounded-lg shadow-card p-6 space-y-4">
@@ -12,16 +12,16 @@
 
             <dl class="text-sm divide-y divide-gray-100">
                 @foreach ([
-                    'Version'   => config('nativephp.version'),
-                    'Build'     => config('app.env'),
-                    'App ID'    => config('nativephp.app_id'),
-                    'Publisher' => config('nativephp.author'),
-                    'Database'  => basename(config('database.connections.sqlite.database')),
-                    'Time zone' => config('app.timezone'),
-                ] as $label => $value)
+                    'version'   => config('nativephp.version'),
+                    'build'     => config('app.env'),
+                    'app_id'    => config('nativephp.app_id'),
+                    'publisher' => config('nativephp.author'),
+                    'database'  => basename(config('database.connections.sqlite.database')),
+                    'timezone'  => config('app.timezone'),
+                ] as $key => $value)
                     <div class="flex justify-between gap-4 py-2">
-                        <dt class="text-gray-500">{{ $label }}</dt>
-                        <dd class="text-gray-800 font-mono text-xs text-right break-all">{{ $value }}</dd>
+                        <dt class="text-gray-500">{{ __("about.$key") }}</dt>
+                        <dd class="text-gray-800 font-mono text-xs text-right break-all" dir="ltr">{{ $value }}</dd>
                     </div>
                 @endforeach
             </dl>

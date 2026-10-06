@@ -20,6 +20,12 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         // live host:port. APP_URL from .env points at Apache and is wrong here.
         $base = request()->getSchemeAndHttpHost();
 
+        // The menu is built once at boot, before any user is known, so the store
+        // default is the only sensible language. It follows a change in Settings
+        // after the next restart.
+        $lang = $this->menuLocale();
+        $t = fn (string $key) => __("native.$key", [], $lang);
+
         Window::open()
             ->title(config('app.name').Demo::titleSuffix())
             ->width(1400)
@@ -34,37 +40,37 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         // and with APP_DEBUG=false that is a blank error page, not a clue.
         Menu::make(
             Menu::app()->submenu(
-                Menu::label('File')->submenu(
-                    Menu::link($base . '/pos', 'New Sale'),
-                    Menu::link($base . '/shifts/open', 'Open Shift'),
-                    Menu::link($base . '/shifts/close', 'Close Shift'),
+                Menu::label($t('file'))->submenu(
+                    Menu::link($base . '/pos', $t('new_sale')),
+                    Menu::link($base . '/shifts/open', $t('open_shift')),
+                    Menu::link($base . '/shifts/close', $t('close_shift')),
                     Menu::separator(),
-                    Menu::quit('Exit'),
+                    Menu::quit($t('exit')),
                 ),
-                Menu::label('View')->submenu(
+                Menu::label($t('view'))->submenu(
                     Menu::fullscreen(),
                     Menu::separator(),
-                    Menu::label('Zoom In')->accelerator('CmdOrCtrl++'),
-                    Menu::label('Zoom Out')->accelerator('CmdOrCtrl+-'),
+                    Menu::label($t('zoom_in'))->accelerator('CmdOrCtrl++'),
+                    Menu::label($t('zoom_out'))->accelerator('CmdOrCtrl+-'),
                 ),
-                Menu::label('Reports')->submenu(
-                    Menu::link($base . '/reports/sales/daily', 'Daily Sales Summary'),
-                    Menu::link($base . '/reports/sales/by-product', 'Sales by Product'),
-                    Menu::link($base . '/reports/inventory/stock-levels', 'Inventory Stock Levels'),
-                    Menu::link($base . '/reports/financial/pnl', 'Profit & Loss'),
+                Menu::label($t('reports'))->submenu(
+                    Menu::link($base . '/reports/sales/daily', __('reports.titles.daily_sales', [], $lang)),
+                    Menu::link($base . '/reports/sales/by-product', __('reports.titles.sales_by_product', [], $lang)),
+                    Menu::link($base . '/reports/inventory/stock-levels', __('reports.titles.stock_levels', [], $lang)),
+                    Menu::link($base . '/reports/financial/pnl', __('reports.titles.pnl', [], $lang)),
                     Menu::separator(),
-                    Menu::link($base . '/reports', 'All Reports'),
+                    Menu::link($base . '/reports', $t('all_reports')),
                 ),
-                Menu::label('Tools')->submenu(
+                Menu::label($t('tools'))->submenu(
                     // The Backup tab, not a backup: taking one is a POST, and a
                     // menu item cannot make one. Super-admin only; anyone else
                     // gets the General tab (SettingController::index).
-                    Menu::link($base . '/settings?tab=backup', 'Backups'),
-                    Menu::link($base . '/settings', 'Settings'),
-                    Menu::link($base . '/users', 'User Management'),
+                    Menu::link($base . '/settings?tab=backup', $t('backups')),
+                    Menu::link($base . '/settings', $t('settings')),
+                    Menu::link($base . '/users', $t('user_management')),
                 ),
-                Menu::label('Help')->submenu(
-                    Menu::link($base . '/about', 'About'),
+                Menu::label($t('help'))->submenu(
+                    Menu::link($base . '/about', $t('about')),
                 ),
             ),
         )
@@ -73,10 +79,10 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         MenuBar::create()
             ->onlyShowContextMenu()
             ->withContextMenu(Menu::make(
-                Menu::link($base . '/pos', 'Open POS'),
-                Menu::link($base . '/reports', 'Open Reports'),
+                Menu::link($base . '/pos', $t('open_pos')),
+                Menu::link($base . '/reports', $t('open_reports')),
                 Menu::separator(),
-                Menu::quit('Quit'),
+                Menu::quit($t('quit')),
             ));
 
         // No GlobalShortcut registrations. The three that used to live here
@@ -85,6 +91,18 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         // registered OS-wide, so Ctrl+B was swallowed from every other
         // application for as long as the till was running. Re-add them only
         // together with listeners that actually navigate the window.
+    }
+
+    /** The store's default language, or en if settings are unreadable this early. */
+    private function menuLocale(): string
+    {
+        try {
+            $lang = (string) Setting::get('language', 'en');
+        } catch (\Throwable) {
+            $lang = 'en';
+        }
+
+        return in_array($lang, ['en', 'ar'], true) ? $lang : 'en';
     }
 
     public function phpIni(): array

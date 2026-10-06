@@ -29,13 +29,13 @@ class ReportController extends Controller
         $data = $this->reports->dailySales($from, $to);
         $payload = array_merge($data, ['from' => $from, 'to' => $to]);
 
-        return $this->respond($request, 'reports.daily-sales', $payload, 'Daily Sales Summary', function () use ($data) {
+        return $this->respond($request, 'reports.daily-sales', $payload, 'daily_sales', function () use ($data) {
             $rows = [];
-            $rows[] = ['Day', 'Transactions', 'Subtotal', 'Discount', 'Tax', 'Total'];
+            $rows[] = $this->headings('day', 'transactions', 'subtotal', 'discount', 'tax', 'total');
             foreach ($data['rows'] as $r) {
                 $rows[] = [$r['day'], $r['txn_count'], round($r['subtotal'], 4), round($r['discount'], 4), round($r['tax'], 4), round($r['total'], 4)];
             }
-            $rows[] = ['Totals', $data['totals']['txn_count'], round($data['totals']['subtotal'], 4), round($data['totals']['discount'], 4), round($data['totals']['tax'], 4), round($data['totals']['total'], 4)];
+            $rows[] = [__('reports.cols.totals'), $data['totals']['txn_count'], round($data['totals']['subtotal'], 4), round($data['totals']['discount'], 4), round($data['totals']['tax'], 4), round($data['totals']['total'], 4)];
             return $rows;
         });
     }
@@ -46,10 +46,10 @@ class ReportController extends Controller
         $data = $this->reports->salesByProduct($from, $to);
         $payload = array_merge($data, ['from' => $from, 'to' => $to]);
 
-        return $this->respond($request, 'reports.sales-by-product', $payload, 'Sales by Product', function () use ($data) {
-            $rows = [['Product', 'Units', 'Revenue (ex-VAT)', 'COGS', 'Profit', 'Margin %']];
+        return $this->respond($request, 'reports.sales-by-product', $payload, 'sales_by_product', function () use ($data) {
+            $rows = [$this->headings('product', 'units', 'revenue_ex_vat', 'cogs', 'profit', 'margin_pct')];
             foreach ($data['rows'] as $r) {
-                $rows[] = [$r['product_name'], (float) $r['units'], (float) $r['revenue'], (float) $r['cogs'], $r['profit'], $r['margin_pct']];
+                $rows[] = [$r['local_name'], (float) $r['units'], (float) $r['revenue'], (float) $r['cogs'], $r['profit'], $r['margin_pct']];
             }
             return $rows;
         });
@@ -61,12 +61,12 @@ class ReportController extends Controller
         $data = $this->reports->stockLevels($statusFilter);
         $payload = array_merge($data, ['status_filter' => $statusFilter]);
 
-        return $this->respond($request, 'reports.stock-levels', $payload, 'Inventory Stock Levels', function () use ($data) {
-            $rows = [['Product', 'SKU', 'Stock', 'Min', 'Unit', 'Cost', 'Retail', 'Cost Value', 'Retail Value', 'Status']];
+        return $this->respond($request, 'reports.stock-levels', $payload, 'stock_levels', function () use ($data) {
+            $rows = [$this->headings('product', 'sku', 'stock', 'min', 'unit', 'cost', 'retail', 'cost_value', 'retail_value', 'status')];
             foreach ($data['rows'] as $r) {
-                $rows[] = [$r['name'], $r['sku'], (float) $r['stock_qty'], (float) $r['min_stock'], $r['unit'], (float) $r['cost_usd'], (float) $r['price_usd'], $r['stock_value_cost'], $r['stock_value_retail'], $r['status']];
+                $rows[] = [$r['local_name'], $r['sku'], (float) $r['stock_qty'], (float) $r['min_stock'], $r['unit'], (float) $r['cost_usd'], (float) $r['price_usd'], $r['stock_value_cost'], $r['stock_value_retail'], $r['status']];
             }
-            $rows[] = ['Totals', '', '', '', '', '', '', $data['totals']['value_cost'], $data['totals']['value_retail'], ''];
+            $rows[] = [__('reports.cols.totals'), '', '', '', '', '', '', $data['totals']['value_cost'], $data['totals']['value_retail'], ''];
             return $rows;
         });
     }
@@ -77,18 +77,18 @@ class ReportController extends Controller
         $data = $this->reports->profitLoss($from, $to);
         $payload = array_merge($data, ['from' => $from, 'to' => $to]);
 
-        return $this->respond($request, 'reports.pnl', $payload, 'Profit & Loss', function () use ($data) {
+        return $this->respond($request, 'reports.pnl', $payload, 'pnl', function () use ($data) {
             return [
-                ['Line', 'Amount (USD)'],
-                ['Gross Revenue', $data['gross_revenue']],
-                ['Discounts', -$data['discounts']],
-                ['Tax Collected', $data['tax_collected']],
-                ['Net Revenue (incl. tax)', $data['net_revenue']],
-                ['Revenue ex-VAT', $data['ex_vat_revenue']],
-                ['COGS', -$data['cogs']],
-                ['Gross Profit', $data['gross_profit']],
-                ['Margin %', $data['margin_pct']],
-                ['Transactions', $data['txn_count']],
+                [__('reports.pnl.line'), __('reports.pnl.amount_usd')],
+                [__('reports.pnl.gross_revenue'), $data['gross_revenue']],
+                [__('reports.pnl.discounts'), -$data['discounts']],
+                [__('reports.pnl.tax_collected'), $data['tax_collected']],
+                [__('reports.pnl.net_revenue'), $data['net_revenue']],
+                [__('reports.pnl.ex_vat_revenue'), $data['ex_vat_revenue']],
+                [__('reports.pnl.cogs'), -$data['cogs']],
+                [__('reports.pnl.gross_profit'), $data['gross_profit']],
+                [__('reports.cols.margin_pct'), $data['margin_pct']],
+                [__('reports.cols.transactions'), $data['txn_count']],
             ];
         });
     }
@@ -100,9 +100,18 @@ class ReportController extends Controller
         return [$from, $to];
     }
 
-    private function respond(Request $request, string $view, array $payload, string $title, \Closure $exportRows): View|Response
+    /** Export column headings in the current UI language. */
+    private function headings(string ...$keys): array
+    {
+        return array_map(fn ($k) => __("reports.cols.$k"), $keys);
+    }
+
+    private function respond(Request $request, string $view, array $payload, string $titleKey, \Closure $exportRows): View|Response
     {
         $format = $request->query('format');
+        $title = __("reports.titles.$titleKey");
+        // The file name stays ASCII whatever language the UI is in.
+        $filename = \Illuminate\Support\Str::slug(__("reports.titles.$titleKey", [], 'en'));
 
         // TODO(demo-decision): exports are OFF in demo builds pending Mouhamad's
         // call — the alternative is keeping them working but watermarking the
@@ -115,7 +124,7 @@ class ReportController extends Controller
 
         if ($format === 'pdf') {
             $pdf = Pdf::loadView($view . '-pdf', $payload + ['title' => $title]);
-            return $pdf->download(\Illuminate\Support\Str::slug($title) . '-' . now()->format('Ymd-His') . '.pdf');
+            return $pdf->download($filename . '-' . now()->format('Ymd-His') . '.pdf');
         }
 
         if ($format === 'xlsx') {
@@ -127,7 +136,7 @@ class ReportController extends Controller
             };
             // Extension is picked by what this runtime can write — the packaged
             // app has no ext-xmlwriter and cannot produce .xlsx at all.
-            return Spreadsheet::download($export, \Illuminate\Support\Str::slug($title) . '-' . now()->format('Ymd-His'));
+            return Spreadsheet::download($export, $filename . '-' . now()->format('Ymd-His'));
         }
 
         return view($view, $payload + ['title' => $title]);

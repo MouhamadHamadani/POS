@@ -59,7 +59,7 @@ class ReturnController extends Controller
         if (in_array($sale->status, [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED], true)) {
             abort(403, 'This sale cannot be returned (voided / on hold / fully refunded).');
         }
-        $sale->load('items.product:id,name,sku,track_stock', 'customer');
+        $sale->load('items.product:id,name,name_ar,sku,track_stock', 'customer');
         return view('returns.create', compact('sale'));
     }
 
@@ -175,7 +175,7 @@ class ReturnController extends Controller
 
     public function show(ReturnTransaction $return): View
     {
-        $return->load('sale.customer', 'items.product:id,name,sku', 'user:id,name', 'approver:id,name');
+        $return->load('sale.customer', 'items.product:id,name,name_ar,sku', 'user:id,name', 'approver:id,name');
         return view('returns.show', ['return' => $return]);
     }
 

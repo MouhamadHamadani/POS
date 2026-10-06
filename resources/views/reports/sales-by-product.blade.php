@@ -8,26 +8,26 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                     <tr>
-                        <th class="p-3 text-left">Product</th>
-                        <th class="p-3 text-right">Units</th>
-                        <th class="p-3 text-right">Revenue (ex-VAT)</th>
-                        <th class="p-3 text-right">COGS</th>
-                        <th class="p-3 text-right">Profit</th>
-                        <th class="p-3 text-right">Margin %</th>
+                        <th class="p-3 text-left">{{ __('dashboard.product') }}</th>
+                        <th class="p-3 text-right">{{ __('reports.cols.units') }}</th>
+                        <th class="p-3 text-right">{{ __('reports.cols.revenue_ex_vat') }}</th>
+                        <th class="p-3 text-right">{{ __('reports.cols.cogs') }}</th>
+                        <th class="p-3 text-right">{{ __('reports.cols.profit') }}</th>
+                        <th class="p-3 text-right">{{ __('reports.cols.margin_pct') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
                 @forelse ($rows as $r)
                     <tr>
-                        <td class="p-3">{{ $r['product_name'] }}</td>
-                        <td class="p-3 text-right">{{ rtrim(rtrim(number_format((float) $r['units'], 4, '.', ''), '0'), '.') }}</td>
-                        <td class="p-3 text-right">${{ number_format((float) $r['revenue'], 2) }}</td>
-                        <td class="p-3 text-right text-gray-500">${{ number_format((float) $r['cogs'], 2) }}</td>
-                        <td class="p-3 text-right font-medium {{ $r['profit'] > 0 ? 'text-success' : 'text-danger' }}">${{ number_format((float) $r['profit'], 2) }}</td>
-                        <td class="p-3 text-right">{{ number_format($r['margin_pct'], 1) }}%</td>
+                        <td class="p-3">{{ $r['local_name'] ?? $r['product_name'] }}</td>
+                        <td class="p-3 text-right"><x-ltr>{{ rtrim(rtrim(number_format((float) $r['units'], 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                        <td class="p-3 text-right"><x-ltr>${{ number_format((float) $r['revenue'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-right text-gray-500"><x-ltr>${{ number_format((float) $r['cogs'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-right font-medium {{ $r['profit'] > 0 ? 'text-success' : 'text-danger' }}"><x-ltr>${{ number_format((float) $r['profit'], 2) }}</x-ltr></td>
+                        <td class="p-3 text-right"><x-ltr>{{ number_format($r['margin_pct'], 1) }}%</x-ltr></td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="p-10 text-center text-gray-500">No product sales in this range.</td></tr>
+                    <tr><td colspan="6" class="p-10 text-center text-gray-500">{{ __('reports.no_product_sales') }}</td></tr>
                 @endforelse
                 </tbody>
             </table>

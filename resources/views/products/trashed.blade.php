@@ -27,9 +27,9 @@
                     @forelse ($products as $p)
                         <tr class="hover:bg-gray-50">
                             <td class="p-3">
-                                <div class="font-medium text-gray-900">{{ $p->name }}</div>
-                                @if ($p->name_ar)
-                                    <div class="text-xs text-gray-500" dir="rtl">{{ $p->name_ar }}</div>
+                                <div class="font-medium text-gray-900">{{ $p->localName() }}</div>
+                                @if ($p->name_ar && $p->name_ar !== $p->name)
+                                    <div class="text-xs text-gray-500" dir="{{ app()->getLocale() === 'ar' ? 'ltr' : 'rtl' }}">{{ app()->getLocale() === 'ar' ? $p->name : $p->name_ar }}</div>
                                 @endif
                             </td>
                             {{-- Codes stay LTR: an Arabic page must not reorder a barcode's digits. --}}
@@ -47,7 +47,7 @@
                                     <span class="text-gray-400">{{ __('products.trashed.unknown_code') }}</span>
                                 @endif
                             </td>
-                            <td class="p-3 text-gray-700">{{ $p->category?->name ?? '—' }}</td>
+                            <td class="p-3 text-gray-700">{{ $p->category?->localName() ?? '—' }}</td>
                             <td class="p-3 text-gray-600 text-xs" dir="ltr">{{ $p->deleted_at?->format('Y-m-d H:i') }}</td>
                         </tr>
                     @empty

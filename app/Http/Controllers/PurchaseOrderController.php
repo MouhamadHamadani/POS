@@ -39,7 +39,7 @@ class PurchaseOrderController extends Controller
         $products = Product::with('tax:id,rate')
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'sku', 'cost_usd', 'unit', 'tax_id', 'stock_qty']);
+            ->get(['id', 'name', 'name_ar', 'sku', 'cost_usd', 'unit', 'tax_id', 'stock_qty']);
 
         return view('purchases.form', [
             'po' => new PurchaseOrder([
@@ -80,7 +80,7 @@ class PurchaseOrderController extends Controller
 
     public function show(PurchaseOrder $purchase): View
     {
-        $purchase->load('supplier', 'user:id,name', 'items.product:id,name,sku,unit,stock_qty');
+        $purchase->load('supplier', 'user:id,name', 'items.product:id,name,name_ar,sku,unit,stock_qty');
         return view('purchases.show', ['po' => $purchase]);
     }
 
@@ -89,9 +89,9 @@ class PurchaseOrderController extends Controller
         if (!in_array($purchase->status, ['draft', 'sent'], true)) {
             abort(403, 'This PO can no longer be edited.');
         }
-        $purchase->load('items.product:id,name,sku,unit,cost_usd,tax_id');
+        $purchase->load('items.product:id,name,name_ar,sku,unit,cost_usd,tax_id');
         $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
-        $products = Product::with('tax:id,rate')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'sku', 'cost_usd', 'unit', 'tax_id', 'stock_qty']);
+        $products = Product::with('tax:id,rate')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'name_ar', 'sku', 'cost_usd', 'unit', 'tax_id', 'stock_qty']);
         return view('purchases.form', [
             'po' => $purchase,
             'items' => $purchase->items,
