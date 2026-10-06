@@ -25,7 +25,7 @@ class RequiresSetup
         // request. Cache it if it ever shows up in a profile — but a stale
         // "users exist" flag would lock the owner out of setup, so it needs a
         // real invalidation story before it's worth the risk.
-        if (! $request->is('setup') && ! User::query()->exists()) {
+        if (! $request->is('setup', 'locale/*') && ! User::query()->exists()) {
             return redirect()->route('setup.show');
         }
 

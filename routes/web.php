@@ -4,6 +4,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DemoController;
 use App\Http\Controllers\HeldSaleController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
@@ -23,6 +24,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return redirect(auth()->check() ? '/pos' : '/login');
 });
+
+// Language switch. Outside the auth group: the login and setup screens need it.
+Route::get('/locale/{locale}', [LocaleController::class, 'switch'])
+    ->whereIn('locale', ['en', 'ar'])->name('locale.switch');
 
 // First-run provisioning. Self-closing: 404s once any account exists.
 Route::get('/setup', [SetupController::class, 'show'])->name('setup.show');

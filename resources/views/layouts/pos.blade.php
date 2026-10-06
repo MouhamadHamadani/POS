@@ -6,12 +6,9 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>LebaSouk{{ \App\Support\Demo::titleSuffix() }} — {{ $title ?? 'Sales' }}</title>
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|cairo:400,500,600,700&display=swap" rel="stylesheet" />
-
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased text-gray-900 bg-slate-100 h-screen overflow-hidden">
+    <body class="{{ app()->getLocale() === 'ar' ? 'font-arabic' : 'font-sans' }} antialiased text-gray-900 bg-slate-100 h-screen overflow-hidden">
         @php
             $user = auth()->user();
             $shift = $user ? \App\Models\Shift::where('user_id', $user->id)->where('status', 'open')->latest('opened_at')->first() : null;
@@ -58,6 +55,7 @@
                              class="absolute end-0 mt-1 w-44 bg-white text-gray-800 rounded-lg shadow-pop py-1 text-sm z-50">
                             <a href="{{ route('profile.edit') }}" class="block px-3 py-2 hover:bg-gray-100">Profile</a>
                             <a href="{{ route('dashboard') }}" class="block px-3 py-2 hover:bg-gray-100">Management</a>
+                            <div class="px-3 py-2"><x-lang-switch class="text-gray-600" /></div>
                             @if (\App\Support\Demo::enabled())
                                 <hr class="my-1">
                                 <form method="POST" action="{{ route('demo.reset') }}"

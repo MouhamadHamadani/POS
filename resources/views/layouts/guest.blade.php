@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,17 +7,15 @@
 
         <title>{{ config('app.name', 'LebaSouk') }}{{ \App\Support\Demo::titleSuffix() }}</title>
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans text-gray-900 antialiased">
+    <body class="{{ app()->getLocale() === 'ar' ? 'font-arabic' : 'font-sans' }} text-gray-900 antialiased">
         @includeWhen(\App\Support\Demo::enabled(), 'partials.demo-banner')
 
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
+        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 relative">
+            <x-lang-switch class="absolute top-3 end-4 text-gray-600" />
+
             <div>
                 <a href="/">
                     <x-application-logo class="w-20 h-20" />

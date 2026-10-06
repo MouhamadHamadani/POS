@@ -72,6 +72,8 @@
             </form>
         @endif
 
+        <x-lang-switch x-show="open" class="text-brand-200 px-1" />
+
         <a href="{{ route('profile.edit') }}"
            class="flex items-center gap-2 hover:text-accent-light"
            :title="open ? '' : '{{ $user?->name }}'">

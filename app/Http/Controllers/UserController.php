@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,7 +60,7 @@ class UserController extends Controller
     public function create(): View
     {
         return view('users.form', [
-            'user' => new User(['role' => 'cashier', 'language' => 'en', 'is_active' => true]),
+            'user' => new User(['role' => 'cashier', 'language' => Setting::get('language', 'en'), 'is_active' => true]),
             'isEdit' => false,
         ]);
     }

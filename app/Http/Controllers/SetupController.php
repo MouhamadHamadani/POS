@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,6 +46,10 @@ class SetupController extends Controller
             'max_discount_pct' => 100,
             'email_verified_at' => now(),
         ]);
+
+        // The language picked here is the store's default too: it is what the
+        // login screen and every new account start in.
+        Setting::set('language', $user->language, 'appearance');
 
         // No authenticated actor exists yet, so the owner is their own actor.
         AuditLog::record($user->id, 'setup', User::class, $user->id, null, [
