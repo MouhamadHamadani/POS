@@ -54,12 +54,12 @@
                                 @if ($c->company_name) <div class="text-xs text-gray-500">{{ $c->company_name }}</div>@endif
                             </td>
                             <td class="p-3 text-xs text-gray-700">@if ($c->phone)<x-ltr>{{ $c->phone }}</x-ltr>@else — @endif</td>
-                            <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ ucfirst($c->customer_group) }}</span></td>
+                            <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ $c->groupLabel() }}</span></td>
                             <td class="p-3 text-right {{ $c->balance > 0 ? 'text-danger font-bold' : 'text-gray-700' }}"><x-ltr>${{ number_format((float) $c->balance, 2) }}</x-ltr></td>
                             <td class="p-3 text-right"><x-ltr>${{ number_format((float) $c->credit_limit, 2) }}</x-ltr></td>
                             <td class="p-3 text-right">
                                 {{ __('customers.points', ['count' => number_format($c->loyalty_points)]) }}
-                                <span class="text-xs text-gray-500 ml-1">({{ ucfirst($c->loyalty_tier) }})</span>
+                                <span class="text-xs text-gray-500 ml-1">({{ $c->tierLabel() }})</span>
                             </td>
                             <td class="p-3 text-right text-xs">
                                 <a href="{{ route('customers.show', $c) }}" class="text-brand-600 hover:underline">{{ __('common.view') }}</a>

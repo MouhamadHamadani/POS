@@ -64,4 +64,9 @@ class Shift extends Model
     {
         return $this->status === self::STATUS_OPEN;
     }
+
+    public function statusLabel(): string
+    {
+        return \App\Support\EnumLabel::get('shift_status', $this->status);
+    }
 }

@@ -37,8 +37,8 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.role') }} *</label>
                     <select name="role" required class="w-full border-gray-300 rounded text-sm">
-                        @foreach (auth()->user()->isSuperAdmin() ? \App\Models\User::ROLES : \App\Models\User::STAFF_ROLES as $v => $l)
-                            <option value="{{ $v }}" @selected(old('role', $user->role) === $v)>{{ $l }}</option>
+                        @foreach (array_keys(auth()->user()->isSuperAdmin() ? \App\Models\User::ROLES : \App\Models\User::STAFF_ROLES) as $v)
+                            <option value="{{ $v }}" @selected(old('role', $user->role) === $v)>{{ \App\Support\EnumLabel::get('role', $v) }}</option>
                         @endforeach
                     </select>
                 </div>

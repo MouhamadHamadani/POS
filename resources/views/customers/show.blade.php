@@ -22,7 +22,7 @@
             <div class="bg-white rounded-lg shadow-card p-4">
                 <div class="text-xs text-gray-500">{{ __('customers.loyalty_points') }}</div>
                 <div class="text-2xl font-bold text-accent mt-1"><x-ltr>{{ number_format($customer->loyalty_points) }}</x-ltr></div>
-                <div class="text-xs text-gray-500 mt-1">{{ __('customers.tier') }}: {{ ucfirst($customer->loyalty_tier) }}</div>
+                <div class="text-xs text-gray-500 mt-1">{{ __('customers.tier') }}: {{ $customer->tierLabel() }}</div>
             </div>
             <div class="bg-white rounded-lg shadow-card p-4">
                 <div class="text-xs text-gray-500">{{ __('customers.lifetime_spend') }}</div>
@@ -31,7 +31,7 @@
             </div>
             <div class="bg-white rounded-lg shadow-card p-4">
                 <div class="text-xs text-gray-500">{{ __('customers.group') }}</div>
-                <div class="text-2xl font-bold text-gray-800 mt-1">{{ ucfirst($customer->customer_group) }}</div>
+                <div class="text-2xl font-bold text-gray-800 mt-1">{{ $customer->groupLabel() }}</div>
                 <div class="text-xs text-gray-500 mt-1">@if ($customer->phone)<x-ltr>{{ $customer->phone }}</x-ltr>@else {{ __('customers.no_phone') }} @endif</div>
             </div>
         </div>
@@ -80,7 +80,7 @@
                     <tbody class="divide-y">
                     @forelse ($loyalty as $lt)
                         <tr>
-                            <td class="py-2"><span class="text-xs px-2 py-0.5 rounded {{ $lt->points > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }}">{{ ucfirst($lt->type) }}</span></td>
+                            <td class="py-2"><span class="text-xs px-2 py-0.5 rounded {{ $lt->points > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }}">{{ $lt->typeLabel() }}</span></td>
                             <td class="text-right"><x-ltr>{{ $lt->points > 0 ? '+' : '' }}{{ $lt->points }}</x-ltr></td>
                             <td class="text-right text-gray-700"><x-ltr>{{ $lt->balance_after }}</x-ltr></td>
                             <td class="text-right text-gray-500">{{ $lt->created_at->diffForHumans() }}</td>
@@ -103,9 +103,9 @@
                 @forelse ($sales as $s)
                     <tr>
                         <td class="py-2 font-mono text-xs"><x-ltr>{{ $s->receipt_number }}</x-ltr></td>
-                        <td class="text-xs">{{ $s->payment_method }}</td>
+                        <td class="text-xs">{{ $s->paymentMethodLabel() }}</td>
                         <td class="text-right font-medium"><x-ltr>${{ number_format((float) $s->total_usd, 2) }}</x-ltr></td>
-                        <td class="text-right text-xs">{{ $s->status }}</td>
+                        <td class="text-right text-xs">{{ $s->statusLabel() }}</td>
                         <td class="text-right text-gray-500">{{ $s->created_at->diffForHumans() }}</td>
                     </tr>
                 @empty

@@ -51,10 +51,10 @@
                     <tr class="hover:bg-gray-50">
                         <td class="p-3"><a href="{{ route('returns.show', $r) }}" class="font-mono text-xs text-brand-700 hover:underline"><x-ltr>{{ $r->return_number }}</x-ltr></a></td>
                         <td class="p-3 font-mono text-xs text-gray-600">@if ($r->sale?->receipt_number)<x-ltr>{{ $r->sale->receipt_number }}</x-ltr>@else — @endif</td>
-                        <td class="p-3 text-xs">{{ ucfirst(str_replace('_', ' ', $r->reason)) }}</td>
-                        <td class="p-3 text-xs">{{ str_replace('_', ' ', $r->refund_method) }}</td>
+                        <td class="p-3 text-xs">{{ $r->reasonLabel() }}</td>
+                        <td class="p-3 text-xs">{{ $r->refundMethodLabel() }}</td>
                         <td class="p-3 text-right font-medium"><x-ltr>${{ number_format((float) $r->refund_amount_usd, 2) }}</x-ltr></td>
-                        <td class="p-3 text-center"><span class="text-xs px-2 py-0.5 rounded {{ $statusClass }}">{{ ucfirst($r->status) }}</span></td>
+                        <td class="p-3 text-center"><span class="text-xs px-2 py-0.5 rounded {{ $statusClass }}">{{ $r->statusLabel() }}</span></td>
                         <td class="p-3 text-right text-xs text-gray-500">{{ $r->created_at->diffForHumans() }}</td>
                     </tr>
                 @empty

@@ -65,4 +65,14 @@ class Customer extends Model
     {
         return ($this->balance + $amount) <= $this->credit_limit;
     }
+
+    public function groupLabel(): string
+    {
+        return \App\Support\EnumLabel::get('customer_group', $this->customer_group);
+    }
+
+    public function tierLabel(): string
+    {
+        return \App\Support\EnumLabel::get('loyalty_tier', $this->loyalty_tier);
+    }
 }

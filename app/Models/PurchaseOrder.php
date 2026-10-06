@@ -48,4 +48,9 @@ class PurchaseOrder extends Model
     {
         return $this->hasMany(PurchaseOrderItem::class);
     }
+
+    public function statusLabel(): string
+    {
+        return \App\Support\EnumLabel::get('purchase_status', $this->status);
+    }
 }

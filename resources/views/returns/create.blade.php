@@ -17,7 +17,7 @@
             <div><dt class="text-xs text-gray-500">{{ __('returns.sold_to') }}</dt><dd class="font-medium">{{ $sale->customer?->name ?? __('returns.walk_in') }}</dd></div>
             <div><dt class="text-xs text-gray-500">{{ __('returns.sold_on') }}</dt><dd><x-ltr>{{ $sale->created_at->format('Y-m-d H:i') }}</x-ltr></dd></div>
             <div><dt class="text-xs text-gray-500">{{ __('returns.original_total') }}</dt><dd class="font-medium"><x-ltr>${{ number_format((float) $sale->total_usd, 2) }}</x-ltr></dd></div>
-            <div><dt class="text-xs text-gray-500">{{ __('common.status') }}</dt><dd>{{ ucfirst(str_replace('_', ' ', $sale->status)) }}</dd></div>
+            <div><dt class="text-xs text-gray-500">{{ __('common.status') }}</dt><dd>{{ $sale->statusLabel() }}</dd></div>
         </div>
 
         <form method="POST" action="{{ route('returns.store', $sale) }}" class="space-y-4">

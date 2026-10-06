@@ -97,7 +97,7 @@
                                     ])>
                                         <x-ltr>{{ rtrim(rtrim(number_format((float) $p->stock_qty, 4, '.', ''), '0'), '.') }}</x-ltr>
                                     </span>
-                                    <span class="text-gray-400 text-xs">{{ $p->unit }}</span>
+                                    <span class="text-gray-400 text-xs">{{ \App\Support\EnumLabel::get('unit', $p->unit) }}</span>
                                 @else
                                     <span class="text-xs text-gray-400">∞</span>
                                 @endif

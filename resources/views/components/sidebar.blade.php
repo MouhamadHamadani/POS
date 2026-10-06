@@ -82,7 +82,7 @@
             </div>
             <div x-show="open" class="overflow-hidden">
                 <div class="font-medium truncate">{{ $user?->name }}</div>
-                <div class="text-brand-300 truncate">{{ \App\Models\User::ROLES[$role] ?? ucfirst($role ?? '') }}</div>
+                <div class="text-brand-300 truncate">{{ $user?->roleLabel() }}</div>
             </div>
         </a>
         <form method="POST" action="{{ route('logout') }}">

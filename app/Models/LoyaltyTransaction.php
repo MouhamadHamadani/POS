@@ -34,4 +34,9 @@ class LoyaltyTransaction extends Model
     {
         return $this->belongsTo(Sale::class);
     }
+
+    public function typeLabel(): string
+    {
+        return \App\Support\EnumLabel::get('loyalty_type', $this->type);
+    }
 }

@@ -164,4 +164,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(Shift::class)->where('status', 'open')->latestOfMany();
     }
+
+    public function roleLabel(): string
+    {
+        return \App\Support\EnumLabel::get('role', $this->role);
+    }
 }

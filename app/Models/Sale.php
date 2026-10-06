@@ -81,4 +81,14 @@ class Sale extends Model
     {
         return $this->hasMany(ReturnTransaction::class, 'sale_id');
     }
+
+    public function statusLabel(): string
+    {
+        return \App\Support\EnumLabel::get('sale_status', $this->status);
+    }
+
+    public function paymentMethodLabel(): string
+    {
+        return \App\Support\EnumLabel::get('payment_method', $this->payment_method);
+    }
 }

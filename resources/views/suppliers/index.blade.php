@@ -44,7 +44,7 @@
                             </td>
                             <td class="p-3 text-xs">{{ $sp->contact_person ?? '—' }}</td>
                             <td class="p-3 text-xs text-gray-700">@if ($sp->phone)<x-ltr>{{ $sp->phone }}</x-ltr>@else — @endif</td>
-                            <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ $sp->payment_terms }}</span></td>
+                            <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ \App\Support\EnumLabel::get('payment_terms', $sp->payment_terms) }}</span></td>
                             <td class="p-3 text-right {{ $sp->balance > 0 ? 'text-warning font-bold' : 'text-gray-700' }}"><x-ltr>${{ number_format((float) $sp->balance, 2) }}</x-ltr></td>
                             <td class="p-3 text-right text-xs">
                                 <a href="{{ route('suppliers.show', $sp) }}" class="text-brand-600 hover:underline">{{ __('common.view') }}</a>

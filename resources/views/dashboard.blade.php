@@ -75,7 +75,7 @@
                     @forelse ($low as $p)
                         <tr>
                             <td class="py-2">{{ $p->localName() }}</td>
-                            <td class="text-right {{ $p->stock_qty <= 0 ? 'text-danger font-bold' : 'text-warning font-medium' }}"><x-ltr>{{ rtrim(rtrim(number_format((float) $p->stock_qty, 4, '.', ''), '0'), '.') }}</x-ltr> {{ $p->unit }}</td>
+                            <td class="text-right {{ $p->stock_qty <= 0 ? 'text-danger font-bold' : 'text-warning font-medium' }}"><x-ltr>{{ rtrim(rtrim(number_format((float) $p->stock_qty, 4, '.', ''), '0'), '.') }}</x-ltr> {{ \App\Support\EnumLabel::get('unit', $p->unit) }}</td>
                             <td class="text-right text-gray-500"><x-ltr>{{ rtrim(rtrim(number_format((float) $p->min_stock, 4, '.', ''), '0'), '.') }}</x-ltr></td>
                             <td class="text-right"><a href="{{ route('products.edit', $p) }}" class="text-accent text-xs">{{ __('dashboard.reorder') }}</a></td>
                         </tr>

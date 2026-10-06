@@ -51,4 +51,19 @@ class ReturnTransaction extends Model
     {
         return $this->hasMany(ReturnItem::class, 'return_id');
     }
+
+    public function statusLabel(): string
+    {
+        return \App\Support\EnumLabel::get('return_status', $this->status);
+    }
+
+    public function reasonLabel(): string
+    {
+        return \App\Support\EnumLabel::get('return_reason', $this->reason);
+    }
+
+    public function refundMethodLabel(): string
+    {
+        return \App\Support\EnumLabel::get('refund_method', $this->refund_method);
+    }
 }

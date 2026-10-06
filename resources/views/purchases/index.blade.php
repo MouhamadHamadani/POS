@@ -61,7 +61,7 @@
                     <tr class="hover:bg-gray-50">
                         <td class="p-3"><a href="{{ route('purchases.show', $po) }}" class="font-mono text-xs text-brand-700 hover:underline"><x-ltr>{{ $po->po_number }}</x-ltr></a></td>
                         <td class="p-3">{{ $po->supplier?->name ?? '—' }}</td>
-                        <td class="p-3"><span class="px-2 py-0.5 rounded text-xs {{ $color }}">{{ ucfirst($po->status) }}</span></td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded text-xs {{ $color }}">{{ $po->statusLabel() }}</span></td>
                         <td class="p-3 text-right font-medium"><x-ltr>${{ number_format((float) $po->total_usd, 2) }}</x-ltr></td>
                         <td class="p-3 text-right text-xs text-gray-500">@if ($po->expected_at)<x-ltr>{{ $po->expected_at->format('Y-m-d') }}</x-ltr>@else — @endif</td>
                         <td class="p-3 text-right text-xs text-gray-500">{{ $po->created_at->diffForHumans() }}</td>

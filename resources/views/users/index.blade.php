@@ -25,8 +25,8 @@
                     <label class="block text-xs text-gray-500">{{ __('users.role') }}</label>
                     <select name="role" class="border-gray-300 rounded text-sm">
                         <option value="">{{ __('common.all') }}</option>
-                        @foreach (\App\Models\User::ROLES as $v => $l)
-                            <option value="{{ $v }}" @selected(request('role') === $v)>{{ $l }}</option>
+                        @foreach (array_keys(\App\Models\User::ROLES) as $v)
+                            <option value="{{ $v }}" @selected(request('role') === $v)>{{ \App\Support\EnumLabel::get('role', $v) }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -54,7 +54,7 @@
                             <td class="p-3">{{ $u->name }}</td>
                             <td class="p-3 font-mono text-xs"><x-ltr>{{ $u->username }}</x-ltr></td>
                             <td class="p-3 text-xs">@if ($u->email)<x-ltr>{{ $u->email }}</x-ltr>@else — @endif</td>
-                            <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ \App\Models\User::ROLES[$u->role] ?? ucfirst($u->role) }}</span></td>
+                            <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-brand-100 text-brand-700">{{ $u->roleLabel() }}</span></td>
                             <td class="p-3 uppercase text-xs">{{ $u->language }}</td>
                             <td class="p-3 text-xs text-gray-500">{{ $u->last_login_at?->diffForHumans() ?? '—' }}</td>
                             <td class="p-3 text-center">

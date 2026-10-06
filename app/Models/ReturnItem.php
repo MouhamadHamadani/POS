@@ -35,4 +35,9 @@ class ReturnItem extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function conditionLabel(): string
+    {
+        return \App\Support\EnumLabel::get('item_condition', $this->condition);
+    }
 }

@@ -64,7 +64,7 @@
                     <tr>
                         <td class="p-3">{{ $r['local_name'] ?? $r['name'] }}</td>
                         <td class="p-3 text-xs text-gray-500"><x-ltr>{{ $r['sku'] }}</x-ltr></td>
-                        <td class="p-3 text-right"><x-ltr>{{ rtrim(rtrim(number_format((float) $r['stock_qty'], 4, '.', ''), '0'), '.') }}</x-ltr> {{ $r['unit'] }}</td>
+                        <td class="p-3 text-right"><x-ltr>{{ rtrim(rtrim(number_format((float) $r['stock_qty'], 4, '.', ''), '0'), '.') }}</x-ltr> {{ \App\Support\EnumLabel::get('unit', $r['unit']) }}</td>
                         <td class="p-3 text-right text-gray-500"><x-ltr>{{ rtrim(rtrim(number_format((float) $r['min_stock'], 4, '.', ''), '0'), '.') }}</x-ltr></td>
                         <td class="p-3 text-right text-xs"><x-ltr>${{ number_format((float) $r['cost_usd'], 4) }}</x-ltr></td>
                         <td class="p-3 text-right"><x-ltr>${{ number_format((float) $r['stock_value_cost'], 2) }}</x-ltr></td>

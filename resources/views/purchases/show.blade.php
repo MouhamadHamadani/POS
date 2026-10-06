@@ -14,7 +14,7 @@
                         default => 'bg-gray-100 text-gray-700',
                     };
                 @endphp
-                <span class="ml-2 text-xs px-2 py-0.5 rounded {{ $color }}">{{ ucfirst($po->status) }}</span>
+                <span class="ml-2 text-xs px-2 py-0.5 rounded {{ $color }}">{{ $po->statusLabel() }}</span>
             </h2>
             <div class="flex gap-2">
                 @if (in_array($po->status, ['draft','sent']))

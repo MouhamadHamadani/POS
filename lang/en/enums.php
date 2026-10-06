@@ -21,6 +21,9 @@ return [
         'bank_transfer' => 'Bank transfer',
         'other' => 'Other',
         'cheque' => 'Cheque',
+        'mixed' => 'Mixed',
+        'credit' => 'On account',
+        'split' => 'Split',
     ],
     'purchase_status' => [
         'draft' => 'Draft',
@@ -75,5 +78,38 @@ return [
         'off' => 'Off',
         'daily' => 'Daily',
         'weekly' => 'Weekly',
+    ],
+    'sale_status' => [
+        'completed' => 'Completed',
+        'voided' => 'Voided',
+        'refunded' => 'Refunded',
+        'partial_refund' => 'Partially refunded',
+        'on_hold' => 'On hold',
+    ],
+    'shift_status' => [
+        'open' => 'Open',
+        'closed' => 'Closed',
+    ],
+    'refund_method' => [
+        'cash_usd' => 'Cash (USD)',
+        'cash_lbp' => 'Cash (LBP)',
+        'account' => 'Account credit',
+        'exchange' => 'Exchange',
+    ],
+    'item_condition' => [
+        'good' => 'Good',
+        'damaged' => 'Damaged',
+        'expired' => 'Expired',
+    ],
+    'loyalty_type' => [
+        'earn' => 'Earn',
+        'redeem' => 'Redeem',
+        'expire' => 'Expire',
+        'adjust' => 'Adjust',
+    ],
+    'loyalty_tier' => [
+        'bronze' => 'Bronze',
+        'silver' => 'Silver',
+        'gold' => 'Gold',
     ],
 ];

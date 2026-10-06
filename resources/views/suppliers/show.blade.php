@@ -18,7 +18,7 @@
             <div class="bg-white rounded-lg shadow-card p-4">
                 <div class="text-xs text-gray-500">{{ __('customers.outstanding_balance') }}</div>
                 <div class="text-2xl font-bold {{ $supplier->balance > 0 ? 'text-warning' : 'text-success' }} mt-1"><x-ltr>${{ number_format((float) $supplier->balance, 2) }}</x-ltr></div>
-                <div class="text-xs text-gray-500 mt-1">{{ __('suppliers.terms') }}: {{ $supplier->payment_terms }}</div>
+                <div class="text-xs text-gray-500 mt-1">{{ __('suppliers.terms') }}: {{ \App\Support\EnumLabel::get('payment_terms', $supplier->payment_terms) }}</div>
             </div>
             <div class="bg-white rounded-lg shadow-card p-4">
                 <div class="text-xs text-gray-500">{{ __('suppliers.lifetime_purchases') }}</div>
@@ -67,7 +67,7 @@
                 @forelse ($pos as $po)
                     <tr>
                         <td class="py-2 font-mono text-xs"><x-ltr>{{ $po->po_number }}</x-ltr></td>
-                        <td><span class="text-xs px-2 py-0.5 rounded bg-brand-100 text-brand-700">{{ ucfirst($po->status) }}</span></td>
+                        <td><span class="text-xs px-2 py-0.5 rounded bg-brand-100 text-brand-700">{{ $po->statusLabel() }}</span></td>
                         <td class="text-right font-medium"><x-ltr>${{ number_format((float) $po->total_usd, 2) }}</x-ltr></td>
                         <td class="text-right text-gray-500">@if ($po->expected_at)<x-ltr>{{ $po->expected_at->format('Y-m-d') }}</x-ltr>@else — @endif</td>
                         <td class="text-right text-xs"><a href="{{ route('purchases.show', $po) }}" class="text-brand-600">{{ __('common.view') }}</a></td>

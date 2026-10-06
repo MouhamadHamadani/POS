@@ -21,6 +21,9 @@ return [
         'bank_transfer' => 'تحويل مصرفي',
         'other' => 'أخرى',
         'cheque' => 'شيك',
+        'mixed' => 'مختلط',
+        'credit' => 'دَين',
+        'split' => 'مجزّأ',
     ],
     'purchase_status' => [
         'draft' => 'مسودة',
@@ -75,5 +78,38 @@ return [
         'off' => 'متوقف',
         'daily' => 'يومي',
         'weekly' => 'أسبوعي',
+    ],
+    'sale_status' => [
+        'completed' => 'مكتمل',
+        'voided' => 'ملغى',
+        'refunded' => 'مُسترد',
+        'partial_refund' => 'مُسترد جزئياً',
+        'on_hold' => 'معلّق',
+    ],
+    'shift_status' => [
+        'open' => 'مفتوحة',
+        'closed' => 'مغلقة',
+    ],
+    'refund_method' => [
+        'cash_usd' => 'نقداً (دولار)',
+        'cash_lbp' => 'نقداً (ل.ل.)',
+        'account' => 'رصيد في الحساب',
+        'exchange' => 'استبدال',
+    ],
+    'item_condition' => [
+        'good' => 'جيدة',
+        'damaged' => 'تالفة',
+        'expired' => 'منتهية الصلاحية',
+    ],
+    'loyalty_type' => [
+        'earn' => 'اكتساب',
+        'redeem' => 'استبدال',
+        'expire' => 'انتهاء',
+        'adjust' => 'تعديل',
+    ],
+    'loyalty_tier' => [
+        'bronze' => 'برونزي',
+        'silver' => 'فضي',
+        'gold' => 'ذهبي',
     ],
 ];
