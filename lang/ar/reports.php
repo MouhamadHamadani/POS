@@ -73,4 +73,9 @@ return [
         'gross_profit' => 'إجمالي الربح',
         'margin' => 'الهامش',
     ],
+    'pdf' => [
+        'generated_period' => 'أُنشئ في :time · الفترة من :from إلى :to',
+        'generated_products' => 'أُنشئ في :time · :count منتج',
+        'no_sales_period' => 'لا توجد مبيعات في هذه الفترة.',
+    ],
 ];

@@ -123,6 +123,7 @@ class ReportController extends Controller
         }
 
         if ($format === 'pdf') {
+            \App\Support\PdfText::ensureFontDirs();
             $pdf = Pdf::loadView($view . '-pdf', $payload + ['title' => $title]);
             return $pdf->download($filename . '-' . now()->format('Ymd-His') . '.pdf');
         }

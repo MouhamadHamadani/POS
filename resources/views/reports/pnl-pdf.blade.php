@@ -1,29 +1,32 @@
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8"><title>{{ $title }}</title>
-<style>body { font-family: DejaVu Sans, sans-serif; font-size: 11px; }
-h1 { font-size: 16px; color: #124F4A; margin: 0 0 4px; }
-.meta { color: #555; font-size: 10px; margin-bottom: 16px; }
-table { width: 100%; border-collapse: collapse; max-width: 500px; }
-td { padding: 8px 12px; border-bottom: 1px solid #eee; }
-.right { text-align: right; }
-.indent { padding-left: 24px; color: #555; }
-.heavy { font-weight: bold; background: #f5f7fa; border-top: 2px solid #124F4A; }
-.total { font-weight: bold; font-size: 14px; color: #124F4A; }</style>
-</head>
-<body>
-<h1>{{ $title }}</h1>
-<div class="meta">Generated {{ now()->format('Y-m-d H:i') }} · Period {{ $from->format('Y-m-d') }} to {{ $to->format('Y-m-d') }}</div>
+@extends('reports._pdf-layout', [
+    'maxWidth' => 500,
+    'meta' => __('reports.pdf.generated_period', ['time' => now()->format('Y-m-d H:i'), 'from' => $from->format('Y-m-d'), 'to' => $to->format('Y-m-d')]),
+])
 
-<table>
-<tr><td>Gross Revenue</td><td class="right">${{ number_format($gross_revenue, 2) }}</td></tr>
-<tr><td class="indent">– Discounts</td><td class="right">${{ number_format($discounts, 2) }}</td></tr>
-<tr><td class="indent">+ Tax Collected</td><td class="right">${{ number_format($tax_collected, 2) }}</td></tr>
-<tr class="heavy"><td>Net Revenue (incl. tax)</td><td class="right">${{ number_format($net_revenue, 2) }}</td></tr>
-<tr><td class="indent">– COGS</td><td class="right">${{ number_format($cogs, 2) }}</td></tr>
-<tr class="heavy"><td class="total">Gross Profit</td><td class="right total">${{ number_format($gross_profit, 2) }}</td></tr>
-<tr><td>Margin</td><td class="right">{{ number_format($margin_pct, 1) }}%</td></tr>
-<tr><td>Transactions</td><td class="right">{{ $txn_count }}</td></tr>
-</table>
-</body></html>
+@section('pdf-body')
+    @php
+        $rtl = app()->getLocale() === 'ar';
+        $money = fn ($v) => '$'.number_format((float) $v, 2);
+        // [label, amount, row class, label class]
+        $lines = [
+            [__('reports.pnl.gross_revenue'), $money($gross_revenue), '', ''],
+            ['– '.__('reports.pnl.discounts'), $money($discounts), '', 'indent'],
+            ['+ '.__('reports.pnl.tax_collected'), $money($tax_collected), '', 'indent'],
+            [__('reports.pnl.net_revenue'), $money($net_revenue), 'heavy', ''],
+            ['– '.__('reports.pnl.cogs'), $money($cogs), '', 'indent'],
+            [__('reports.pnl.gross_profit'), $money($gross_profit), 'heavy', 'big'],
+            [__('reports.pnl.margin'), number_format($margin_pct, 1).'%', '', ''],
+            [__('reports.cols.transactions'), $txn_count, '', ''],
+        ];
+    @endphp
+    <table>
+        @foreach ($lines as [$label, $amount, $rowClass, $labelClass])
+            @php $cells = [[$label, $labelClass, false], [$amount, $labelClass === 'big' ? 'big' : '', true]]; if ($rtl) { $cells = array_reverse($cells); } @endphp
+            <tr class="{{ $rowClass }}">
+                @foreach ($cells as [$text, $class, $isAmount])
+                    <td class="{{ $class }} {{ $isAmount ? 'num' : '' }}">@pdf($text)</td>
+                @endforeach
+            </tr>
+        @endforeach
+    </table>
+@endsection

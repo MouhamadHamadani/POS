@@ -8,6 +8,7 @@ use App\Support\ReleaseEnv;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -26,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
         // (Settings -> Permissions). Defined here so routes can use the built-in
         // `can:` middleware instead of a bespoke one.
         Gate::define('bulk-upload-products', fn (User $user) => $user->canBulkUploadProducts());
+
+        // @pdf($text): escaped text, Arabic shaped for dompdf (see App\Support\PdfText).
+        Blade::directive('pdf', fn (string $expression) => "<?php echo e(\\App\\Support\\PdfText::shape({$expression})); ?>");
 
         $this->guardReleaseBuilds();
         $this->repatchNativePhpBeforeBuild();

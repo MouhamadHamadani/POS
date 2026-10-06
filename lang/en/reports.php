@@ -73,4 +73,9 @@ return [
         'gross_profit' => 'Gross Profit',
         'margin' => 'Margin',
     ],
+    'pdf' => [
+        'generated_period' => 'Generated :time · Period :from to :to',
+        'generated_products' => 'Generated :time · :count products',
+        'no_sales_period' => 'No sales in this period.',
+    ],
 ];

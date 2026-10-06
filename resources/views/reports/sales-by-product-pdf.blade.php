@@ -1,33 +1,24 @@
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8"><title>{{ $title }}</title>
-<style>body { font-family: DejaVu Sans, sans-serif; font-size: 11px; }
-h1 { font-size: 16px; color: #124F4A; margin: 0 0 4px; }
-.meta { color: #555; font-size: 10px; margin-bottom: 12px; }
-table { width: 100%; border-collapse: collapse; }
-th { background: #124F4A; color: white; padding: 6px 8px; font-size: 10px; text-align: left; }
-td { padding: 6px 8px; border-bottom: 1px solid #eee; }
-.right { text-align: right; }</style>
-</head>
-<body>
-<h1>{{ $title }}</h1>
-<div class="meta">Generated {{ now()->format('Y-m-d H:i') }} · Period {{ $from->format('Y-m-d') }} to {{ $to->format('Y-m-d') }}</div>
-<table>
-<thead><tr><th>Product</th><th class="right">Units</th><th class="right">Revenue (ex-VAT)</th><th class="right">COGS</th><th class="right">Profit</th><th class="right">Margin %</th></tr></thead>
-<tbody>
-@forelse ($rows as $r)
-<tr>
-    <td>{{ $r['product_name'] }}</td>
-    <td class="right">{{ rtrim(rtrim(number_format((float) $r['units'], 4, '.', ''), '0'), '.') }}</td>
-    <td class="right">${{ number_format((float) $r['revenue'], 2) }}</td>
-    <td class="right">${{ number_format((float) $r['cogs'], 2) }}</td>
-    <td class="right">${{ number_format((float) $r['profit'], 2) }}</td>
-    <td class="right">{{ number_format($r['margin_pct'], 1) }}%</td>
-</tr>
-@empty
-<tr><td colspan="6" style="text-align:center; padding:20px;">No sales in this period.</td></tr>
-@endforelse
-</tbody>
-</table>
-</body></html>
+@extends('reports._pdf-layout', [
+    'meta' => __('reports.pdf.generated_period', ['time' => now()->format('Y-m-d H:i'), 'from' => $from->format('Y-m-d'), 'to' => $to->format('Y-m-d')]),
+])
+
+@section('pdf-body')
+    @php
+        $money = fn ($v) => '$'.number_format((float) $v, 2);
+        $cols = [
+            ['label' => __('dashboard.product'), 'num' => false],
+            ['label' => __('reports.cols.units'), 'num' => true],
+            ['label' => __('reports.cols.revenue_ex_vat'), 'num' => true],
+            ['label' => __('reports.cols.cogs'), 'num' => true],
+            ['label' => __('reports.cols.profit'), 'num' => true],
+            ['label' => __('reports.cols.margin_pct'), 'num' => true],
+        ];
+        $data = array_map(fn ($r) => [
+            $r['local_name'] ?? $r['product_name'],
+            rtrim(rtrim(number_format((float) $r['units'], 4, '.', ''), '0'), '.'),
+            $money($r['revenue']), $money($r['cogs']), $money($r['profit']),
+            number_format($r['margin_pct'], 1).'%',
+        ], $rows);
+    @endphp
+    @include('reports._pdf-table', ['cols' => $cols, 'data' => $data, 'empty' => __('reports.pdf.no_sales_period')])
+@endsection
