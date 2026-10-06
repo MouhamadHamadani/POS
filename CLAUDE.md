@@ -48,21 +48,45 @@ about this repo being read-only; they no longer apply.)
   allocation, tax-exempt). Change both together — `CartMathParityTest` runs the
   real JS through Node and fails if they drift.
 
-## i18n / RTL — current gap
+## i18n / RTL
 
-- `App\Http\Middleware\SetLocale` and a per-user `language` (`en`/`ar`) field
-  already drive `app()->getLocale()`, and the main layouts already set
-  `dir="rtl"` and load the Cairo Arabic font when locale is `ar`.
-- What's missing: there is **no `lang/en` or `lang/ar` translation catalog**
-  in this repo. All UI copy (buttons, labels, headings) is hardcoded English
-  text in the Blade views, not run through `__()`. Only user-entered
-  bilingual *data* (product `name_ar`, business `name_ar` on receipts)
-  actually renders in Arabic today.
-- When wiring up real Arabic support: extract hardcoded strings into
-  `lang/en/*.php` / `lang/ar/*.php` files (group by area, e.g. `pos.php`,
-  `products.php`, `settings.php`), swap Blade text for `__('group.key')`,
-  and verify RTL layout doesn't break (icons, alignment, number formatting
-  for LBP amounts should stay LTR even in an RTL page).
+The UI is fully bilingual (`en` / `ar`). Resolution order (`SetLocale`): the
+user's `language` -> the session (`/locale/{locale}`, used on login/setup) ->
+the store `language` setting -> `en`. Western digits (0-9) are used in both.
+
+- **Catalogs**: one file per area in `lang/en/` and `lang/ar/` (`nav`, `common`,
+  `pos`, `products`, `settings`, `reports`, `receipt`, `messages`, `enums`, ...), plus
+  `lang/{en,ar}.json` for the Breeze sentence keys and framework error pages.
+  Use `__('area.key', ['name' => ...])` with `:placeholders` and `trans_choice` for
+  plurals -- never concatenate translated fragments. A new string needs both
+  languages; `tests/Unit/LangParityTest.php` fails on a missing key, a mismatched
+  placeholder or an untranslated Arabic value, and
+  `tests/Unit/NoHardcodedStringsTest.php` fails on English text left in a view.
+  Arabic wording follows the glossary already in `lang/ar/*` (reuse the same word).
+- **Sell screen**: all strings live in `pos.ui` and are read with the Alpine `t()`
+  helper -- don't add a second JS i18n mechanism.
+- **Enum-ish values** (statuses, roles, reasons, payment methods...) are shown with
+  the model's `...Label()` / `App\Support\EnumLabel::get($group, $value)`, which reads
+  `enums.{group}.{value}` and falls back to a headline of the raw value. Keep badge
+  colours keyed on the raw value.
+- **Server messages** (flash, `ValidationException`, JSON errors) go through
+  `messages.*`. Error *keys* (`cart`, `payment`, `cart.N.discount`...) never change.
+  Audit-log descriptions stay English.
+- **Layout**: use Tailwind logical utilities (`text-start`, `ms-`/`me-`, `ps-`/`pe-`,
+  `start-`/`end-`, `border-s`, `rounded-s`, `space-x-* rtl:space-x-reverse`), flip
+  directional icons with `rtl:-scale-x-100`, and wrap amounts, quantities, SKUs,
+  barcodes, phone numbers, dates and document numbers in `<x-ltr>`. Numeric/code
+  inputs get `dir="ltr"`. Don't change `computeCart()` arithmetic for display reasons.
+- **Bilingual data**: `name` / `name_ar` + `localName()`; eager loads that feed a
+  screen must select `name_ar` too.
+- **Receipts** follow the store setting `receipt_language` (`en` | `ar` | `bilingual`),
+  not the cashier's UI language. Cairo ships in `public/fonts` (offline).
+- **PDF reports** (dompdf) can't shape Arabic: every string goes through `@pdf()`
+  (`App\Support\PdfText`, ar-php) and RTL tables emit columns in reverse. Amiri
+  ships in `resources/fonts`. Export filenames stay ASCII (slug of the English title).
+- **Fonts** (Inter, Cairo) come from `@fontsource` via Vite -- nothing loads from the
+  internet. Desktop menu labels come from `lang/*/native.php` using the store
+  language (applied at the next app restart).
 
 ## Testing
 
