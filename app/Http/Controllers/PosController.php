@@ -11,22 +11,31 @@ use Illuminate\View\View;
 
 class PosController extends Controller
 {
-    public function sell(): View
+    public function sell(Request $request): View
     {
+        $user = $request->user();
+
         $categories = Category::where('is_active', true)
             ->orderBy('sort_order')
             ->get(['id', 'name', 'name_ar', 'color', 'icon']);
 
+        $columns = [
+            'id', 'category_id', 'tax_id', 'barcode', 'sku',
+            'name', 'name_ar', 'image',
+            'price_usd', 'wholesale_price_usd', 'vip_price_usd',
+            'stock_qty', 'unit', 'type',
+            'is_taxable', 'allow_discount', 'track_stock',
+        ];
+        // Cost only goes to the browser of someone who may see margins; it
+        // powers the "below cost" warning on the sell screen.
+        if ($user->isManagerial()) {
+            $columns[] = 'cost_usd';
+        }
+
         $products = Product::with('tax:id,rate,is_inclusive')
             ->where('is_active', true)
             ->orderBy('name')
-            ->get([
-                'id', 'category_id', 'tax_id', 'barcode', 'sku',
-                'name', 'name_ar', 'image',
-                'price_usd', 'wholesale_price_usd', 'vip_price_usd',
-                'stock_qty', 'unit', 'type',
-                'is_taxable', 'allow_discount', 'track_stock',
-            ]);
+            ->get($columns);
 
         $exchangeRate = (float) Setting::get('exchange_rate', 90000);
         $lbpStep = (float) Setting::get('lbp_rounding_step', 1000);
@@ -37,6 +46,9 @@ class PosController extends Controller
             'exchangeRate' => $exchangeRate,
             'lbpStep' => $lbpStep,
             'autoPrint' => (bool) Setting::get('auto_print', false),
+            'canChangeTier' => $user->canChangePriceTier(),
+            'showCost' => $user->isManagerial(),
+            'maxDiscountPct' => $user->maxDiscountPct(),
             'business' => [
                 'name' => Setting::get('business_name', 'LebaSouk'),
             ],
@@ -61,7 +73,9 @@ class PosController extends Controller
             $q->where('category_id', (int) $cat);
         }
 
-        return response()->json($q->orderBy('name')->limit(100)->get());
+        return response()->json(
+            $q->orderBy('name')->limit(100)->get()->each(fn (Product $p) => $this->hideCostFrom($request, $p))
+        );
     }
 
     /**
@@ -103,6 +117,12 @@ class PosController extends Controller
         if (!$product) {
             return response()->json(['error' => 'Product not found'], 404);
         }
-        return response()->json($product);
+        return response()->json($this->hideCostFrom($request, $product));
+    }
+
+    /** Cashiers never receive cost data, not even through the lookup endpoints. */
+    private function hideCostFrom(Request $request, Product $product): Product
+    {
+        return $request->user()->isManagerial() ? $product : $product->makeHidden('cost_usd');
     }
 }

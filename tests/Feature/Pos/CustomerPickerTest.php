@@ -62,7 +62,7 @@ class CustomerPickerTest extends TestCase
     private function sellTo(?Customer $customer, array $payment = null): \Illuminate\Testing\TestResponse
     {
         return $this->actingAs($this->cashier)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $this->product->id, 'qty' => 1, 'unit_price' => 10.00]],
+            'cart' => [['product_id' => $this->product->id, 'qty' => 1]],
             'payment' => $payment ?? ['method' => 'cash_usd', 'amount_usd' => 11.10],
             'customer_id' => $customer?->id,
         ]);
@@ -97,7 +97,7 @@ class CustomerPickerTest extends TestCase
     public function test_an_unknown_customer_id_is_rejected(): void
     {
         $this->actingAs($this->cashier)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $this->product->id, 'qty' => 1, 'unit_price' => 10.00]],
+            'cart' => [['product_id' => $this->product->id, 'qty' => 1]],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 11.10],
             'customer_id' => 99999,
         ])->assertStatus(422);
@@ -210,7 +210,7 @@ class CustomerPickerTest extends TestCase
         $customer = $this->customer(['balance' => 12.50, 'loyalty_points' => 40]);
 
         $holdId = $this->actingAs($this->cashier)->postJson('/pos/api/holds', [
-            'cart' => [['product_id' => $this->product->id, 'qty' => 2, 'unit_price' => 10.00]],
+            'cart' => [['product_id' => $this->product->id, 'qty' => 2]],
             'customer_id' => $customer->id,
             'label' => 'Table 5',
         ])->assertCreated()->json('id');
@@ -229,7 +229,7 @@ class CustomerPickerTest extends TestCase
     public function test_recalling_a_hold_with_no_customer_returns_null(): void
     {
         $holdId = $this->actingAs($this->cashier)->postJson('/pos/api/holds', [
-            'cart' => [['product_id' => $this->product->id, 'qty' => 1, 'unit_price' => 10.00]],
+            'cart' => [['product_id' => $this->product->id, 'qty' => 1]],
         ])->assertCreated()->json('id');
 
         $this->actingAs($this->cashier)->postJson("/pos/api/holds/{$holdId}/recall")
@@ -243,7 +243,7 @@ class CustomerPickerTest extends TestCase
         $customer = $this->customer();
 
         $holdId = $this->actingAs($this->cashier)->postJson('/pos/api/holds', [
-            'cart' => [['product_id' => $this->product->id, 'qty' => 1, 'unit_price' => 10.00]],
+            'cart' => [['product_id' => $this->product->id, 'qty' => 1]],
             'customer_id' => $customer->id,
         ])->assertCreated()->json('id');
 
@@ -252,7 +252,7 @@ class CustomerPickerTest extends TestCase
 
         // What the frontend would then send back from the restored chip.
         $saleId = $this->actingAs($this->cashier)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $this->product->id, 'qty' => 1, 'unit_price' => 10.00]],
+            'cart' => [['product_id' => $this->product->id, 'qty' => 1]],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 11.10],
             'customer_id' => $recalled->json('customer.id'),
         ])->assertCreated()->json('sale.id');

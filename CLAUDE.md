@@ -39,6 +39,14 @@ about this repo being read-only; they no longer apply.)
   `role:` route middleware (`App\Http\Middleware\RoleMiddleware`).
 - VAT and other tax rates are stored as `0..1` decimals, not percentages.
 - Business logic lives in `app/Services/*`, not in controllers.
+- Prices and discount limits are server-authoritative. `SaleService` prices every
+  line from `Product::priceForGroup($tier)` and never reads a price from the
+  request; the sell screen sends only a `price_tier`. Who may use which tier and
+  how much discount comes from `User::canChangePriceTier()` / `maxDiscountPct()`.
+- `SaleService::totalsFromCart()` and `computeCart()` in `pos/sell.blade.php` are
+  the same arithmetic in PHP and JS (per-line 4-dp rounding, cart-discount
+  allocation, tax-exempt). Change both together — `CartMathParityTest` runs the
+  real JS through Node and fails if they drift.
 
 ## i18n / RTL — current gap
 

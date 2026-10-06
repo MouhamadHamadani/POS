@@ -34,7 +34,7 @@ class RevenueReportTest extends TestCase
             'is_default' => true, 'is_active' => true,
         ]);
 
-        $this->cashier = User::factory()->create(['role' => User::ROLE_CASHIER]);
+        $this->cashier = User::factory()->create(['role' => User::ROLE_CASHIER, 'max_discount_pct' => 100]);
         $this->shift = Shift::create([
             'user_id' => $this->cashier->id, 'opened_at' => now(),
             'opening_cash_usd' => 0, 'opening_cash_lbp' => 0, 'status' => Shift::STATUS_OPEN,
@@ -65,16 +65,16 @@ class RevenueReportTest extends TestCase
         $sales = app(SaleService::class);
 
         $sales->process(
-            cart: [['product_id' => $this->rice->id, 'qty' => 3, 'unit_price' => 10.00]],
+            cart: [['product_id' => $this->rice->id, 'qty' => 3]],
             payment: ['method' => 'cash_usd', 'amount_usd' => 40.00],
-            userId: $this->cashier->id,
+            user: $this->cashier,
             shiftId: $this->shift->id,
         );
 
         $sales->process(
-            cart: [['product_id' => $this->oil->id, 'qty' => 1, 'unit_price' => 25.00, 'discount_amount' => 5.00]],
+            cart: [['product_id' => $this->oil->id, 'qty' => 1, 'discount_amount' => 5.00]],
             payment: ['method' => 'cash_usd', 'amount_usd' => 25.00],
-            userId: $this->cashier->id,
+            user: $this->cashier,
             shiftId: $this->shift->id,
         );
     }
@@ -164,9 +164,9 @@ class RevenueReportTest extends TestCase
         ]);
 
         app(SaleService::class)->process(
-            cart: [['product_id' => $inclusiveItem->id, 'qty' => 1, 'unit_price' => 111.00]],
+            cart: [['product_id' => $inclusiveItem->id, 'qty' => 1]],
             payment: ['method' => 'cash_usd', 'amount_usd' => 111.00],
-            userId: $this->cashier->id,
+            user: $this->cashier,
             shiftId: $this->shift->id,
         );
 

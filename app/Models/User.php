@@ -99,6 +99,31 @@ class User extends Authenticatable
         return $this->hasRole(self::ROLE_SUPER_ADMIN, self::ROLE_ADMIN, self::ROLE_MANAGER);
     }
 
+    /**
+     * Highest effective discount % (total line discount ÷ line gross) this user
+     * may give at the POS. Managerial roles are unlimited; everyone else gets
+     * their own cap, or the store default from Settings when theirs is 0.
+     * The one source for the sell screen and the server-side check.
+     */
+    public function maxDiscountPct(): float
+    {
+        if ($this->isManagerial()) {
+            return 100.0;
+        }
+
+        $own = (float) $this->max_discount_pct;
+
+        return $own > 0
+            ? $own
+            : (float) Setting::get('max_cashier_discount_pct', config('pos.pos.max_cashier_discount_pct'));
+    }
+
+    /** May this user pick a price list other than the attached customer's? */
+    public function canChangePriceTier(): bool
+    {
+        return $this->isManagerial() || (bool) Setting::get('cashier_can_change_price_tier', true);
+    }
+
     /** Roles that may only be created or edited by a super-admin. */
     public function isPrivileged(): bool
     {

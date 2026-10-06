@@ -13,7 +13,7 @@ class SaleItem extends Model
     protected $fillable = [
         'sale_id', 'product_id', 'product_variant_id',
         'product_name', 'product_sku',
-        'qty', 'unit_price_usd', 'cost_usd',
+        'qty', 'unit_price_usd', 'price_tier', 'cost_usd',
         'discount_pct', 'discount_amount_usd',
         'tax_rate', 'tax_amount_usd', 'line_total_usd',
         'is_taxable', 'is_returned', 'returned_qty', 'note',

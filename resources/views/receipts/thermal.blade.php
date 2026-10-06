@@ -52,6 +52,9 @@
         @if ($sale->customer)
             <strong>Customer:</strong> {{ $sale->customer->name }}<br>
         @endif
+        @if (($sale->price_tier ?? 'retail') !== 'retail')
+            <strong>{{ __('pos.receipt.price_list') }}:</strong> {{ __('pos.tier.' . $sale->price_tier) }}<br>
+        @endif
     </div>
     <hr>
 
@@ -76,7 +79,13 @@
     <hr>
     <table class="totals">
         <tr><td>Subtotal</td><td class="right">${{ number_format((float) $sale->subtotal_usd, 2) }}</td></tr>
-        @if ($sale->discount_amount_usd > 0)
+        @if ((float) $sale->cart_discount_usd > 0)
+            {{-- discount_amount_usd is every discount; the cart slice is already inside it, so split it, don't add. --}}
+            @if ((float) $sale->discount_amount_usd - (float) $sale->cart_discount_usd > 0.00005)
+                <tr><td>{{ __('pos.receipt.item_discounts') }}</td><td class="right">-${{ number_format((float) $sale->discount_amount_usd - (float) $sale->cart_discount_usd, 2) }}</td></tr>
+            @endif
+            <tr><td>{{ __('pos.receipt.cart_discount') }}</td><td class="right">-${{ number_format((float) $sale->cart_discount_usd, 2) }}</td></tr>
+        @elseif ($sale->discount_amount_usd > 0)
             <tr><td>Discount</td><td class="right">-${{ number_format((float) $sale->discount_amount_usd, 2) }}</td></tr>
         @endif
         @if ($sale->tax_amount_usd > 0)

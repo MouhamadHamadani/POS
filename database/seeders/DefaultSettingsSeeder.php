@@ -29,6 +29,7 @@ class DefaultSettingsSeeder extends Seeder
             ['pos', 'auto_print', '1', 'bool'],
             ['pos', 'require_shift', '1', 'bool'],
             ['pos', 'max_cashier_discount_pct', '10', 'float'],
+            ['pos', 'cashier_can_change_price_tier', '1', 'bool'],
             ['pos', 'idle_timeout_min', '30', 'int'],
             ['pos', 'pos_display_cost', '0', 'bool'],
             ['pos', 'require_customer_credit', '1', 'bool'],

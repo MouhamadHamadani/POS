@@ -33,7 +33,7 @@ class HoldRecallTest extends TestCase
         $response = $this->actingAs($user)->postJson('/pos/api/holds', [
             'label' => 'Table 5',
             'cart' => [
-                ['product_id' => $product->id, 'qty' => 2, 'unit_price' => 5.00],
+                ['product_id' => $product->id, 'qty' => 2],
             ],
         ]);
 
@@ -50,7 +50,7 @@ class HoldRecallTest extends TestCase
         $product = Product::factory()->create(['stock_qty' => 10]);
 
         $this->actingAs($user)->postJson('/pos/api/holds', [
-            'cart' => [['product_id' => $product->id, 'qty' => 3, 'unit_price' => 1]],
+            'cart' => [['product_id' => $product->id, 'qty' => 3]],
         ])->assertCreated();
 
         $this->assertSame('10.0000', (string) $product->fresh()->stock_qty);
@@ -65,12 +65,12 @@ class HoldRecallTest extends TestCase
         HeldSale::create([
             'user_id' => $alice->id,
             'label' => 'A',
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 1]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
         ]);
         HeldSale::create([
             'user_id' => $bob->id,
             'label' => 'B',
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 1]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
         ]);
 
         \App\Models\Shift::create([
@@ -95,7 +95,7 @@ class HoldRecallTest extends TestCase
         HeldSale::create([
             'user_id' => $cashier->id,
             'label' => 'Cashier hold',
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 1]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
         ]);
 
         \App\Models\Shift::create([
@@ -114,7 +114,7 @@ class HoldRecallTest extends TestCase
         $hold = HeldSale::create([
             'user_id' => $user->id,
             'cart' => [
-                ['product_id' => $product->id, 'qty' => 4, 'unit_price' => 2.50],
+                ['product_id' => $product->id, 'qty' => 4],
             ],
         ]);
 
@@ -141,7 +141,7 @@ class HoldRecallTest extends TestCase
 
         $hold = HeldSale::create([
             'user_id' => $bob->id,
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 1]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
         ]);
 
         $this->actingAs($alice)->postJson("/pos/api/holds/{$hold->id}/recall")
@@ -156,7 +156,7 @@ class HoldRecallTest extends TestCase
         $product = Product::factory()->create();
         $hold = HeldSale::create([
             'user_id' => $user->id,
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 1]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
         ]);
 
         $this->actingAs($user)->deleteJson("/pos/api/holds/{$hold->id}")->assertOk();
@@ -171,7 +171,7 @@ class HoldRecallTest extends TestCase
         for ($i = 1; $i <= 3; $i++) {
             $this->actingAs($user)->postJson('/pos/api/holds', [
                 'label' => "Hold {$i}",
-                'cart' => [['product_id' => $product->id, 'qty' => $i, 'unit_price' => 5]],
+                'cart' => [['product_id' => $product->id, 'qty' => $i]],
             ])->assertCreated();
         }
 

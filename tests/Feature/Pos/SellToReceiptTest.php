@@ -71,8 +71,8 @@ class SellToReceiptTest extends TestCase
         //   paid: card 20.00 + cash 40.00 -> cash due 35.50 -> change 4.50
         $response = $this->actingAs($cashier)->postJson('/pos/api/sales', [
             'cart' => [
-                ['product_id' => $widget->id, 'qty' => 3, 'unit_price' => 10.00],
-                ['product_id' => $gadget->id, 'qty' => 1, 'unit_price' => 25.00, 'discount_amount' => 5.00],
+                ['product_id' => $widget->id, 'qty' => 3],
+                ['product_id' => $gadget->id, 'qty' => 1, 'discount_amount' => 5.00],
             ],
             'payment' => [
                 'method' => 'split',
@@ -125,7 +125,7 @@ class SellToReceiptTest extends TestCase
         ]);
 
         $saleId = $this->actingAs($cashier)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $product->id, 'qty' => 2, 'unit_price' => 10.00]],
+            'cart' => [['product_id' => $product->id, 'qty' => 2]],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 30.00],
         ])->assertCreated()->json('sale.id');
 
@@ -154,7 +154,7 @@ class SellToReceiptTest extends TestCase
 
         // 50.00 net + 5.50 VAT = 55.50 charged to the card.
         $saleId = $this->actingAs($cashier)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 50.00]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
             'payment' => ['method' => 'card', 'amount_card' => 55.50, 'card_type' => 'Visa', 'card_reference' => '1234'],
         ])->assertCreated()->json('sale.id');
 
@@ -179,7 +179,7 @@ class SellToReceiptTest extends TestCase
         ]);
 
         $saleId = $this->actingAs($cashier)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 111.00]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 111.00],
         ])->assertCreated()->json('sale.id');
 
@@ -210,8 +210,8 @@ class SellToReceiptTest extends TestCase
         // exclusive line: 100.00 + 11.00 = 111.00; inclusive line: 111.00 flat.
         $saleId = $this->actingAs($cashier)->postJson('/pos/api/sales', [
             'cart' => [
-                ['product_id' => $exclusiveItem->id, 'qty' => 1, 'unit_price' => 100.00],
-                ['product_id' => $inclusiveItem->id, 'qty' => 1, 'unit_price' => 111.00],
+                ['product_id' => $exclusiveItem->id, 'qty' => 1],
+                ['product_id' => $inclusiveItem->id, 'qty' => 1],
             ],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 222.00],
         ])->assertCreated()->json('sale.id');
@@ -231,7 +231,7 @@ class SellToReceiptTest extends TestCase
         ]);
 
         $this->actingAs($cashier)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 10.00]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 5.00],
         ])->assertStatus(422);
 

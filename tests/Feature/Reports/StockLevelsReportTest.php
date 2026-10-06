@@ -49,7 +49,7 @@ class StockLevelsReportTest extends TestCase
             'opening_cash_usd' => 0, 'opening_cash_lbp' => 0, 'status' => Shift::STATUS_OPEN,
         ]);
         $this->actingAs($manager)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $rice->id, 'qty' => 5, 'unit_price' => 10.00]],
+            'cart' => [['product_id' => $rice->id, 'qty' => 5]],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 60.00],
         ])->assertCreated();
 

@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\Shift;
 use App\Services\SaleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SaleController extends Controller
 {
@@ -18,7 +20,7 @@ class SaleController extends Controller
             'cart' => 'required|array|min:1',
             'cart.*.product_id' => 'required|integer|exists:products,id',
             'cart.*.qty' => 'required|numeric|min:0.0001',
-            'cart.*.unit_price' => 'nullable|numeric|min:0',
+            // No cart.*.unit_price: the server prices every line (SaleService).
             'cart.*.discount_pct' => 'nullable|numeric|min:0|max:100',
             'cart.*.discount_amount' => 'nullable|numeric|min:0',
             'cart.*.note' => 'nullable|string|max:255',
@@ -33,6 +35,10 @@ class SaleController extends Controller
             'payment.card_reference' => 'nullable|string|max:100',
             'payment.loyalty_points_redeemed' => 'nullable|integer|min:0',
             'payment.change_usd_out' => 'nullable|numeric|min:0',
+
+            'price_tier' => ['nullable', Rule::in(Customer::GROUPS)],
+            'cart_discount_pct' => 'nullable|numeric|min:0|max:100',
+            'cart_discount_amount' => 'nullable|numeric|min:0',
 
             'customer_id' => 'nullable|integer|exists:customers,id',
             'notes' => 'nullable|string|max:1000',
@@ -56,16 +62,21 @@ class SaleController extends Controller
             $sale = $this->sales->process(
                 cart: $data['cart'],
                 payment: $payment,
-                userId: $request->user()->id,
+                user: $request->user(),
                 shiftId: $shift->id,
                 customerId: $data['customer_id'] ?? null,
                 notes: $data['notes'] ?? null,
+                priceTier: $data['price_tier'] ?? null,
+                cartDiscount: [
+                    'pct' => (float) ($data['cart_discount_pct'] ?? 0),
+                    'amount' => (float) ($data['cart_discount_amount'] ?? 0),
+                ],
             );
 
             return response()->json([
                 'success' => true,
                 'sale' => $sale->only([
-                    'id', 'receipt_number', 'subtotal_usd', 'discount_amount_usd',
+                    'id', 'receipt_number', 'price_tier', 'subtotal_usd', 'discount_amount_usd', 'cart_discount_usd',
                     'tax_amount_usd', 'total_usd', 'total_lbp',
                     'change_usd', 'change_lbp', 'payment_method',
                     'loyalty_points_earned',

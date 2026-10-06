@@ -77,6 +77,7 @@ class SettingController extends Controller
             'base_currency' => 'string', 'secondary_currency' => 'string',
             // pos
             'auto_print' => 'bool', 'require_shift' => 'bool', 'pos_display_cost' => 'bool',
+            'cashier_can_change_price_tier' => 'bool',
             'max_cashier_discount_pct' => 'float', 'idle_timeout_min' => 'int',
             // receipt
             'receipt_width' => 'int', 'paper_width_char' => 'int',
@@ -103,7 +104,7 @@ class SettingController extends Controller
 
         // Reset bool keys that weren't submitted (unchecked checkboxes)
         if ($group === 'pos') {
-            foreach (['auto_print', 'require_shift', 'pos_display_cost'] as $bk) {
+            foreach (['auto_print', 'require_shift', 'pos_display_cost', 'cashier_can_change_price_tier'] as $bk) {
                 if (!isset($data['settings'][$bk])) {
                     Setting::set($bk, '0', 'pos', 'bool');
                 }

@@ -47,7 +47,7 @@ class ShiftCloseTest extends TestCase
         ]);
 
         $id = $this->actingAs($cashier)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 50.00]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 100.00],
         ])->assertCreated()->json('sale.id');
 
@@ -107,7 +107,7 @@ class ShiftCloseTest extends TestCase
         // change 8.90 USD -> 801,000 LBP (8.90 * 90,000 = 801,000, on the step).
         $sale = Sale::findOrFail(
             $this->actingAs($cashier)->postJson('/pos/api/sales', [
-                'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 10.00]],
+                'cart' => [['product_id' => $product->id, 'qty' => 1]],
                 'payment' => ['method' => 'cash_usd', 'amount_usd' => 20.00, 'change_usd_out' => 0],
             ])->assertCreated()->json('sale.id')
         );
@@ -162,7 +162,7 @@ class ShiftCloseTest extends TestCase
 
         // ...and the sale endpoint refuses outright.
         $this->actingAs($cashier)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 5.00]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 5.00],
         ])->assertStatus(409);
 
@@ -174,7 +174,7 @@ class ShiftCloseTest extends TestCase
         ])->assertRedirect('/pos');
 
         $this->actingAs($cashier)->postJson('/pos/api/sales', [
-            'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 5.00]],
+            'cart' => [['product_id' => $product->id, 'qty' => 1]],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 5.00],
         ])->assertCreated();
     }

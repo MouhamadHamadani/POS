@@ -161,6 +161,10 @@
                             <input type="checkbox" name="settings[pos_display_cost]" value="1" @checked($get('pos_display_cost'))>
                             Show product cost to cashier
                         </label>
+                        <label class="text-sm flex items-center gap-2">
+                            <input type="checkbox" name="settings[cashier_can_change_price_tier]" value="1" @checked($get('cashier_can_change_price_tier', true))>
+                            {{ __('pos.settings.cashier_can_change_price_tier') }}
+                        </label>
                         <div>
                             <label class="block text-xs text-gray-500">Max cashier discount %</label>
                             <input type="number" step="0.01" min="0" max="100" name="settings[max_cashier_discount_pct]" value="{{ $get('max_cashier_discount_pct') }}" class="w-full border-gray-300 rounded text-sm" />

@@ -22,7 +22,7 @@
                             <input type="text" x-model="search" @input.debounce.250ms="filter()"
                                    placeholder="Search by name, SKU, or scan barcode + Enter"
                                    @keydown.enter="onBarcodeEnter($event)"
-                                   class="flex-1 border-gray-300 rounded-md text-sm" autofocus />
+                                   x-ref="search" class="flex-1 border-gray-300 rounded-md text-sm" autofocus />
                             <button type="button" @click="activeCategory=null;filter()"
                                     class="px-3 py-1 text-xs bg-gray-100 rounded">All</button>
                         </div>
@@ -50,7 +50,7 @@
                                         class="p-2 bg-white border rounded-lg hover:bg-brand-50 hover:border-brand-300 text-left disabled:opacity-40 disabled:cursor-not-allowed">
                                     <div class="text-xs font-medium text-gray-900 line-clamp-2" x-text="p.name"></div>
                                     <div class="text-[11px] text-gray-500 mt-0.5" x-text="p.sku || p.barcode || ''"></div>
-                                    <div class="mt-1 text-sm font-bold text-brand-700">$<span x-text="Number(p.price_usd).toFixed(2)"></span></div>
+                                    <div class="mt-1 text-sm font-bold text-brand-700">$<span x-text="priceFor(p).toFixed(2)"></span></div>
                                     <div class="text-[11px] text-gray-500" x-text="`Stock: ${Number(p.stock_qty).toFixed(0)} ${p.unit}`"></div>
                                 </button>
                             </template>
@@ -64,8 +64,28 @@
                 {{-- Right: cart + totals --}}
                 <div class="lg:col-span-5">
                     <div class="bg-white rounded-lg shadow-sm">
-                        <div class="p-3 border-b flex justify-between items-center">
-                            <h3 class="font-medium">Cart (<span x-text="cart.length"></span>)</h3>
+                        <div class="p-3 border-b flex flex-wrap justify-between items-center gap-2">
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-medium">Cart (<span x-text="cart.length"></span>)</h3>
+                                <span x-show="priceTier !== 'retail'" x-cloak
+                                      :class="priceTier === 'vip' ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800'"
+                                      class="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase"
+                                      x-text="t(priceTier)"></span>
+                            </div>
+
+                            {{-- Price list. Customer selection sets it; F7 cycles it. --}}
+                            <div class="inline-flex rounded border border-gray-300 overflow-hidden text-xs" role="group"
+                                 :aria-label="t('price_list')"
+                                 :title="canChangeTier ? t('price_list') + ' (F7)' : t('tier_locked')">
+                                <template x-for="tr in tiers" :key="tr">
+                                    <button type="button" @click="setTier(tr)" :disabled="!canChangeTier"
+                                            :aria-pressed="priceTier === tr"
+                                            :class="priceTier === tr ? 'bg-brand-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                                            class="px-2.5 py-1 disabled:cursor-not-allowed disabled:opacity-60"
+                                            x-text="t(tr)"></button>
+                                </template>
+                            </div>
+
                             <button type="button" @click="clearCart()" x-show="cart.length"
                                     class="text-xs text-red-600 hover:underline">Clear</button>
                         </div>
@@ -89,7 +109,7 @@
                                 </div>
                                 <button type="button" @click="openCustomerModal()"
                                         class="text-xs text-brand-700 hover:underline shrink-0">Change</button>
-                                <button type="button" @click="customer = null" title="Remove customer"
+                                <button type="button" @click="removeCustomer()" title="Remove customer"
                                         class="text-red-500 text-sm leading-none shrink-0">&times;</button>
                             </div>
                         </div>
@@ -97,11 +117,20 @@
                         <div class="divide-y max-h-[40vh] overflow-y-auto">
                             <template x-for="(line, idx) in cart" :key="line.product_id">
                                 <div class="p-2 flex items-center gap-2 text-sm" :class="{ 'bg-brand-50': idx === lastScannedIndex }">
-                                    <div class="flex-1">
-                                        <div class="font-medium" x-text="line.name"></div>
+                                    <div class="flex-1 min-w-0">
+                                        <button type="button" @click="openLineEditor(idx)" :title="t('discount') + ' (F8)'"
+                                                class="font-medium text-start hover:underline" x-text="line.name"></button>
                                         <div class="text-xs text-gray-500">
-                                            $<span x-text="Number(line.unit_price).toFixed(2)"></span> × <span x-text="line.qty"></span>
+                                            <span dir="ltr" class="inline-block">
+                                                $<span x-text="Number(line.unit_price).toFixed(2)"></span>
+                                                <span x-show="line.unit_price !== line.retail_price" class="line-through text-gray-400">$<span x-text="Number(line.retail_price).toFixed(2)"></span></span>
+                                                × <span x-text="line.qty"></span>
+                                            </span>
                                         </div>
+                                        <div x-show="lineDiscountText(idx)" x-cloak class="text-xs text-green-700">
+                                            <span dir="ltr" class="inline-block" x-text="lineDiscountText(idx)"></span>
+                                        </div>
+                                        <div x-show="belowCost(idx)" x-cloak class="text-xs text-amber-600" x-text="t('below_cost')"></div>
                                     </div>
                                     <div class="flex gap-1 items-center">
                                         <button type="button" @click="decQty(idx)" class="w-6 h-6 bg-gray-100 rounded">-</button>
@@ -109,7 +138,7 @@
                                                class="w-12 text-center border-gray-300 rounded text-sm py-0.5" />
                                         <button type="button" @click="incQty(idx)" class="w-6 h-6 bg-gray-100 rounded">+</button>
                                     </div>
-                                    <div class="w-16 text-right font-medium">$<span x-text="lineTotal(line).toFixed(2)"></span></div>
+                                    <div class="w-16 text-right font-medium">$<span x-text="lineCalc(idx).total.toFixed(2)"></span></div>
                                     <button type="button" @click="removeLine(idx)" class="text-red-500 text-xs">×</button>
                                 </div>
                             </template>
@@ -119,9 +148,24 @@
                         </div>
 
                         <div class="p-3 border-t space-y-1 text-sm">
-                            <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span>$<span x-text="totals.subtotal.toFixed(2)"></span></span></div>
-                            <div class="flex justify-between text-gray-500"><span>Discount</span><span>-$<span x-text="totals.discount.toFixed(2)"></span></span></div>
-                            <div class="flex justify-between text-gray-500"><span>VAT (11%)</span><span>$<span x-text="totals.tax.toFixed(2)"></span></span></div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500">Subtotal
+                                    <button type="button" @click="openCartEditor()" :disabled="cart.length === 0"
+                                            :title="t('cart_discount') + ' (Shift+F8)'"
+                                            class="ms-2 px-1.5 py-0.5 text-xs text-brand-700 border border-brand-300 rounded hover:bg-brand-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                            x-text="t('discount')"></button>
+                                </span>
+                                <span>$<span x-text="totals.subtotal.toFixed(2)"></span></span>
+                            </div>
+                            <div class="flex justify-between text-gray-500"><span x-text="t('discount')"></span><span>-$<span x-text="totals.discount.toFixed(2)"></span></span></div>
+                            <div x-show="totals.cartDisc > 0" x-cloak class="flex justify-between text-gray-500 text-xs ps-3">
+                                <span>
+                                    <span x-text="t('of_which_cart') + (cartDiscount.type === 'pct' ? ' (' + Number(cartDiscount.value) + '%)' : '')"></span>
+                                    <button type="button" @click="clearCartDiscount()" :title="t('remove_discount')" class="text-red-500 leading-none">&times;</button>
+                                </span>
+                                <span>-$<span x-text="totals.cartDisc.toFixed(2)"></span></span>
+                            </div>
+                            <div class="flex justify-between text-gray-500"><span x-text="vatLabel"></span><span>$<span x-text="totals.tax.toFixed(2)"></span></span></div>
                             <div class="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                                 <span>Total</span>
                                 <span class="text-brand-700">$<span x-text="totals.total.toFixed(2)"></span></span>
@@ -131,7 +175,12 @@
                                 <span x-text="formatLbp(totals.total * exchangeRate)"></span>
                             </div>
 
-                            <button type="button" @click="openPayment()" :disabled="cart.length === 0"
+                            <div x-show="issues.length" x-cloak class="mt-2 p-2 bg-red-50 text-red-700 rounded text-xs space-y-0.5">
+                                <template x-for="(m, mi) in issues" :key="mi"><div x-text="m"></div></template>
+                                <div class="font-medium" x-text="t('fix_discounts')"></div>
+                            </div>
+
+                            <button type="button" @click="openPayment()" :disabled="cart.length === 0 || issues.length > 0"
                                     class="w-full mt-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium">
                                 Pay (F4)
                             </button>
@@ -297,6 +346,49 @@
                 </div>
             </div>
 
+            {{-- Discount editor: one modal for a single cart line (target 'line') or the whole cart ('cart').
+                 Esc closes it and focus goes back to the search box so barcode scanning keeps working. --}}
+            <div x-show="editor.open" x-cloak @keydown.escape.window="editor.open && closeEditor()"
+                 class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-bold"
+                            x-text="editor.target === 'cart' ? t('cart_discount') : t('discount_for', { name: editorLine()?.name || '' })"></h3>
+                        <button type="button" @click="closeEditor()" class="text-gray-400 hover:text-gray-700 text-xl">&times;</button>
+                    </div>
+
+                    <div x-show="editorBlocked()" x-cloak class="mb-3 p-2 bg-amber-50 text-amber-800 rounded text-sm" x-text="t('not_allowed')"></div>
+
+                    <div class="space-y-3 text-sm">
+                        <div class="flex gap-2 items-stretch">
+                            <div class="inline-flex rounded border border-gray-300 overflow-hidden" role="group">
+                                <button type="button" @click="editor.type = 'pct'" :disabled="editorBlocked()" :title="t('by_percent')"
+                                        :class="editor.type === 'pct' ? 'bg-brand-600 text-white' : 'bg-white text-gray-700'"
+                                        class="px-3 py-1.5 disabled:opacity-50">%</button>
+                                <button type="button" @click="editor.type = 'amount'" :disabled="editorBlocked()" :title="t('by_amount')"
+                                        :class="editor.type === 'amount' ? 'bg-brand-600 text-white' : 'bg-white text-gray-700'"
+                                        class="px-3 py-1.5 disabled:opacity-50">$</button>
+                            </div>
+                            <input type="number" x-ref="editorInput" x-model="editor.value" min="0" step="0.01" dir="ltr"
+                                   :disabled="editorBlocked()" :aria-label="t('value')"
+                                   @keydown.enter.prevent="applyEditor()"
+                                   class="flex-1 min-w-0 border-gray-300 rounded text-sm disabled:bg-gray-100" />
+                        </div>
+
+                        <div x-show="maxDiscountPct < 100" class="text-xs text-gray-500" x-text="t('limit_hint', { limit: maxDiscountPct })"></div>
+                        <div x-show="editor.error" x-cloak class="text-sm text-red-600 bg-red-50 p-2 rounded" x-text="editor.error"></div>
+
+                        <div class="flex gap-2">
+                            <button type="button" @click="removeEditorDiscount()" :disabled="editorBlocked()"
+                                    class="px-3 py-2 bg-gray-100 rounded text-sm disabled:opacity-50" x-text="t('remove_discount')"></button>
+                            <button type="button" @click="applyEditor()" :disabled="editorBlocked()"
+                                    class="flex-1 py-2 bg-brand-600 text-white rounded font-medium hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    x-text="t('apply')"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Payment modal --}}
             <div x-show="showPayment" x-cloak @keydown.escape.window="showPayment=false"
                  class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -448,6 +540,14 @@
                 exchangeRate: {{ $exchangeRate }},
                 lbpStep: {{ $lbpStep }},
                 autoPrint: {{ $autoPrint ? 'true' : 'false' }},
+                strings: @json(__('pos.ui')),
+                tiers: ['retail', 'wholesale', 'vip'],
+                priceTier: 'retail',        // active price list; the server re-checks it (SaleService::resolvePriceTier)
+                canChangeTier: @json($canChangeTier),
+                showCost: @json($showCost), // managers only: lets the "below cost" warning work
+                maxDiscountPct: @json($maxDiscountPct), // effective % of a line's gross; 100 = unlimited
+                cartDiscount: { type: 'pct', value: 0 }, // whole-cart discount, split over lines by computeCart()
+                editor: { open: false, target: 'line', idx: null, type: 'pct', value: '', error: '' },
                 search: '',
                 activeCategory: null,
                 filtered: [],
@@ -478,6 +578,10 @@
                 _previewTimer: null,
 
                 init() {
+                    // Alpine runs init() on its own and x-init="init()" runs it again; without
+                    // this every key listener below is registered twice (F7 would skip a list).
+                    if (this._ready) return;
+                    this._ready = true;
                     this.filter();
                     this.refreshHeldCount();
                     window.addEventListener('keydown', (e) => {
@@ -486,6 +590,13 @@
                         if (e.key === 'F5') { e.preventDefault(); this.openHold(); }
                         if (e.key === 'F6') { e.preventDefault(); this.openHeldList(); }
                         if (e.key === 'F9') { e.preventDefault(); this.clearCart(); }
+                        // F7 price list, F8 discount for the selected line, Shift+F8 whole-cart discount.
+                        // Function keys only: a letter key would land in the barcode box.
+                        if (e.key === 'F7' && !this.anyModalOpen()) { e.preventDefault(); this.cycleTier(); }
+                        if (e.key === 'F8' && !this.anyModalOpen()) {
+                            e.preventDefault();
+                            if (e.shiftKey) this.openCartEditor(); else this.openLineEditor(this.selectedLine());
+                        }
                         if (e.key === 'F12' && this.showPayment) { e.preventDefault(); this.submit(); }
                         if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P') && this.lastSale?.id) {
                             e.preventDefault(); this._printReceipt(this.lastSale.id);
@@ -494,6 +605,26 @@
                 },
 
                 _csrf() { return document.querySelector('meta[name="csrf-token"]')?.content || ''; },
+
+                // Translated UI string; `:name` placeholders are filled from vars.
+                t(key, vars = {}) {
+                    let out = this.strings[key] ?? key;
+                    for (const [k, v] of Object.entries(vars)) out = out.split(':' + k).join(v);
+                    return out;
+                },
+
+                // The server's error shape is {error: "text"} or {error: {field: ["text"]}}.
+                errorText(data) {
+                    const e = data.error ?? data.errors ?? data.message;
+                    if (typeof e === 'string') return e;
+                    if (e && typeof e === 'object') return Object.values(e).flat().join(' ');
+                    return 'Something went wrong.';
+                },
+
+                anyModalOpen() {
+                    return this.showCustomerModal || this.showHoldModal || this.showHeldList
+                        || this.showPayment || this.editor.open || !!this.lastSale;
+                },
 
                 async refreshHeldCount() {
                     try {
@@ -549,6 +680,12 @@
                 selectCustomer(c) {
                     this.customer = c;
                     this.showCustomerModal = false;
+                    this.applyTier(c.customer_group); // the customer's group picks the price list
+                },
+
+                removeCustomer() {
+                    this.customer = null;
+                    this.applyTier('retail');
                 },
 
                 startNewCustomer() {
@@ -620,11 +757,14 @@
                                 cart: this.cart.map(l => ({
                                     product_id: l.product_id,
                                     qty: l.qty,
-                                    unit_price: l.unit_price,
                                     discount_pct: l.discount_pct,
                                     discount_amount: l.discount_amount,
                                     note: l.note,
                                 })),
+                                price_tier: this.priceTier,
+                                cart_discount: Number(this.cartDiscount.value) > 0
+                                    ? { type: this.cartDiscount.type, value: Number(this.cartDiscount.value) }
+                                    : null,
                                 customer_id: this.customer?.id || null,
                                 label: this.holdDraft.label || null,
                                 notes: this.holdDraft.notes || null,
@@ -635,8 +775,7 @@
                             this.errorMsg = typeof data.error === 'string' ? data.error : 'Could not hold the sale.';
                             return;
                         }
-                        this.cart = [];
-                        this.customer = null;
+                        this.resetSale();
                         this.showHoldModal = false;
                         await this.refreshHeldCount();
                     } catch (e) {
@@ -667,30 +806,24 @@
                             this.errorMsg = data.error || data.message || 'Could not recall.';
                             return;
                         }
-                        // Reconstitute cart from the held payload using current product data.
+                        // Reconstitute cart from the held payload. A hold keeps no prices: every
+                        // line is re-priced from current product data on the hold's price list
+                        // (or the customer's, for a cashier who may not pick one).
+                        this.customer = data.customer || null;
+                        this.priceTier = this.canChangeTier
+                            ? this.normTier(data.price_tier)
+                            : this.normTier(this.customer?.customer_group);
                         const cart = [];
                         for (const line of data.cart || []) {
                             const p = this.allProducts.find(pp => pp.id === line.product_id);
                             if (!p) continue;
-                            const taxRate = p.tax ? Number(p.tax.rate) : 0;
-                            cart.push({
-                                product_id: p.id,
-                                name: p.name,
-                                unit_price: Number(line.unit_price ?? p.price_usd),
-                                qty: Number(line.qty),
-                                discount_pct: Number(line.discount_pct ?? 0),
-                                discount_amount: Number(line.discount_amount ?? 0),
-                                tax_rate: taxRate,
-                                is_taxable: !!p.is_taxable,
-                                tax_inclusive: p.tax ? !!p.tax.is_inclusive : false,
-                                track_stock: !!p.track_stock,
-                                stock_available: Number(p.stock_qty),
-                                unit: p.unit || 'pcs',
-                                note: line.note || null,
-                            });
+                            cart.push(this.makeLine(p, Number(line.qty), line));
                         }
                         this.cart = cart;
-                        this.customer = data.customer || null;
+                        this.cartDiscount = data.cart_discount
+                            ? { type: data.cart_discount.type, value: Number(data.cart_discount.value) }
+                            : { type: 'pct', value: 0 };
+                        this.lastScannedIndex = null;
                         this.showHeldList = false;
                         await this.refreshHeldCount();
                     } catch (e) {
@@ -768,20 +901,60 @@
                         }
                         existing.qty += 1;
                     } else {
-                        const taxRate = p.tax ? Number(p.tax.rate) : 0;
-                        this.cart.push({
-                            product_id: p.id, name: p.name,
-                            unit_price: Number(p.price_usd),
-                            qty: 1, discount_pct: 0, discount_amount: 0,
-                            tax_rate: taxRate, is_taxable: !!p.is_taxable,
-                            tax_inclusive: p.tax ? !!p.tax.is_inclusive : false,
-                            track_stock: !!p.track_stock,
-                            stock_available: Number(p.stock_qty),
-                            unit: p.unit || 'pcs',
-                        });
+                        this.cart.push(this.makeLine(p));
                     }
                     this.recompute();
                     this.lastScannedIndex = this.cart.findIndex(l => l.product_id === p.id);
+                },
+
+                // --- price lists -------------------------------------------------
+                // Mirrors Product::priceForGroup: a missing tier price falls back to retail.
+                tierPrices(p) {
+                    const retail = Number(p.price_usd);
+                    return {
+                        retail,
+                        wholesale: Number(p.wholesale_price_usd ?? retail),
+                        vip: Number(p.vip_price_usd ?? retail),
+                    };
+                },
+
+                priceFor(p) { return this.tierPrices(p)[this.priceTier]; },
+
+                normTier(group) { return this.tiers.includes(group) ? group : 'retail'; },
+
+                // Manual switch (button / F7); customer changes go through applyTier() directly.
+                setTier(tier) { if (this.canChangeTier) this.applyTier(tier); },
+
+                cycleTier() {
+                    if (!this.canChangeTier) return;
+                    this.applyTier(this.tiers[(this.tiers.indexOf(this.priceTier) + 1) % this.tiers.length]);
+                },
+
+                // Switch list and re-price every line already in the cart.
+                applyTier(tier) {
+                    this.priceTier = this.normTier(tier);
+                    for (const l of this.cart) l.unit_price = l.tier_prices[this.priceTier];
+                    this.recompute();
+                },
+
+                // The one place a cart line is built (add, recall) so both price and discount rules stay together.
+                makeLine(p, qty = 1, saved = {}) {
+                    const tp = this.tierPrices(p);
+                    return {
+                        product_id: p.id, name: p.name,
+                        unit_price: tp[this.priceTier], retail_price: tp.retail, tier_prices: tp,
+                        qty,
+                        discount_pct: Number(saved.discount_pct || 0),
+                        discount_amount: Number(saved.discount_amount || 0),
+                        allow_discount: p.allow_discount === undefined ? true : !!p.allow_discount,
+                        cost_usd: p.cost_usd == null ? null : Number(p.cost_usd), // managers only
+                        tax_rate: p.tax ? Number(p.tax.rate) : 0, is_taxable: !!p.is_taxable,
+                        tax_inclusive: p.tax ? !!p.tax.is_inclusive : false,
+                        track_stock: !!p.track_stock,
+                        stock_available: Number(p.stock_qty),
+                        unit: p.unit || 'pcs',
+                        note: saved.note || null,
+                    };
                 },
 
                 canAdd(line, by) {
@@ -829,47 +1002,219 @@
                     this.cart.splice(i, 1);
                     if (this.lastScannedIndex === i) this.lastScannedIndex = null;
                     else if (this.lastScannedIndex !== null && this.lastScannedIndex > i) this.lastScannedIndex--;
+                    if (!this.cart.length) this.cartDiscount = { type: 'pct', value: 0 };
                     this.recompute();
                 },
                 clearCart() {
                     if (!this.cart.length || confirm('Clear cart?')) {
                         this.cart = [];
+                        this.cartDiscount = { type: 'pct', value: 0 };
                         this.lastScannedIndex = null;
                         this.recompute();
                     }
                 },
 
-                lineTotal(line) {
-                    const gross = line.qty * line.unit_price;
-                    const disc = (line.discount_amount || 0) + gross * (line.discount_pct || 0) / 100;
-                    const net = gross - disc;
-                    if (!line.is_taxable) return net;
-                    return line.tax_inclusive ? net : net * (1 + (line.tax_rate || 0));
+                // Back to a blank retail sale (after checkout or hold).
+                resetSale() {
+                    this.cart = [];
+                    this.customer = null;
+                    this.lastScannedIndex = null;
+                    this.priceTier = 'retail';
+                    this.cartDiscount = { type: 'pct', value: 0 };
                 },
 
-                get totals() {
-                    let subtotal = 0, discount = 0, tax = 0, total = 0;
-                    for (const line of this.cart) {
-                        const gross = line.qty * line.unit_price;
-                        const disc = (line.discount_amount || 0) + gross * (line.discount_pct || 0) / 100;
-                        const net = gross - disc;
-                        subtotal += gross; discount += disc;
-                        if (line.is_taxable) {
-                            tax += line.tax_inclusive ? net - net/(1+(line.tax_rate||0)) : net * (line.tax_rate || 0);
-                        }
-                        // Per line, so a cart mixing inclusive and exclusive
-                        // tax adds up correctly. Mirrors SaleService.
-                        total += this.lineTotal(line);
+                // One pass over a cart: price, line discount, the line's share of the cart
+                // discount, tax, total. Mirrors SaleService::totalsFromCart step for step
+                // (every amount rounded to the 4 stored decimals per line, then summed) so
+                // the screen total equals sales.total_usd. Change both or neither.
+                // Pure: the discount editor runs it on a trial cart before applying a change.
+                computeCart(cart, cartDiscount, customer) {
+                    const r4 = (x) => Math.round(x * 1e4 + (x < 0 ? -1e-7 : 1e-7)) / 1e4;
+                    const lines = cart.map((l) => {
+                        const gross = r4(l.qty * l.unit_price);
+                        const lineDisc = r4((l.discount_amount || 0) + gross * (l.discount_pct || 0) / 100);
+                        return { gross, lineDisc, net: r4(gross - lineDisc), share: 0, discountable: l.allow_discount !== false };
+                    });
+
+                    // Cart discount: % of, or a flat amount off, the discountable net; split in
+                    // proportion to each line's net, rounding remainder on the largest line.
+                    const pool = r4(lines.reduce((a, c) => a + (c.discountable ? c.net : 0), 0));
+                    const value = Number(cartDiscount?.value) || 0;
+                    const wanted = r4(cartDiscount?.type === 'pct' ? pool * value / 100 : value);
+                    const cartDisc = Math.min(wanted, pool); // an overshoot is reported by discountIssues()
+                    if (cartDisc > 0) {
+                        let largest = -1, allocated = 0;
+                        lines.forEach((c, i) => {
+                            if (!c.discountable || c.net <= 0) return;
+                            c.share = r4(cartDisc * c.net / pool);
+                            allocated += c.share;
+                            if (largest < 0 || c.net > lines[largest].net) largest = i;
+                        });
+                        lines[largest].share = r4(lines[largest].share + (cartDisc - allocated));
                     }
-                    return { subtotal, discount, tax, total };
+
+                    const exempt = !!customer?.tax_exempt;
+                    let subtotal = 0, discount = 0, tax = 0, total = 0;
+                    const out = lines.map((c, i) => {
+                        const l = cart[i];
+                        const disc = r4(c.lineDisc + c.share);
+                        const net = r4(c.net - c.share);
+                        const rate = l.is_taxable && !exempt ? (l.tax_rate || 0) : 0;
+                        const lineTax = rate > 0 ? r4(l.tax_inclusive ? net - net / (1 + rate) : net * rate) : 0;
+                        const lineTotal = r4(l.tax_inclusive ? net : net + lineTax);
+                        subtotal += c.gross; discount += disc; tax += lineTax; total += lineTotal;
+                        return {
+                            gross: c.gross, lineDisc: c.lineDisc, share: c.share, discount: disc,
+                            net, rate, tax: lineTax, total: lineTotal,
+                            effPct: c.gross > 0 ? disc / c.gross * 100 : 0,
+                        };
+                    });
+
+                    return {
+                        lines: out, pool, wanted, cartDisc,
+                        subtotal: r4(subtotal), discount: r4(discount), tax: r4(tax), total: r4(total),
+                    };
+                },
+
+                get calc() { return this.computeCart(this.cart, this.cartDiscount, this.customer); },
+
+                get totals() { return this.calc; },
+
+                lineCalc(i) {
+                    return this.calc.lines[i] ?? { gross: 0, lineDisc: 0, share: 0, discount: 0, net: 0, tax: 0, total: 0, effPct: 0 };
+                },
+
+                // On-screen VAT row: "VAT (11%)" when every taxed line shares one rate, else just "VAT".
+                get vatLabel() {
+                    const rates = new Set(this.calc.lines.filter(c => c.rate > 0).map(c => c.rate));
+                    return rates.size === 1
+                        ? `${this.t('vat')} (${Number(([...rates][0] * 100).toFixed(2))}%)`
+                        : this.t('vat');
                 },
 
                 hasInclusive() { return this.cart.some(l => l.is_taxable && l.tax_inclusive); },
 
-                recompute() { /* totals is a getter; this is a hook for $watch if needed */ },
+                // totals/calc are getters over computeCart(), so Alpine re-renders on its own.
+                recompute() { /* hook kept for the call sites; nothing to do */ },
+
+                // --- discounts ---------------------------------------------------
+                // Everything the server would refuse for this cart, as readable messages.
+                discountIssues(cart, cartDiscount) {
+                    const c = this.computeCart(cart, cartDiscount, this.customer);
+                    const out = [];
+                    cart.forEach((l, i) => {
+                        const lc = c.lines[i];
+                        if (lc.lineDisc > 0 && l.allow_discount === false) {
+                            out.push(this.t('no_discount_product', { name: l.name }));
+                        } else if (lc.lineDisc > lc.gross + 0.00005) {
+                            out.push(this.t('over_line', { name: l.name }));
+                        } else if (lc.effPct > this.maxDiscountPct + 0.01) {
+                            out.push(this.t('over_limit', { name: l.name, pct: Number(lc.effPct.toFixed(2)), limit: this.maxDiscountPct }));
+                        }
+                    });
+                    if (c.wanted > c.pool + 0.00005) out.push(this.t('cart_over_pool'));
+                    return out;
+                },
+
+                get issues() { return this.discountIssues(this.cart, this.cartDiscount); },
+
+                lineDiscountText(i) {
+                    const l = this.cart[i], c = this.calc.lines[i];
+                    if (!l || !c || c.lineDisc <= 0) return '';
+                    const amt = '-$' + c.lineDisc.toFixed(2);
+                    return l.discount_pct > 0 ? `-${Number(l.discount_pct)}% (${amt})` : amt;
+                },
+
+                // Soft warning, managers only (cashiers are never sent cost). Net unit price
+                // after both discounts, ex-VAT, against cost.
+                belowCost(i) {
+                    const l = this.cart[i], c = this.calc.lines[i];
+                    if (!this.showCost || !l || l.cost_usd == null || !(l.qty > 0)) return false;
+                    const exVat = l.is_taxable && l.tax_inclusive ? c.net / (1 + (l.tax_rate || 0)) : c.net;
+                    return exVat / l.qty < l.cost_usd - 0.00005;
+                },
+
+                selectedLine() {
+                    return this.lastScannedIndex ?? (this.cart.length ? this.cart.length - 1 : null);
+                },
+
+                editorLine() { return this.editor.target === 'line' ? (this.cart[this.editor.idx] ?? null) : null; },
+
+                editorBlocked() { return this.editor.target === 'line' && this.editorLine()?.allow_discount === false; },
+
+                _focusEditor() {
+                    this.$nextTick(() => { this.$refs.editorInput?.focus(); this.$refs.editorInput?.select(); });
+                },
+
+                openLineEditor(i) {
+                    const l = this.cart[i];
+                    if (i == null || !l) return;
+                    this.lastScannedIndex = i;
+                    const byAmount = !(l.discount_pct > 0) && l.discount_amount > 0;
+                    this.editor = {
+                        open: true, target: 'line', idx: i,
+                        type: byAmount ? 'amount' : 'pct',
+                        value: (byAmount ? l.discount_amount : l.discount_pct) || '',
+                        error: '',
+                    };
+                    this._focusEditor();
+                },
+
+                openCartEditor() {
+                    if (!this.cart.length) return;
+                    this.editor = {
+                        open: true, target: 'cart', idx: null,
+                        type: this.cartDiscount.type, value: this.cartDiscount.value || '', error: '',
+                    };
+                    this._focusEditor();
+                },
+
+                closeEditor() {
+                    this.editor.open = false;
+                    // Hand focus back so the next barcode scan lands in the search box.
+                    this.$nextTick(() => this.$refs.search?.focus());
+                },
+
+                applyEditor() {
+                    const e = this.editor;
+                    if (this.editorBlocked()) return;
+                    const raw = String(e.value ?? '').trim();
+                    const v = raw === '' ? 0 : Number(raw);
+                    if (!Number.isFinite(v) || v < 0) { e.error = this.t('invalid_number'); return; }
+
+                    // Try the change on a copy; an over-limit entry never reaches the real cart.
+                    const trialCart = this.cart.map(l => ({ ...l }));
+                    let trialCd = { ...this.cartDiscount };
+                    if (e.target === 'line') {
+                        trialCart[e.idx].discount_pct = e.type === 'pct' ? v : 0;
+                        trialCart[e.idx].discount_amount = e.type === 'amount' ? v : 0;
+                    } else {
+                        trialCd = { type: e.type, value: v };
+                    }
+                    // Only block on what this change adds: an unrelated line that is already over
+                    // its limit must not stop the cashier fixing it, or any other line.
+                    const existing = this.discountIssues(this.cart, this.cartDiscount);
+                    const problem = this.discountIssues(trialCart, trialCd).find(m => !existing.includes(m));
+                    if (problem) { e.error = problem; return; }
+
+                    if (e.target === 'line') {
+                        this.cart[e.idx].discount_pct = trialCart[e.idx].discount_pct;
+                        this.cart[e.idx].discount_amount = trialCart[e.idx].discount_amount;
+                    } else {
+                        this.cartDiscount = trialCd;
+                    }
+                    this.closeEditor();
+                },
+
+                removeEditorDiscount() {
+                    this.editor.value = 0;
+                    this.applyEditor();
+                },
+
+                clearCartDiscount() { this.cartDiscount = { type: 'pct', value: 0 }; },
 
                 openPayment() {
-                    if (!this.cart.length) return;
+                    if (!this.cart.length || this.issues.length) return;
                     this.payment = { method: 'cash_usd', amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', change_usd_out: null };
                     this.changePreview = null;
                     this.errorMsg = '';
@@ -935,26 +1280,30 @@
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                             },
                             body: JSON.stringify({
+                                // No prices: the server prices every line from the product and price list.
                                 cart: this.cart.map(l => ({
                                     product_id: l.product_id,
                                     qty: l.qty,
-                                    unit_price: l.unit_price,
                                     discount_pct: l.discount_pct,
                                     discount_amount: l.discount_amount,
                                 })),
+                                price_tier: this.priceTier,
+                                cart_discount_pct: this.cartDiscount.type === 'pct' && this.cartDiscount.value > 0
+                                    ? Number(this.cartDiscount.value) : null,
+                                cart_discount_amount: this.cartDiscount.type === 'amount' && this.cartDiscount.value > 0
+                                    ? Number(this.cartDiscount.value) : null,
                                 payment: this.payment,
                                 customer_id: this.customer?.id || null,
                             }),
                         });
                         const data = await res.json();
                         if (!res.ok) {
-                            this.errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+                            this.errorMsg = this.errorText(data);
                             return;
                         }
                         this.lastSale = data.sale;
                         this.showPayment = false;
-                        this.cart = [];
-                        this.customer = null;
+                        this.resetSale();
                         // decrement local stock so UI reflects reality without refresh
                         for (const item of data.items || []) {
                             const p = this.allProducts.find(pp => pp.id === item.product_id);

@@ -16,6 +16,9 @@ class Customer extends Model
     public const GROUP_WHOLESALE = 'wholesale';
     public const GROUP_VIP = 'vip';
 
+    /** Customer groups double as POS price lists (Product::priceForGroup). */
+    public const GROUPS = [self::GROUP_RETAIL, self::GROUP_WHOLESALE, self::GROUP_VIP];
+
     protected $fillable = [
         'uuid', 'name', 'phone', 'email', 'address',
         'company_name', 'tax_number', 'customer_group',

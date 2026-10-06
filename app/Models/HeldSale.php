@@ -11,11 +11,12 @@ class HeldSale extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'customer_id', 'label', 'cart', 'notes',
+        'user_id', 'customer_id', 'label', 'cart', 'price_tier', 'cart_discount', 'notes',
     ];
 
     protected $casts = [
         'cart' => 'array',
+        'cart_discount' => 'array',
     ];
 
     public function user(): BelongsTo

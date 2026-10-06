@@ -26,8 +26,8 @@ class Sale extends Model
     public const METHOD_SPLIT = 'split';
 
     protected $fillable = [
-        'uuid', 'receipt_number', 'customer_id', 'user_id', 'shift_id',
-        'subtotal_usd', 'discount_amount_usd', 'tax_amount_usd',
+        'uuid', 'receipt_number', 'customer_id', 'user_id', 'shift_id', 'price_tier',
+        'subtotal_usd', 'discount_amount_usd', 'cart_discount_usd', 'tax_amount_usd',
         'total_usd', 'total_lbp', 'exchange_rate',
         'payment_method',
         'amount_tendered_usd', 'amount_tendered_lbp',
@@ -42,6 +42,7 @@ class Sale extends Model
     protected $casts = [
         'subtotal_usd' => 'decimal:4',
         'discount_amount_usd' => 'decimal:4',
+        'cart_discount_usd' => 'decimal:4',
         'tax_amount_usd' => 'decimal:4',
         'total_usd' => 'decimal:4',
         'total_lbp' => 'decimal:2',
