@@ -88,16 +88,17 @@ class ReturnController extends Controller
 
         // One entry per sale line: a line posted twice has its quantities summed (the last entry's
         // restock/condition win), so the check below sees the real total and the refund is counted once.
+        // The key is the integer id the row is looked up by: the `integer` rule also lets "+5" through,
+        // which is the same line as "5" to the database but a different string to groupBy().
         $positiveItems = collect($data['items'])
             ->filter(fn ($i) => (float) $i['qty_returned'] > 0)
-            ->groupBy('sale_item_id')
-            ->map(fn ($rows) => array_merge($rows->last(), ['qty_returned' => $rows->sum(fn ($r) => (float) $r['qty_returned'])]));
+            ->groupBy(fn ($i) => (int) $i['sale_item_id'])
+            ->map(fn ($rows, $id) => array_merge($rows->last(), ['sale_item_id' => $id, 'qty_returned' => $rows->sum(fn ($r) => (float) $r['qty_returned'])]));
         if ($positiveItems->isEmpty()) {
             return back()->withErrors(['items' => __('messages.select_return_item')]);
         }
 
         // Validate qty against remaining (sale_item.qty - returned_qty) and compute refund.
-        $refundAmount = 0.0;
         $perLine = [];
         foreach ($positiveItems as $i) {
             $saleItem = SaleItem::where('id', $i['sale_item_id'])->where('sale_id', $sale->id)->first();
@@ -114,7 +115,6 @@ class ReturnController extends Controller
             }
             $perUnit = (float) $saleItem->qty > 0 ? (float) $saleItem->line_total_usd / (float) $saleItem->qty : 0;
             $lineRefund = round($perUnit * $qty, 4);
-            $refundAmount += $lineRefund;
             // Default restock to true — matches the UI checkbox which is checked by default.
             // Caller must explicitly pass restock=0/false (e.g. damaged goods) to skip restocking.
             $restock = array_key_exists('restock', $i)
@@ -128,6 +128,10 @@ class ReturnController extends Controller
                 'condition' => $i['condition'] ?? 'good',
             ];
         }
+
+        // The header is the sum of the item rows, never a running total kept next to them: the shift's cash
+        // and the account credit both read the header, so it must not be able to differ from what is itemised.
+        $refundAmount = round(array_sum(array_column($perLine, 'refund')), 4);
 
         // Credit refund needs a customer.
         if ($data['refund_method'] === 'account' && !$sale->customer_id) {
