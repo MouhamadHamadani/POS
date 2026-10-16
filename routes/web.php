@@ -168,7 +168,10 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('feature:reports.sales_by_product')->name('reports.sales-by-product');
         Route::get('/reports/inventory/stock-levels', [ReportController::class, 'stockLevels'])
             ->middleware('feature:reports.stock_levels')->name('reports.stock-levels');
-        Route::get('/reports/financial/pnl', [ReportController::class, 'profitLoss'])
+        // Shows value at cost and retail like stock-levels does, so it ships with it.
+        Route::get('/reports/inventory/by-date', [ReportController::class, 'inventoryByDate'])
+            ->middleware('feature:reports.stock_levels')->name('reports.inventory-by-date');
+        Route::get('/reports/financial/pnl',[ReportController::class, 'profitLoss'])
             ->middleware('feature:reports.profit_loss')->name('reports.pnl');
     });
 

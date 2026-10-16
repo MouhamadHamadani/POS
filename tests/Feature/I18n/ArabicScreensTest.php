@@ -53,6 +53,7 @@ class ArabicScreensTest extends TestCase
             'daily sales report' => ['/reports/sales/daily', 'ملخص المبيعات اليومية', 'Daily Sales Summary'],
             'stock levels report' => ['/reports/inventory/stock-levels', 'مستويات المخزون', 'Inventory Stock Levels'],
             'profit and loss' => ['/reports/financial/pnl', 'الأرباح والخسائر', 'Profit & Loss'],
+            'inventory by date' => ['/reports/inventory/by-date', 'المخزون في تاريخ معيّن', 'Stock on date'],
             'profile' => ['/profile', 'معلومات الحساب', 'Account info'],
         ];
     }

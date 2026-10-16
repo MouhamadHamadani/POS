@@ -19,6 +19,7 @@
                 ['daily_sales', 'reports.daily-sales', '📈', null],
                 ['sales_by_product', 'reports.sales-by-product', '🏆', 'reports.sales_by_product'],
                 ['stock_levels', 'reports.stock-levels', '📦', 'reports.stock_levels'],
+                ['inventory_by_date', 'reports.inventory-by-date', '🗓️', 'reports.stock_levels'],
                 ['pnl', 'reports.pnl', '💵', 'reports.profit_loss'],
             ], fn ($r) => $r[3] === null || \App\Support\License::allows($r[3]));
         @endphp

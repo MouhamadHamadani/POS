@@ -116,6 +116,133 @@ class ReportService
     }
 
     /**
+     * Stock quantity, cost value and retail value of every tracked product at the
+     * end of a past day.
+     *
+     *   stock_at(D) = current stock_qty - sum(qty_change of adjustments after D)
+     *
+     * One grouped query over inventory_adjustments, joined to products — never a
+     * query per product. A product created after D is left out; so is one deleted
+     * before the next day starts. Value at cost uses today's cost_usd.
+     *
+     * @return array{rows: array, totals: array}
+     */
+    public function stockOnDate(Carbon $date, ?int $categoryId = null): array
+    {
+        $cut = $date->copy()->addDay()->startOfDay();   // first instant after D
+
+        $after = DB::table('inventory_adjustments')
+            ->selectRaw('product_id, SUM(qty_change) AS delta_after')
+            ->where('created_at', '>=', $cut)
+            ->groupBy('product_id');
+
+        $rows = $this->historyProducts($cut, $cut, $categoryId)
+            ->leftJoinSub($after, 'a', 'a.product_id', '=', 'products.id')
+            ->selectRaw('COALESCE(a.delta_after, 0) AS delta_after')
+            ->get()
+            ->map(function ($p) {
+                $qty = round((float) $p->stock_qty - (float) $p->delta_after, 4);
+
+                return $this->historyRow($p) + [
+                    'qty' => $qty,
+                    'value_cost' => round($qty * (float) $p->cost_usd, 2),
+                    'value_retail' => round($qty * (float) $p->price_usd, 2),
+                ];
+            })->all();
+
+        $cost = array_sum(array_column($rows, 'value_cost'));
+        $retail = array_sum(array_column($rows, 'value_retail'));
+
+        return [
+            'rows' => $rows,
+            'totals' => ['count' => count($rows), 'value_cost' => $cost, 'value_retail' => $retail, 'margin' => $retail - $cost],
+        ];
+    }
+
+    /**
+     * Opening quantity, total in, total out and closing quantity per product for a
+     * date range. Opening is stock_at(from - 1 day) and closing is stock_at(to), so
+     * closing = opening + in - out holds by construction; see stockOnDate().
+     *
+     * @return array{rows: array, totals: array}
+     */
+    public function inventoryMovement(Carbon $from, Carbon $to, ?int $categoryId = null, bool $onlyMoved = false): array
+    {
+        $start = $from->copy()->startOfDay();
+        $cut = $to->copy()->addDay()->startOfDay();     // first instant after the range
+
+        // Everything is derived from the rows at or after `from`, so that is all
+        // that gets scanned.
+        $moves = DB::table('inventory_adjustments')
+            ->selectRaw('product_id,
+                SUM(qty_change) AS since_from,
+                SUM(CASE WHEN created_at >= ? THEN qty_change ELSE 0 END) AS since_to,
+                SUM(CASE WHEN created_at < ? AND qty_change > 0 THEN qty_change ELSE 0 END) AS qty_in,
+                SUM(CASE WHEN created_at < ? AND qty_change < 0 THEN -qty_change ELSE 0 END) AS qty_out', [$cut, $cut, $cut])
+            ->where('created_at', '>=', $start)
+            ->groupBy('product_id');
+
+        $query = $this->historyProducts($cut, $start, $categoryId);
+        if ($onlyMoved) {
+            $query->joinSub($moves, 'a', 'a.product_id', '=', 'products.id')
+                ->where(fn ($w) => $w->where('a.qty_in', '>', 0)->orWhere('a.qty_out', '>', 0));
+        } else {
+            $query->leftJoinSub($moves, 'a', 'a.product_id', '=', 'products.id');
+        }
+
+        $rows = $query
+            ->selectRaw('COALESCE(a.since_from, 0) AS since_from, COALESCE(a.since_to, 0) AS since_to,
+                         COALESCE(a.qty_in, 0) AS qty_in, COALESCE(a.qty_out, 0) AS qty_out')
+            ->get()
+            ->map(fn ($p) => $this->historyRow($p) + [
+                'opening' => round((float) $p->stock_qty - (float) $p->since_from, 4),
+                'qty_in' => round((float) $p->qty_in, 4),
+                'qty_out' => round((float) $p->qty_out, 4),
+                'closing' => round((float) $p->stock_qty - (float) $p->since_to, 4),
+            ])->all();
+
+        return [
+            'rows' => $rows,
+            'totals' => [
+                'count' => count($rows),
+                'opening' => round(array_sum(array_column($rows, 'opening')), 4),
+                'qty_in' => round(array_sum(array_column($rows, 'qty_in')), 4),
+                'qty_out' => round(array_sum(array_column($rows, 'qty_out')), 4),
+                'closing' => round(array_sum(array_column($rows, 'closing')), 4),
+            ],
+        ];
+    }
+
+    /**
+     * Products that existed at some point in the window [$existsFrom, $createdBefore):
+     * tracked, created before the window ends, not deleted before it starts.
+     */
+    private function historyProducts(Carbon $createdBefore, Carbon $existsFrom, ?int $categoryId): \Illuminate\Database\Query\Builder
+    {
+        return DB::table('products')
+            ->where('products.track_stock', true)
+            ->where(fn ($q) => $q->whereNull('products.created_at')->orWhere('products.created_at', '<', $createdBefore))
+            ->where(fn ($q) => $q->whereNull('products.deleted_at')->orWhere('products.deleted_at', '>=', $existsFrom))
+            ->when($categoryId, fn ($q) => $q->where('products.category_id', $categoryId))
+            ->orderBy('products.name')
+            ->select('products.id', 'products.name', 'products.name_ar', 'products.sku', 'products.unit',
+                'products.stock_qty', 'products.cost_usd', 'products.price_usd');
+    }
+
+    private function historyRow(object $p): array
+    {
+        return [
+            'id' => $p->id,
+            'name' => $p->name,
+            'local_name' => app()->getLocale() === 'ar' && $p->name_ar ? $p->name_ar : $p->name,
+            'sku' => $p->sku,
+            'unit' => $p->unit,
+            'cost_usd' => (float) $p->cost_usd,
+            'price_usd' => (float) $p->price_usd,
+        ];
+    }
+
+    /**
      * Simple P&L: revenue - cogs = gross profit; discounts and tax broken out separately.
      */
     public function profitLoss(Carbon $from, Carbon $to): array

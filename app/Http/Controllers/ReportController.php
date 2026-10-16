@@ -69,6 +69,56 @@ class ReportController extends Controller
         });
     }
 
+    /** Two modes on one screen: stock on a date, or movement between two dates. */
+    public function inventoryByDate(Request $request): View|Response
+    {
+        $in = $request->validate([
+            'mode' => 'nullable|in:on_date,movement',
+            'date' => 'nullable|date',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date|after_or_equal:from',
+            'category_id' => 'nullable|integer',
+            'only_moved' => 'nullable|boolean',
+        ]);
+
+        $mode = $in['mode'] ?? 'on_date';
+        $categoryId = ! empty($in['category_id']) ? (int) $in['category_id'] : null;
+        $date = ! empty($in['date']) ? Carbon::parse($in['date'])->startOfDay() : now()->startOfDay();
+        $from = ! empty($in['from']) ? Carbon::parse($in['from'])->startOfDay() : now()->startOfMonth();
+        $to = ! empty($in['to']) ? Carbon::parse($in['to'])->endOfDay() : now()->endOfDay();
+        $onlyMoved = $mode === 'movement' && $request->boolean('only_moved');
+
+        $data = $mode === 'movement'
+            ? $this->reports->inventoryMovement($from, $to, $categoryId, $onlyMoved)
+            : $this->reports->stockOnDate($date, $categoryId);
+
+        $payload = $data + [
+            'mode' => $mode, 'date' => $date, 'from' => $from, 'to' => $to,
+            'category_id' => $categoryId, 'only_moved' => $onlyMoved,
+            'categories' => \App\Models\Category::orderBy('sort_order')->get(['id', 'name', 'name_ar']),
+        ];
+
+        return $this->respond($request, 'reports.inventory-by-date', $payload, 'inventory_by_date', function () use ($data, $mode) {
+            if ($mode === 'movement') {
+                $rows = [$this->headings('product', 'sku', 'unit', 'opening_qty', 'total_in', 'total_out', 'closing_qty')];
+                foreach ($data['rows'] as $r) {
+                    $rows[] = [$r['local_name'], $r['sku'], $r['unit'], $r['opening'], $r['qty_in'], $r['qty_out'], $r['closing']];
+                }
+                $rows[] = [__('reports.cols.totals'), '', '', $data['totals']['opening'], $data['totals']['qty_in'], $data['totals']['qty_out'], $data['totals']['closing']];
+
+                return $rows;
+            }
+
+            $rows = [$this->headings('product', 'sku', 'unit', 'qty_on_date', 'cost', 'retail', 'cost_value', 'retail_value')];
+            foreach ($data['rows'] as $r) {
+                $rows[] = [$r['local_name'], $r['sku'], $r['unit'], $r['qty'], $r['cost_usd'], $r['price_usd'], $r['value_cost'], $r['value_retail']];
+            }
+            $rows[] = [__('reports.cols.totals'), '', '', '', '', '', $data['totals']['value_cost'], $data['totals']['value_retail']];
+
+            return $rows;
+        });
+    }
+
     public function profitLoss(Request $request): View|Response
     {
         [$from, $to] = $this->range($request);

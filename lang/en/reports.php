@@ -7,12 +7,14 @@ return [
         'sales_by_product' => 'Sales by Product',
         'stock_levels' => 'Inventory Stock Levels',
         'pnl' => 'Profit & Loss',
+        'inventory_by_date' => 'Inventory by Date',
     ],
     'descriptions' => [
         'daily_sales' => 'Sales totals per day with discount and VAT breakdown.',
         'sales_by_product' => 'Top-sellers by units, revenue, profit, and margin %.',
         'stock_levels' => 'Current stock with cost / retail valuation totals.',
         'pnl' => 'Gross revenue, COGS, discounts, tax, gross profit, margin.',
+        'inventory_by_date' => 'Stock quantity and value on any past date, or the movement between two dates.',
     ],
     'pick' => 'Pick a report.',
     'demo_no_exports' => 'Exports are disabled in the demo build — reports are viewable on screen.',
@@ -59,6 +61,20 @@ return [
         'cost_value' => 'Cost Value',
         'retail_value' => 'Retail Value',
         'status' => 'Status',
+        'qty_on_date' => 'Quantity on date',
+        'opening_qty' => 'Opening qty',
+        'total_in' => 'Total in',
+        'total_out' => 'Total out',
+        'closing_qty' => 'Closing qty',
+    ],
+    'inv' => [
+        'mode_on_date' => 'Stock on date',
+        'mode_movement' => 'Movement between dates',
+        'date' => 'Date',
+        'only_moved' => 'Only products with movement in range',
+        'stock_on' => 'Stock as at end of :date',
+        'note_cost' => 'Value at cost uses the current cost price of each product, not its cost on that date.',
+        'note_history' => 'Figures go back to when the business started using the system.',
     ],
     'pnl' => [
         'line' => 'Line',
@@ -76,6 +92,7 @@ return [
     'pdf' => [
         'generated_period' => 'Generated :time · Period :from to :to',
         'generated_products' => 'Generated :time · :count products',
+        'generated_on_date' => 'Generated :time · Stock as at end of :date · :count products',
         'no_sales_period' => 'No sales in this period.',
     ],
 ];
