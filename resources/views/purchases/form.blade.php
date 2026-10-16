@@ -17,6 +17,22 @@
             'tax_pct' => round((float) $i->tax_rate * 100, 4),
         ])->values();
 
+        // After a failed submit the lines come back from what was typed, not from the stored
+        // lines (empty on create, the saved ones on edit). The form posts no product name, so it
+        // is looked up; tax_rate was posted as a 0..1 fraction and goes back to a percentage.
+        if (session()->hasOldInput()) {
+            $names = $products->mapWithKeys(fn($p) => [$p->id => $p->localName()])
+                ->union($items->mapWithKeys(fn($i) => [$i->product_id => $i->product?->localName() ?? $i->product_name]));
+            $itemsForJs = collect(old('items', []))->filter(fn($l) => is_array($l))->map(fn($l) => [
+                'id' => ($l['id'] ?? '') === '' ? null : (int) $l['id'],
+                'product_id' => (int) ($l['product_id'] ?? 0),
+                'product_name' => $names[(int) ($l['product_id'] ?? 0)] ?? '',
+                'qty_ordered' => $l['qty_ordered'] ?? '',
+                'cost_usd' => $l['cost_usd'] ?? '',
+                'tax_pct' => ($l['tax_rate'] ?? '') === '' ? '' : round((float) $l['tax_rate'] * 100, 4),
+            ])->values();
+        }
+
         $productsForJs = $products->map(fn($p) => [
             'id' => $p->id,
             'name' => $p->localName(),
@@ -106,11 +122,11 @@
                                     <div class="font-medium" x-text="line.product_name"></div>
                                 </td>
                                 <td class="py-2 text-end">
-                                    <input type="number" step="0.0001" min="0.0001" :name="`items[${idx}][qty_ordered]`" dir="ltr"
+                                    <input type="number" step="0.0001" min="0.0001" required :name="`items[${idx}][qty_ordered]`" dir="ltr"
                                            x-model.number="line.qty_ordered" class="w-20 text-end border-gray-300 rounded text-sm">
                                 </td>
                                 <td class="py-2 text-end">
-                                    <input type="number" step="0.01" min="0" :name="`items[${idx}][cost_usd]`" dir="ltr"
+                                    <input type="number" step="0.01" min="0" required :name="`items[${idx}][cost_usd]`" dir="ltr"
                                            x-model.number="line.cost_usd" class="w-24 text-end border-gray-300 rounded text-sm">
                                 </td>
                                 <td class="py-2 text-end">
