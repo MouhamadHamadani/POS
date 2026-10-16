@@ -11,8 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 use App\Support\Spreadsheet;
-use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class ReportController extends Controller
 {
@@ -129,15 +127,9 @@ class ReportController extends Controller
         }
 
         if ($format === 'xlsx') {
-            $rows = $exportRows();
-            $export = new class($rows) implements FromArray, WithHeadings {
-                public function __construct(private readonly array $rows) {}
-                public function array(): array { return array_slice($this->rows, 1); }
-                public function headings(): array { return $this->rows[0]; }
-            };
             // Extension is picked by what this runtime can write — the packaged
             // app has no ext-xmlwriter and cannot produce .xlsx at all.
-            return Spreadsheet::download($export, $filename . '-' . now()->format('Ymd-His'));
+            return Spreadsheet::downloadRows($exportRows(), $filename . '-' . now()->format('Ymd-His'));
         }
 
         return view($view, $payload + ['title' => $title]);

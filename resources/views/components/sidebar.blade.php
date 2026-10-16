@@ -6,7 +6,8 @@
         ['pos',             '/pos',              'cashier,manager,admin,stock', '🛒'],
         ['dashboard',       '/dashboard',        'manager,admin',               '📊'],
         ['products',        '/products',         'stock,manager,admin',         '📦'],
-        ['categories',      '/categories',       'stock,manager,admin',         '🏷️'],
+        ['stock_movements', '/products/movements', 'stock,manager,admin',       '🔄'],
+        ['categories',     '/categories',       'stock,manager,admin',         '🏷️'],
         ['customers',       '/customers',        'manager,admin',               '👥'],
         ['suppliers',       '/suppliers',        'manager,admin',               '🚚'],
         ['purchases',       '/purchase-orders',  'manager,admin',               '📑'],
@@ -54,7 +55,9 @@
             @php
                 $roles = array_filter(array_map('trim', explode(',', $rolesCsv)));
                 $allowed = !$role || $role === \App\Models\User::ROLE_SUPER_ADMIN || in_array($role, $roles, true);
-                $active = request()->is(ltrim($path, '/') . '*');
+                $active = request()->is(ltrim($path, '/') . '*')
+                    // /products* would otherwise light up on its own sub-screens too.
+                    && ! ($path === '/products' && request()->is('products/movements*'));
             @endphp
             @if ($allowed)
                 <a href="{{ $path }}"

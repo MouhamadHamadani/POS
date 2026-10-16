@@ -5,6 +5,7 @@ return [
     'pos' => 'POS',
     'dashboard' => 'Dashboard',
     'products' => 'Products',
+    'stock_movements' => 'Stock Movements',
     'categories' => 'Categories',
     'customers' => 'Customers',
     'suppliers' => 'Suppliers',

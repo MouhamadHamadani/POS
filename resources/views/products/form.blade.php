@@ -27,7 +27,19 @@
                     <button type="button" @click="tab='pricing'" :class="tab==='pricing' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_pricing') }}</button>
                     <button type="button" @click="tab='stock'" :class="tab==='stock' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_stock') }}</button>
                     <button type="button" @click="tab='tax'" :class="tab==='tax' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_tax') }}</button>
+                    @if ($isEdit)
+                        <button type="button" @click="tab='movements'" :class="tab==='movements' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_movements') }}</button>
+                    @endif
                 </div>
+
+                {{-- MOVEMENTS (edit only): latest rows of this product's stock history --}}
+                @if ($isEdit)
+                    <div x-show="tab==='movements'" x-cloak class="p-4 space-y-3">
+                        @include('products._movements-table', ['rows' => $movements, 'showProduct' => false])
+                        <a href="{{ route('products.movements', ['product_id' => $product->id, 'from' => '2000-01-01', 'to' => now()->format('Y-m-d')]) }}"
+                           class="inline-block text-sm text-brand-700 hover:underline">{{ __('stock.full_history') }}</a>
+                    </div>
+                @endif
 
                 {{-- BASIC --}}
                 <div x-show="tab==='basic'" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">

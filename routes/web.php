@@ -18,6 +18,7 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\ShiftController;
+use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -88,6 +89,11 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
         Route::post('/products/{product}/adjust-stock', [ProductController::class, 'adjustStock'])->name('products.adjust-stock');
         Route::get('/products/check-barcode', [ProductController::class, 'checkBarcode'])->name('products.check-barcode');
+
+        // Stock movements: the read side of inventory_adjustments.
+        Route::get('/products/movements', [StockMovementController::class, 'index'])->name('products.movements');
+        Route::get('/products/movements/export', [StockMovementController::class, 'export'])
+            ->middleware('demo:blocked')->name('products.movements.export');
 
         // Bulk upload. `can:` resolves User::canBulkUploadProducts(): eligible
         // role AND a super-admin having switched that role's toggle on. Declared

@@ -71,6 +71,15 @@ class InventoryService
         );
     }
 
+    /**
+     * Initial stock entered when a product is created or imported. The product row
+     * must already exist with stock_qty 0, so the log reads 0 -> qty.
+     */
+    public function recordOpening(Product $product, float $qty, int $userId): float
+    {
+        return $this->adjust($product, $qty, InventoryAdjustment::TYPE_OPENING, $userId);
+    }
+
     public function adjust(
         Product $product,
         float $delta,

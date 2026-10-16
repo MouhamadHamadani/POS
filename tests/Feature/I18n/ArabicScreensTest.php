@@ -43,6 +43,7 @@ class ArabicScreensTest extends TestCase
             'dashboard' => ['/dashboard', 'إيرادات اليوم', "Today's Revenue"],
             'products' => ['/products', 'منتج جديد', 'New Product'],
             'product form' => ['/products/create', 'معلومات أساسية', 'Basic Info'],
+            'stock movements' => ['/products/movements', 'إجمالي الوارد', 'Total in'],
             'categories' => ['/categories', 'إضافة فئة جديدة', 'Add new category'],
             'customers' => ['/customers', 'زبون جديد', 'New Customer'],
             'suppliers' => ['/suppliers', 'مورّد جديد', 'New Supplier'],

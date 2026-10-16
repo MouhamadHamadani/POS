@@ -32,6 +32,7 @@ return [
     'tab_pricing' => 'التسعير',
     'tab_stock' => 'المخزون',
     'tab_tax' => 'الضريبة والخيارات',
+    'tab_movements' => 'الحركات',
     'manage_categories' => 'إدارة الفئات',
     'product_type' => 'نوع المنتج',
     'barcode_auto' => 'الباركود (تلقائي إن تُرك فارغاً)',

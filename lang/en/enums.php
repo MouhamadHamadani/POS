@@ -62,6 +62,19 @@ return [
         'low' => 'Low',
         'ok' => 'OK',
     ],
+    'stock_movement_type' => [
+        'sale' => 'Sale',
+        'return' => 'Return',
+        'po_receive' => 'Goods received',
+        'opening' => 'Opening stock',
+        'add' => 'Manual add',
+        'remove' => 'Manual remove',
+        'set' => 'Set quantity',
+        'count' => 'Stock count',
+    ],
+    'stock_reason' => [
+        'sale_void' => 'Sale voided',
+    ],
     'product_type' => [
         'simple' => 'Simple',
         'service' => 'Service (no stock)',

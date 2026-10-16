@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Tax;
 use App\Services\BarcodeService;
 use App\Services\InventoryService;
+use App\Services\StockMovementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -92,10 +93,11 @@ class ProductController extends Controller
         ]);
     }
 
-    public function edit(Product $product): View
+    public function edit(Product $product, StockMovementService $movements): View
     {
         return view('products.form', [
             'product' => $product,
+            'movements' => $movements->recent($product),
             'categories' => Category::orderBy('sort_order')->get(),
             'taxes' => Tax::where('is_active', true)->get(),
             'defaultTaxId' => Tax::where('is_default', true)->value('id'),
@@ -134,9 +136,21 @@ class ProductController extends Controller
 
         $data['created_by'] = $request->user()->id;
 
-        $product = Product::create($data);
+        // Initial stock goes through InventoryService so it lands in the movement
+        // log as an `opening` row instead of appearing out of nowhere.
+        $opening = (float) ($data['stock_qty'] ?? 0);
+        unset($data['stock_qty']);
 
-        AuditLog::record($request->user()->id, 'create', Product::class, $product->id, null, $data);
+        $product = DB::transaction(function () use ($data, $opening, $request) {
+            $product = Product::create($data);
+            if ($opening != 0.0) {
+                $this->inventory->recordOpening($product, $opening, $request->user()->id);
+            }
+
+            return $product;
+        });
+
+        AuditLog::record($request->user()->id, 'create', Product::class, $product->id, null, $data + ['stock_qty' => $opening]);
 
         return redirect()->route('products.index')->with('success', __('messages.product_created', ['name' => $product->localName()]));
     }
@@ -157,6 +171,11 @@ class ProductController extends Controller
             unset($data['image']);
         }
         unset($data['remove_image']);
+
+        // The form's stock field is read-only on edit. Writing it back would
+        // silently overwrite a sale that landed since the page loaded and leave
+        // no trace in the movement log — stock only changes through adjustStock().
+        unset($data['stock_qty']);
 
         $old = $product->only(array_keys($data));
         $product->update($data);

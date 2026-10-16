@@ -62,6 +62,19 @@ return [
         'low' => 'منخفض',
         'ok' => 'جيد',
     ],
+    'stock_movement_type' => [
+        'sale' => 'بيع',
+        'return' => 'مرتجع',
+        'po_receive' => 'استلام بضاعة',
+        'opening' => 'رصيد افتتاحي',
+        'add' => 'إضافة يدوية',
+        'remove' => 'سحب يدوي',
+        'set' => 'تحديد الكمية',
+        'count' => 'جرد',
+    ],
+    'stock_reason' => [
+        'sale_void' => 'إلغاء عملية بيع',
+    ],
     'product_type' => [
         'simple' => 'عادي',
         'service' => 'خدمة (بدون مخزون)',

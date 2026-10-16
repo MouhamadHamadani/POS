@@ -35,6 +35,9 @@ class ResetData extends Command
         'purchase_orders',
         'held_sales',
         'stock_movements',
+        // The movement log points at products by id; leave it behind and the next
+        // product to get an id would inherit a stranger's history.
+        'inventory_adjustments',
         'shifts',
         'audit_logs',
     ];

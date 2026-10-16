@@ -37,7 +37,10 @@ class ProductImportService
 
     private const MAX_ROWS = 5000;
 
-    public function __construct(private readonly BarcodeService $barcodes) {}
+    public function __construct(
+        private readonly BarcodeService $barcodes,
+        private readonly InventoryService $inventory,
+    ) {}
 
     /**
      * Parse and validate a spreadsheet without writing anything.
@@ -176,7 +179,14 @@ class ProductImportService
 
                 $data['created_by'] = $userId;
 
-                Product::create($data);
+                // Same rule as the product form: opening stock is a logged movement.
+                $opening = (float) ($data['stock_qty'] ?? 0);
+                unset($data['stock_qty']);
+
+                $product = Product::create($data);
+                if ($opening != 0.0) {
+                    $this->inventory->recordOpening($product, $opening, $userId);
+                }
                 $created++;
             }
 

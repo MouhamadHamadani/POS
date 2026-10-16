@@ -32,6 +32,7 @@ return [
     'tab_pricing' => 'Pricing',
     'tab_stock' => 'Stock',
     'tab_tax' => 'Tax & Options',
+    'tab_movements' => 'Movements',
     'manage_categories' => 'Manage categories',
     'product_type' => 'Product type',
     'barcode_auto' => 'Barcode (auto if blank)',

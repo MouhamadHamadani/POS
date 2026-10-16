@@ -5,6 +5,7 @@ return [
     'pos' => 'نقطة البيع',
     'dashboard' => 'لوحة التحكم',
     'products' => 'المنتجات',
+    'stock_movements' => 'حركة المخزون',
     'categories' => 'الفئات',
     'customers' => 'الزبائن',
     'suppliers' => 'الموردون',
