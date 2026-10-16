@@ -60,6 +60,8 @@
                     </select>
                 </div>
                 <div class="md:col-span-2 flex items-center gap-2">
+                    {{-- An un-ticked checkbox sends nothing; the hidden 0 (overridden by the box when ticked) lets Save turn Active off and keeps it off on redisplay. --}}
+                    <input type="hidden" name="is_active" value="0">
                     <input type="checkbox" name="is_active" value="1" id="is_active" @checked(old('is_active', $supplier->is_active ?? true))>
                     <label for="is_active" class="text-sm">{{ __('common.active') }}</label>
                 </div>

@@ -61,6 +61,8 @@
                 </div>
                 <div class="flex items-end gap-4">
                     <label class="text-sm flex items-center gap-2">
+                        {{-- Hidden 0 first: an un-ticked box sends nothing, so without it old() is empty after a validation error and the stored value comes back. --}}
+                        <input type="hidden" name="tax_exempt" value="0">
                         <input type="checkbox" name="tax_exempt" value="1" @checked(old('tax_exempt', $customer->tax_exempt))>
                         {{ __('customers.tax_exempt') }}
                     </label>

@@ -167,6 +167,8 @@
                     </div>
                     <div class="flex items-end">
                         <label class="text-sm flex items-center gap-2">
+                            {{-- Every checkbox on this form has a hidden 0 first: an un-ticked box sends nothing, so old() would be empty and the stored/default value would come back after a validation error. --}}
+                            <input type="hidden" name="force_lbp_price" value="0">
                             <input type="checkbox" name="force_lbp_price" value="1" @checked(old('force_lbp_price', $product->force_lbp_price))>
                             {{ __('products.force_lbp') }}
                         </label>
@@ -176,6 +178,7 @@
                 {{-- STOCK --}}
                 <div x-show="tab==='stock'" x-cloak class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="md:col-span-2 flex items-center gap-2">
+                        <input type="hidden" name="track_stock" value="0">
                         <input type="checkbox" name="track_stock" value="1" id="track_stock" @checked(old('track_stock', $product->track_stock))>
                         <label for="track_stock" class="text-sm">{{ __('products.track_stock') }}</label>
                     </div>
@@ -241,6 +244,7 @@
 
                     <div class="flex items-end">
                         <label class="text-sm flex items-center gap-2">
+                            <input type="hidden" name="is_taxable" value="0">
                             <input type="checkbox" name="is_taxable" value="1" @checked(old('is_taxable', $product->is_taxable))>
                             {{ __('products.taxable') }}
                         </label>
@@ -248,12 +252,14 @@
 
                     <div class="flex items-center">
                         <label class="text-sm flex items-center gap-2">
+                            <input type="hidden" name="allow_discount" value="0">
                             <input type="checkbox" name="allow_discount" value="1" @checked(old('allow_discount', $product->allow_discount))>
                             {{ __('products.allow_discount') }}
                         </label>
                     </div>
                     <div class="flex items-center">
                         <label class="text-sm flex items-center gap-2">
+                            <input type="hidden" name="is_active" value="0">
                             <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $product->is_active))>
                             {{ __('products.active_sellable') }}
                         </label>
