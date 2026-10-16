@@ -202,10 +202,19 @@
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('reports.cols.unit') }}</label>
+                        @php
+                            $units = ['pcs','kg','g','L','mL','box','pair','set','m'];
+                            $currentUnit = (string) old('unit', $product->unit);
+                        @endphp
                         <select name="unit" class="w-full border-gray-300 rounded text-sm">
-                            @foreach (['pcs','kg','g','L','mL','box','pair','set','m'] as $u)
-                                <option value="{{ $u }}" @selected(old('unit', $product->unit) === $u)>{{ __("enums.unit.$u") }}</option>
+                            @foreach ($units as $u)
+                                <option value="{{ $u }}" @selected($currentUnit === $u)>{{ __("enums.unit.$u") }}</option>
                             @endforeach
+                            {{-- `unit` is a free string (bulk import takes any value): keep a stored unit that is not
+                                 in the list as an extra option, or Save would submit the first one ("pcs"). --}}
+                            @if ($currentUnit !== '' && ! in_array($currentUnit, $units, true))
+                                <option value="{{ $currentUnit }}" selected>{{ $currentUnit }}</option>
+                            @endif
                         </select>
                     </div>
                     <div>
