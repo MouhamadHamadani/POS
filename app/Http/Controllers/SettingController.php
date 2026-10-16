@@ -38,13 +38,41 @@ class SettingController extends Controller
     private const DEMO_LOCKED_GROUPS = ['general', 'currency'];
 
     /**
-     * The same lock, by key: which keys get written is decided by name, not by the posted
-     * group, so `group=pos` carrying one of these must be refused too. Keep in step with the
-     * general + currency entries of the type map in update().
+     * The settings update() will write: key => cast, by the form (tab) that posts it. Only keys
+     * listed here are ever written. `language` is a field of the General tab, so it lives there.
      */
-    private const DEMO_LOCKED_KEYS = [
-        'business_name', 'business_name_ar', 'address', 'phone', 'email', 'tax_number',
-        'exchange_rate', 'lbp_rounding_step', 'base_currency', 'secondary_currency',
+    private const SETTING_TYPES = [
+        'general' => [
+            'business_name' => 'string', 'business_name_ar' => 'string', 'address' => 'string',
+            'phone' => 'string', 'email' => 'string', 'tax_number' => 'string', 'language' => 'string',
+        ],
+        'currency' => [
+            'exchange_rate' => 'float', 'lbp_rounding_step' => 'float',
+            'base_currency' => 'string', 'secondary_currency' => 'string',
+        ],
+        'pos' => [
+            'auto_print' => 'bool', 'require_shift' => 'bool', 'pos_display_cost' => 'bool',
+            'cashier_can_change_price_tier' => 'bool',
+            'max_cashier_discount_pct' => 'float', 'idle_timeout_min' => 'int',
+        ],
+        'receipt' => [
+            'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
+            'receipt_header' => 'string', 'receipt_footer' => 'string',
+            'receipt_format' => 'string', 'a4_printer_name' => 'string',
+        ],
+        'numbering' => [
+            'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
+        ],
+        'loyalty' => [
+            'points_per_dollar' => 'float', 'redemption_rate' => 'int',
+            'expiry_days' => 'int', 'bronze_threshold' => 'int', 'silver_threshold' => 'int', 'gold_threshold' => 'int',
+        ],
+        'backup' => [
+            'backup_frequency' => 'string', 'retention_days' => 'int', 'cloud_enabled' => 'bool',
+        ],
+        'appearance' => [
+            'rtl' => 'bool', 'dark_mode' => 'bool',
+        ],
     ];
 
     /** What a tax-rate audit entry records (old / new values). */
@@ -125,9 +153,13 @@ class SettingController extends Controller
             'settings.exchange_rate.gt' => __('messages.exchange_rate_invalid'),
         ], $this->numericSettingLabels());
 
+        // The same lock, by key: which keys get written is decided by name, not by the posted
+        // group, so `group=pos` carrying a key of a locked group must be refused too.
+        $demoLockedKeys = array_merge(...array_values(array_intersect_key(self::SETTING_TYPES, array_flip(self::DEMO_LOCKED_GROUPS))));
+
         if (Demo::enabled() && (
             in_array($data['group'], self::DEMO_LOCKED_GROUPS, true)
-            || array_intersect_key($data['settings'], array_flip(self::DEMO_LOCKED_KEYS))
+            || array_intersect_key($data['settings'], $demoLockedKeys)
         )) {
             return back()->withErrors(['demo' => DemoGate::refusal()]);
         }
@@ -137,31 +169,7 @@ class SettingController extends Controller
             return back()->withErrors(['plan' => __('plan.feature_locked')]);
         }
 
-        $typeMap = [
-            // general
-            'business_name' => 'string', 'business_name_ar' => 'string', 'address' => 'string',
-            'phone' => 'string', 'email' => 'string', 'tax_number' => 'string',
-            // currency
-            'exchange_rate' => 'float', 'lbp_rounding_step' => 'float',
-            'base_currency' => 'string', 'secondary_currency' => 'string',
-            // pos
-            'auto_print' => 'bool', 'require_shift' => 'bool', 'pos_display_cost' => 'bool',
-            'cashier_can_change_price_tier' => 'bool',
-            'max_cashier_discount_pct' => 'float', 'idle_timeout_min' => 'int',
-            // receipt
-            'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
-            'receipt_header' => 'string', 'receipt_footer' => 'string',
-            'receipt_format' => 'string', 'a4_printer_name' => 'string',
-            // numbering
-            'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
-            // loyalty
-            'points_per_dollar' => 'float', 'redemption_rate' => 'int',
-            'expiry_days' => 'int', 'bronze_threshold' => 'int', 'silver_threshold' => 'int', 'gold_threshold' => 'int',
-            // backup
-            'backup_frequency' => 'string', 'retention_days' => 'int', 'cloud_enabled' => 'bool',
-            // appearance
-            'language' => 'string', 'rtl' => 'bool', 'dark_mode' => 'bool',
-        ];
+        $typeMap = array_merge(...array_values(self::SETTING_TYPES));
 
         foreach ($data['settings'] as $key => $value) {
             // Only keys this form is known to carry. This route is open to the
