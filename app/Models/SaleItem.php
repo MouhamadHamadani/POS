@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SaleItem extends Model
 {
@@ -46,5 +47,24 @@ class SaleItem extends Model
     public function variant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
+    public function returnItems(): HasMany
+    {
+        return $this->hasMany(ReturnItem::class);
+    }
+
+    /** Units on returns still waiting for a manager. They are not in returned_qty until approved. */
+    public function pendingReturnQty(): float
+    {
+        return (float) $this->returnItems()
+            ->whereHas('returnTransaction', fn ($q) => $q->where('status', ReturnTransaction::STATUS_PENDING))
+            ->sum('qty_returned');
+    }
+
+    /** Units that can still go on a new return: sold, less returned, less tied up in pending returns. */
+    public function returnableQty(): float
+    {
+        return max(0.0, (float) $this->qty - (float) $this->returned_qty - $this->pendingReturnQty());
     }
 }

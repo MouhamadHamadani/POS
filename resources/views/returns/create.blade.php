@@ -41,7 +41,8 @@
                     <tbody class="divide-y">
                     @foreach ($sale->items as $idx => $item)
                         @php
-                            $remaining = (float) $item->qty - (float) $item->returned_qty;
+                            $pending = $item->pendingReturnQty();
+                            $remaining = $item->returnableQty();
                             $perUnit = (float) $item->qty > 0 ? (float) $item->line_total_usd / (float) $item->qty : 0;
                         @endphp
                         <tr @class(['opacity-50' => $remaining <= 0])>
@@ -51,7 +52,12 @@
                                 <div class="text-xs text-gray-500"><x-ltr>{{ $item->product?->sku ?? $item->product_sku }}</x-ltr></div>
                             </td>
                             <td class="p-2 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.') }}</x-ltr></td>
-                            <td class="p-2 text-end text-gray-500"><x-ltr>{{ rtrim(rtrim(number_format((float) $item->returned_qty, 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                            <td class="p-2 text-end text-gray-500">
+                                <x-ltr>{{ rtrim(rtrim(number_format((float) $item->returned_qty, 4, '.', ''), '0'), '.') }}</x-ltr>
+                                @if ($pending > 0)
+                                    <div class="text-xs text-amber-600">{{ __('returns.qty_pending', ['qty' => rtrim(rtrim(number_format($pending, 4, '.', ''), '0'), '.')]) }}</div>
+                                @endif
+                            </td>
                             <td class="p-2 text-end font-medium"><x-ltr>{{ rtrim(rtrim(number_format($remaining, 4, '.', ''), '0'), '.') }}</x-ltr></td>
                             <td class="p-2 text-end text-xs"><x-ltr>${{ number_format($perUnit, 4) }}</x-ltr></td>
                             <td class="p-2 text-end">

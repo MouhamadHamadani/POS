@@ -21,6 +21,7 @@ return [
     'items_to_return' => 'Items to return',
     'sold' => 'Sold',
     'already_returned' => 'Already returned',
+    'qty_pending' => '+:qty awaiting approval',
     'unit_price' => 'Unit price',
     'return_qty' => 'Return qty',
     'restock' => 'Restock?',

@@ -12,6 +12,7 @@ use App\Services\InventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ReturnController extends Controller
@@ -94,7 +95,8 @@ class ReturnController extends Controller
             if (!$saleItem) {
                 return back()->withErrors(['items' => __('messages.invalid_line')]);
             }
-            $remaining = (float) $saleItem->qty - (float) $saleItem->returned_qty;
+            // Units already on another pending return are spoken for: returned_qty only moves on approval.
+            $remaining = $saleItem->returnableQty();
             $qty = (float) $i['qty_returned'];
             if ($qty > $remaining + 0.0001) {
                 return back()->withErrors([
@@ -226,10 +228,26 @@ class ReturnController extends Controller
     private function processApproval(ReturnTransaction $return): void
     {
         foreach ($return->items as $ri) {
-            if ($ri->restock && $ri->product) {
-                $this->inventory->restockFromReturn($ri->product, (float) $ri->qty_returned, $return->user_id, $return->id);
+            $qty = (float) $ri->qty_returned;
+
+            // Claim the units with one statement that both checks and moves returned_qty, so two
+            // returns on the same line can never take it past what was sold. A throw rolls back
+            // the whole approval (callers run this inside their transaction) and the return stays pending.
+            // (PDO binds the float as text, and SQLite sorts any text above any number, hence the CAST.)
+            $claimed = SaleItem::where('id', $ri->sale_item_id)
+                ->whereRaw('qty - returned_qty >= CAST(? AS REAL)', [$qty - 0.0001])
+                ->increment('returned_qty', $qty);
+            if (!$claimed) {
+                $line = SaleItem::find($ri->sale_item_id);
+                $left = max(0.0, (float) $line?->qty - (float) $line?->returned_qty);
+                throw ValidationException::withMessages([
+                    'items' => __('messages.qty_exceeds', ['product' => $line?->product_name, 'remaining' => rtrim(rtrim(number_format($left, 4, '.', ''), '0'), '.')]),
+                ]);
             }
-            SaleItem::where('id', $ri->sale_item_id)->increment('returned_qty', (float) $ri->qty_returned);
+
+            if ($ri->restock && $ri->product) {
+                $this->inventory->restockFromReturn($ri->product, $qty, $return->user_id, $return->id);
+            }
         }
 
         $sale = $return->sale->fresh('items');
