@@ -28,12 +28,16 @@ class ShiftService
      * change handed back; a cash movement adds to or takes from the drawer in the
      * currency it was handled in. Refunds and customer payments are not counted here.
      *
+     * A partly refunded sale still counts in full: its cash was taken, and the refund is
+     * one of the movements not counted here. A fully refunded sale is left out, as before;
+     * whether it should count (with its refund as cash out) is the open BUG-028 question.
+     *
      * @return array<string, float|int>
      */
     public function totals(Shift $shift): array
     {
         $sales = Sale::where('shift_id', $shift->id)
-            ->where('status', Sale::STATUS_COMPLETED)
+            ->whereIn('status', [Sale::STATUS_COMPLETED, Sale::STATUS_PARTIAL_REFUND])
             ->get();
 
         $salesUsd = (float) $sales->sum('amount_tendered_usd') - (float) $sales->sum('change_usd');
