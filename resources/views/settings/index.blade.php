@@ -135,7 +135,8 @@
                                     <td class="py-2 w-24"><input type="number" step="0.0001" min="0" max="1" name="rate" dir="ltr" value="{{ $t->rate }}" class="w-full text-end border-gray-200 rounded text-sm py-1"></td>
                                     <td class="py-2 text-center"><input type="checkbox" name="is_inclusive" value="1" @checked($t->is_inclusive)></td>
                                     <td class="py-2 text-center"><input type="checkbox" name="is_default" value="1" @checked($t->is_default)></td>
-                                    <td class="py-2 text-center"><input type="checkbox" name="is_active" value="1" @checked($t->is_active)></td>
+                                    {{-- An un-ticked checkbox sends nothing; the hidden 0 (sent first, overridden by the box when ticked) is what lets Save turn Active off. --}}
+                                    <td class="py-2 text-center"><input type="hidden" name="is_active" value="0"><input type="checkbox" name="is_active" value="1" @checked($t->is_active)></td>
                                     <td class="py-2 text-end"><button class="text-xs text-brand-600">{{ __('common.save') }}</button>
                                 </form>
                                     <form method="POST" action="{{ route('settings.tax.destroy', $t) }}" class="inline ms-2" onsubmit="return confirm({{ Js::from(__('settings.confirm_delete_tax', ['name' => $t->name])) }})">
