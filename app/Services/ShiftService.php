@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CashMovement;
 use App\Models\Expense;
+use App\Models\ReturnTransaction;
 use App\Models\Sale;
 use App\Models\Shift;
 use App\Models\User;
@@ -26,22 +27,35 @@ class ShiftService
     /**
      * Cash is counted per physical currency. Sales add what was tendered less the
      * change handed back; a cash movement adds to or takes from the drawer in the
-     * currency it was handled in. Refunds and customer payments are not counted here.
+     * currency it was handled in. Customer payments are not counted here.
      *
-     * A partly refunded sale still counts in full: its cash was taken, and the refund is
-     * one of the movements not counted here. A fully refunded sale is left out, as before;
-     * whether it should count (with its refund as cash out) is the open BUG-028 question.
+     * The drawer holds the cash of every sale that was not voided, refunded sales
+     * included, less the cash refunds paid back for those sales (counted as cash out, in
+     * the currency they were paid in: cash_usd refunds in USD, cash_lbp refunds in LBP;
+     * account and exchange refunds move no cash). A refund is netted against the shift
+     * that rang the sale, so a fully refunded cash sale nets to zero and a partly
+     * refunded one to what was kept. sales_count and revenue still leave out a fully
+     * refunded sale.
+     *
+     * Not decided (BUG-028): a refund paid in a LATER shift than the sale, or out of
+     * another drawer, still moves no cash in the shift that pays it.
      *
      * @return array<string, float|int>
      */
     public function totals(Shift $shift): array
     {
-        $sales = Sale::where('shift_id', $shift->id)
-            ->whereIn('status', [Sale::STATUS_COMPLETED, Sale::STATUS_PARTIAL_REFUND])
+        $takings = Sale::where('shift_id', $shift->id)
+            ->whereIn('status', [Sale::STATUS_COMPLETED, Sale::STATUS_PARTIAL_REFUND, Sale::STATUS_REFUNDED])
             ->get();
+        $sales = $takings->where('status', '!=', Sale::STATUS_REFUNDED);
 
-        $salesUsd = (float) $sales->sum('amount_tendered_usd') - (float) $sales->sum('change_usd');
-        $salesLbp = (float) $sales->sum('amount_tendered_lbp') - (float) $sales->sum('change_lbp');
+        $salesUsd = (float) $takings->sum('amount_tendered_usd') - (float) $takings->sum('change_usd');
+        $salesLbp = (float) $takings->sum('amount_tendered_lbp') - (float) $takings->sum('change_lbp');
+
+        $refunds = ReturnTransaction::whereIn('sale_id', $takings->pluck('id'))
+            ->where('status', ReturnTransaction::STATUS_COMPLETED)
+            ->get(['refund_method', 'refund_amount_usd', 'refund_amount_lbp']);
+        $refunded = fn (string $method, string $column): float => (float) $refunds->where('refund_method', $method)->sum($column);
 
         $moves = CashMovement::where('shift_id', $shift->id)->get(['type', 'currency', 'amount_usd', 'amount_lbp']);
         $moved = fn (string $type, string $currency): float => (float) $moves
@@ -50,8 +64,8 @@ class ShiftService
 
         $inUsd = round($salesUsd + $moved(CashMovement::TYPE_IN, 'usd'), 2);
         $inLbp = round($salesLbp + $moved(CashMovement::TYPE_IN, 'lbp'), 0);
-        $outUsd = round($moved(CashMovement::TYPE_OUT, 'usd'), 2);
-        $outLbp = round($moved(CashMovement::TYPE_OUT, 'lbp'), 0);
+        $outUsd = round($moved(CashMovement::TYPE_OUT, 'usd') + $refunded('cash_usd', 'refund_amount_usd'), 2);
+        $outLbp = round($moved(CashMovement::TYPE_OUT, 'lbp') + $refunded('cash_lbp', 'refund_amount_lbp'), 0);
 
         return [
             'sales_count' => $sales->count(),
