@@ -445,6 +445,12 @@ class SettingController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        // An inactive rate is not offered on the product form, so as the default it would make every
+        // new product tax-free. The owner picks another default first (or unticks Default here).
+        if ($request->boolean('is_default') && ! $request->boolean('is_active', true)) {
+            return back()->withErrors(['is_active' => __('messages.tax_default_inactive')]);
+        }
+
         if ($request->boolean('is_default')) {
             Tax::where('id', '!=', $tax->id)->update(['is_default' => false]);
         }

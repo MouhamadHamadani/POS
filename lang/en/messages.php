@@ -35,6 +35,7 @@ return [
     'tax_added' => 'Tax added.',
     'tax_updated' => 'Tax updated.',
     'tax_in_use' => 'Tax is in use by products. Reassign first.',
+    'tax_default_inactive' => 'The default tax cannot be deactivated. Make another tax the default first.',
     'tax_deleted' => 'Tax deleted.',
     'file_not_found' => 'File not found.',
     'backup_restored' => 'Backup restored. You may need to log in again.',

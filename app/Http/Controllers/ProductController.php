@@ -89,7 +89,7 @@ class ProductController extends Controller
             ]),
             'categories' => Category::orderBy('sort_order')->get(),
             'taxes' => Tax::where('is_active', true)->get(),
-            'defaultTaxId' => Tax::where('is_default', true)->value('id'),
+            'defaultTaxId' => Tax::where('is_active', true)->where('is_default', true)->value('id'),
         ]);
     }
 
@@ -102,7 +102,7 @@ class ProductController extends Controller
             // The product's own tax stays selectable even once the rate is deactivated; otherwise
             // the select would show "No tax" and Save would silently strip it.
             'taxes' => Tax::where(fn ($q) => $q->where('is_active', true)->orWhere('id', $product->tax_id))->get(),
-            'defaultTaxId' => Tax::where('is_default', true)->value('id'),
+            'defaultTaxId' => Tax::where('is_active', true)->where('is_default', true)->value('id'),
         ]);
     }
 
