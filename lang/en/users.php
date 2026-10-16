@@ -25,4 +25,5 @@ return [
     'confirm' => 'Confirm',
     'reset_pin' => 'Reset PIN',
     'new_pin' => 'New 4-digit PIN',
+    'role_not_in_plan' => ':role (not in plan)',
 ];

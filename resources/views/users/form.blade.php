@@ -49,10 +49,16 @@
                             array_flip([...\App\Support\License::allowedRoles(), \App\Models\User::ROLE_SUPER_ADMIN]),
                         );
                     @endphp
+                    {{-- A user whose role the plan no longer offers keeps it as an extra option: with no
+                         selected option the browser would submit the first one and Save would change the role. --}}
+                    @php $keptRole = $isEdit && ! isset($roleOptions[$user->role]) ? $user->role : null; @endphp
                     <select name="role" required class="w-full border-gray-300 rounded text-sm">
                         @foreach (array_keys($roleOptions) as $v)
                             <option value="{{ $v }}" @selected(old('role', $user->role) === $v)>{{ \App\Support\EnumLabel::get('role', $v) }}</option>
                         @endforeach
+                        @if ($keptRole)
+                            <option value="{{ $keptRole }}" @selected(old('role', $user->role) === $keptRole)>{{ __('users.role_not_in_plan', ['role' => \App\Support\EnumLabel::get('role', $keptRole)]) }}</option>
+                        @endif
                     </select>
                 </div>
                 <div>
