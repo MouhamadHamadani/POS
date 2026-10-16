@@ -37,6 +37,16 @@ class SettingController extends Controller
 
     private const DEMO_LOCKED_GROUPS = ['general', 'currency'];
 
+    /**
+     * The same lock, by key: which keys get written is decided by name, not by the posted
+     * group, so `group=pos` carrying one of these must be refused too. Keep in step with the
+     * general + currency entries of the type map in update().
+     */
+    private const DEMO_LOCKED_KEYS = [
+        'business_name', 'business_name_ar', 'address', 'phone', 'email', 'tax_number',
+        'exchange_rate', 'lbp_rounding_step', 'base_currency', 'secondary_currency',
+    ];
+
     /** What a tax-rate audit entry records (old / new values). */
     private const TAX_AUDITED = ['name', 'name_ar', 'rate', 'is_inclusive', 'is_default', 'is_active'];
 
@@ -115,7 +125,10 @@ class SettingController extends Controller
             'settings.exchange_rate.gt' => __('messages.exchange_rate_invalid'),
         ], $this->numericSettingLabels());
 
-        if (Demo::enabled() && in_array($data['group'], self::DEMO_LOCKED_GROUPS, true)) {
+        if (Demo::enabled() && (
+            in_array($data['group'], self::DEMO_LOCKED_GROUPS, true)
+            || array_intersect_key($data['settings'], array_flip(self::DEMO_LOCKED_KEYS))
+        )) {
             return back()->withErrors(['demo' => DemoGate::refusal()]);
         }
 
