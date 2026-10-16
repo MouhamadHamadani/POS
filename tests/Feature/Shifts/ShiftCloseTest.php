@@ -146,6 +146,26 @@ class ShiftCloseTest extends TestCase
         $this->assertNull($shift->closing_denominations);
     }
 
+    public function test_dollars_counted_by_denomination_and_lbp_typed_as_a_total_each_use_their_own_source(): void
+    {
+        $cashier = $this->cashier();
+        $shift = $this->openShift($cashier, usd: 0, lbp: 5_000_000);
+
+        // What the close form now allows (BUG-013): the USD field locks on its own
+        // denominations only, so the cashier can still type the LBP total.
+        $this->actingAs($cashier)->post('/shifts/close', [
+            'closing_cash_usd' => 0,
+            'closing_cash_lbp' => 5_000_000,
+            'denominations' => ['usd' => [100 => 1, 20 => 2], 'lbp' => [100000 => 0]],
+        ])->assertRedirect('/shifts/open');
+
+        $shift->refresh();
+
+        $this->assertEqualsWithDelta(140.0, (float) $shift->closing_cash_usd, 0.0001);
+        $this->assertEqualsWithDelta(5_000_000, (float) $shift->closing_cash_lbp, 0.5);
+        $this->assertEqualsWithDelta(0.0, (float) $shift->variance_lbp, 0.5);
+    }
+
     public function test_a_closed_shift_blocks_further_sales_until_a_new_one_is_opened(): void
     {
         $cashier = $this->cashier();
