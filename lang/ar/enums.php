@@ -9,6 +9,11 @@ return [
         'cashier' => 'كاشير',
         'stock' => 'أمين المستودع',
     ],
+    'activation_status' => [
+        'trial' => 'تجريبية',
+        'activated' => 'مفعّلة',
+        'locked' => 'مقفلة',
+    ],
     'customer_group' => [
         'retail' => 'مفرق',
         'wholesale' => 'جملة',

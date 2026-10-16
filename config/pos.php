@@ -66,6 +66,55 @@ return [
     /** Shared password for the four seeded demo accounts. Demo builds only. */
     'demo_password' => env('POS_DEMO_PASSWORD', 'demo1234'),
 
+    /**
+     * Pricing tiers, as published on the marketing site. One perpetual licence
+     * per install: no key, no activation, no expiry — a super_admin picks the
+     * tier on the Plan tab (Settings) and App\Support\License reads it back.
+     *
+     * `features` are the keys FeatureGate and License::allows() check; they are
+     * named after the routes/sections they gate. `max_users` counts every
+     * account that is not super_admin. `max_devices` is informational only in
+     * this phase — the app is single-machine, so there is nothing to count yet.
+     */
+    'tiers' => [
+        'starter' => [
+            'max_users' => 1,
+            'max_devices' => 1,
+            'roles' => ['manager', 'cashier'],
+            // Shift summary is the shift close screen, not a report route, so
+            // it needs no key of its own — it ships on every tier.
+            'features' => ['reports.daily_sales'],
+        ],
+        'standard' => [
+            'max_users' => 3,
+            'max_devices' => 3,
+            'roles' => ['manager', 'cashier', 'stock', 'admin'],
+            'features' => [
+                'reports.daily_sales', 'reports.sales_by_product',
+                'reports.stock_levels', 'reports.profit_loss',
+                'returns', 'suppliers', 'loyalty',
+            ],
+        ],
+        'premium' => [
+            'max_users' => null, // null = unlimited
+            'max_devices' => null,
+            'roles' => ['manager', 'cashier', 'stock', 'admin'],
+            'features' => [
+                'reports.daily_sales', 'reports.sales_by_product',
+                'reports.stock_levels', 'reports.profit_loss',
+                'returns', 'suppliers', 'loyalty', 'receipts.custom_templates',
+            ],
+        ],
+    ],
+
+    /**
+     * What License::tier() resolves to when the `tier` setting has never been
+     * written — i.e. every install shipped before tiers existed. Premium keeps
+     * those machines fully unlocked until someone sets their real tier. New
+     * installs get an explicit pick in the setup wizard instead.
+     */
+    'default_tier' => 'premium',
+
     'roles' => [
         'admin' => 'Administrator',
         'manager' => 'Manager',

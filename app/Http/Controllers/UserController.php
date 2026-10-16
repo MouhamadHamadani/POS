@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\License;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -14,13 +15,52 @@ use Illuminate\View\View;
 class UserController extends Controller
 {
     /**
-     * Roles the acting user may assign. An `admin` is the client's store owner:
-     * they manage their own staff, but minting another admin-tier account is
-     * privilege escalation, so only a super_admin sees those values.
+     * Roles the acting user may assign. Two independent narrowings:
+     *
+     *  - privilege: an `admin` is the client's store owner, so they manage
+     *    their own staff but cannot mint another admin-tier account.
+     *  - licence:   the install's tier decides which staff roles exist at all
+     *    (Starter has no Stock Keeper or Admin). This binds a super_admin too —
+     *    the tier describes the install, not the person editing it — but
+     *    super_admin itself stays assignable, since it is the vendor's own
+     *    account and consumes no seat.
      */
     private function assignableRoles(Request $request): array
     {
-        return array_keys($request->user()->isSuperAdmin() ? User::ROLES : User::STAFF_ROLES);
+        $byPrivilege = array_keys($request->user()->isSuperAdmin() ? User::ROLES : User::STAFF_ROLES);
+        $byLicence = [...License::allowedRoles(), User::ROLE_SUPER_ADMIN];
+
+        return array_values(array_intersect($byPrivilege, $byLicence));
+    }
+
+    /**
+     * A role the tier does not include, submitted anyway. Separate from the
+     * Rule::in check so the refusal says "not in your plan" rather than the
+     * generic invalid-selection message — and says it in the user's language.
+     */
+    private function roleLicenceError(Request $request): ?string
+    {
+        $role = (string) $request->input('role');
+
+        $blocked = array_key_exists($role, User::ROLES)
+            && $role !== User::ROLE_SUPER_ADMIN
+            && ! in_array($role, License::allowedRoles(), true);
+
+        return $blocked ? __('plan.role_locked') : null;
+    }
+
+    /**
+     * Seats are counted per install, not per actor, so this refuses a
+     * super_admin's request too. Enforced here as well as in the form so a
+     * crafted POST cannot walk past it.
+     */
+    private function seatLimitError(string $role): ?string
+    {
+        if ($role === User::ROLE_SUPER_ADMIN || ! License::isAtUserLimit()) {
+            return null;
+        }
+
+        return __('plan.user_limit', ['used' => License::seatsUsed(), 'max' => License::maxUsers()]);
     }
 
     /**
@@ -62,11 +102,16 @@ class UserController extends Controller
         return view('users.form', [
             'user' => new User(['role' => 'cashier', 'language' => Setting::get('language', 'en'), 'is_active' => true]),
             'isEdit' => false,
+            'seatLimit' => $this->seatLimitError(User::ROLE_CASHIER),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        if ($error = $this->roleLicenceError($request)) {
+            return back()->withInput()->withErrors(['role' => $error]);
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'username' => ['required', 'string', 'max:60', Rule::unique('users', 'username')],
@@ -78,6 +123,10 @@ class UserController extends Controller
             'pin' => 'nullable|digits:4',
             'is_active' => 'nullable|boolean',
         ]);
+
+        if ($error = $this->seatLimitError($data['role'])) {
+            return back()->withInput()->withErrors(['role' => $error]);
+        }
 
         $data['is_active'] = $request->boolean('is_active');
         $data['max_discount_pct'] ??= 0;
@@ -94,12 +143,16 @@ class UserController extends Controller
         // An admin manages staff only; their own details live under /profile.
         $this->guardPrivilegedTarget($request, $user);
 
-        return view('users.form', ['user' => $user, 'isEdit' => true]);
+        return view('users.form', ['user' => $user, 'isEdit' => true, 'seatLimit' => null]);
     }
 
     public function update(Request $request, User $user): RedirectResponse
     {
         $this->guardPrivilegedTarget($request, $user);
+
+        if ($error = $this->roleLicenceError($request)) {
+            return back()->withInput()->withErrors(['role' => $error]);
+        }
 
         $data = $request->validate([
             'name' => 'required|string|max:255',

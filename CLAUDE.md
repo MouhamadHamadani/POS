@@ -35,6 +35,11 @@ about this repo being read-only; they no longer apply.)
 - Bilingual model fields follow the `name` / `name_ar` pattern with a
   `localName()` accessor — extend this pattern for any new translatable data,
   don't invent a new one.
+- The 14-day trial lock lives in `App\Support\Activation` + `ActivationGate`
+  (a web-group middleware, prioritised ahead of `auth`). Status `trial` is written
+  only by `SetupController`; an unset status means `activated`, so installs that
+  predate it never lock. Unlock is `super_admin`-only (Settings → Plan) and the
+  lock never deletes data.
 - Four roles: `admin`, `manager`, `cashier`, `stock`, enforced via the
   `role:` route middleware (`App\Http\Middleware\RoleMiddleware`).
 - VAT and other tax rates are stored as `0..1` decimals, not percentages.

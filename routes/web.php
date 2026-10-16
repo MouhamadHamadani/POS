@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DemoController;
@@ -29,6 +30,11 @@ Route::get('/', function () {
 Route::get('/locale/{locale}', [LocaleController::class, 'switch'])
     ->whereIn('locale', ['en', 'ar'])->name('locale.switch');
 
+// Trial-expired lock screen. Outside the auth group: the people it is for
+// (cashiers, the client's admin) are signed out of nothing and in no position
+// to sign in. See ActivationGate for what is still reachable while locked.
+Route::get('/locked', [ActivationController::class, 'locked'])->name('locked');
+
 // First-run provisioning. Self-closing: 404s once any account exists.
 Route::get('/setup', [SetupController::class, 'show'])->name('setup.show');
 Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
@@ -57,8 +63,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pos/api/products', [PosController::class, 'products'])->name('pos.api.products');
         Route::get('/pos/api/barcode', [PosController::class, 'lookupBarcode'])->name('pos.api.barcode');
         Route::post('/pos/api/preview-change', [PosController::class, 'previewChange'])->name('pos.api.preview-change');
-        Route::get('/pos/api/customers/search', [CustomerController::class, 'search'])->name('pos.api.customers.search');
-        Route::post('/pos/api/customers/quick-add', [CustomerController::class, 'quickAdd'])->name('pos.api.customers.quick-add');
+        // Attaching a customer at the till is the loyalty feature's front door.
+        Route::middleware('feature:loyalty')->group(function () {
+            Route::get('/pos/api/customers/search', [CustomerController::class, 'search'])->name('pos.api.customers.search');
+            Route::post('/pos/api/customers/quick-add', [CustomerController::class, 'quickAdd'])->name('pos.api.customers.quick-add');
+        });
         Route::post('/pos/api/sales', [SaleController::class, 'store'])->name('pos.api.sales');
         Route::get('/pos/api/sales/{sale}', [SaleController::class, 'show'])->name('pos.api.sales.show');
 
@@ -96,54 +105,65 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
         Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 
-        // Suppliers & Purchase Orders
-        Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
-        Route::get('/suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');
-        Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
-        Route::get('/suppliers/{supplier}', [SupplierController::class, 'show'])->name('suppliers.show');
-        Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
-        Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
-        Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
-        Route::post('/suppliers/{supplier}/payment', [SupplierController::class, 'recordPayment'])->name('suppliers.payment');
+        // Suppliers & Purchase Orders — one feature area, gated whole.
+        Route::middleware('feature:suppliers')->group(function () {
+            Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+            Route::get('/suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');
+            Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
+            Route::get('/suppliers/{supplier}', [SupplierController::class, 'show'])->name('suppliers.show');
+            Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
+            Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
+            Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
+            Route::post('/suppliers/{supplier}/payment', [SupplierController::class, 'recordPayment'])->name('suppliers.payment');
 
-        Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchases.index');
-        Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->name('purchases.create');
-        Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->name('purchases.store');
-        Route::get('/purchase-orders/{purchase}', [PurchaseOrderController::class, 'show'])->name('purchases.show');
-        Route::get('/purchase-orders/{purchase}/edit', [PurchaseOrderController::class, 'edit'])->name('purchases.edit');
-        Route::put('/purchase-orders/{purchase}', [PurchaseOrderController::class, 'update'])->name('purchases.update');
-        Route::post('/purchase-orders/{purchase}/transition', [PurchaseOrderController::class, 'transition'])->name('purchases.transition');
-        Route::post('/purchase-orders/{purchase}/receive', [PurchaseOrderController::class, 'receive'])->name('purchases.receive');
+            Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchases.index');
+            Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->name('purchases.create');
+            Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->name('purchases.store');
+            Route::get('/purchase-orders/{purchase}', [PurchaseOrderController::class, 'show'])->name('purchases.show');
+            Route::get('/purchase-orders/{purchase}/edit', [PurchaseOrderController::class, 'edit'])->name('purchases.edit');
+            Route::put('/purchase-orders/{purchase}', [PurchaseOrderController::class, 'update'])->name('purchases.update');
+            Route::post('/purchase-orders/{purchase}/transition', [PurchaseOrderController::class, 'transition'])->name('purchases.transition');
+            Route::post('/purchase-orders/{purchase}/receive', [PurchaseOrderController::class, 'receive'])->name('purchases.receive');
+        });
     });
 
     // Returns — cashiers can initiate (pending), managers/admins auto-approve.
-    Route::get('/returns', [ReturnController::class, 'index'])->name('returns.index');
-    Route::get('/returns/search', [ReturnController::class, 'searchSale'])->name('returns.search');
-    Route::post('/returns/find-sale', [ReturnController::class, 'findSale'])->name('returns.find-sale');
-    Route::get('/returns/create/{sale}', [ReturnController::class, 'create'])->name('returns.create');
-    Route::post('/returns/sale/{sale}', [ReturnController::class, 'store'])->name('returns.store');
-    Route::get('/returns/{return}', [ReturnController::class, 'show'])->name('returns.show');
-    Route::middleware('role:admin,manager')->group(function () {
-        Route::post('/returns/{return}/approve', [ReturnController::class, 'approve'])->name('returns.approve');
-        Route::post('/returns/{return}/reject', [ReturnController::class, 'reject'])->name('returns.reject');
+    Route::middleware('feature:returns')->group(function () {
+        Route::get('/returns', [ReturnController::class, 'index'])->name('returns.index');
+        Route::get('/returns/search', [ReturnController::class, 'searchSale'])->name('returns.search');
+        Route::post('/returns/find-sale', [ReturnController::class, 'findSale'])->name('returns.find-sale');
+        Route::get('/returns/create/{sale}', [ReturnController::class, 'create'])->name('returns.create');
+        Route::post('/returns/sale/{sale}', [ReturnController::class, 'store'])->name('returns.store');
+        Route::get('/returns/{return}', [ReturnController::class, 'show'])->name('returns.show');
+        Route::middleware('role:admin,manager')->group(function () {
+            Route::post('/returns/{return}/approve', [ReturnController::class, 'approve'])->name('returns.approve');
+            Route::post('/returns/{return}/reject', [ReturnController::class, 'reject'])->name('returns.reject');
+        });
     });
 
     // Customers + Reports — admin/manager
     Route::middleware('role:admin,manager')->group(function () {
-        Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
-        Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create');
-        Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
-        Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
-        Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
-        Route::put('/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
-        Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
-        Route::post('/customers/{customer}/payment', [CustomerController::class, 'recordPayment'])->name('customers.payment');
+        Route::middleware('feature:loyalty')->group(function () {
+            Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+            Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create');
+            Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
+            Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
+            Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
+            Route::put('/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+            Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
+            Route::post('/customers/{customer}/payment', [CustomerController::class, 'recordPayment'])->name('customers.payment');
+        });
 
+        // The index and the daily summary ship on every tier; the three that
+        // expose cost, valuation and margin are Standard+.
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/sales/daily', [ReportController::class, 'dailySales'])->name('reports.daily-sales');
-        Route::get('/reports/sales/by-product', [ReportController::class, 'salesByProduct'])->name('reports.sales-by-product');
-        Route::get('/reports/inventory/stock-levels', [ReportController::class, 'stockLevels'])->name('reports.stock-levels');
-        Route::get('/reports/financial/pnl', [ReportController::class, 'profitLoss'])->name('reports.pnl');
+        Route::get('/reports/sales/by-product', [ReportController::class, 'salesByProduct'])
+            ->middleware('feature:reports.sales_by_product')->name('reports.sales-by-product');
+        Route::get('/reports/inventory/stock-levels', [ReportController::class, 'stockLevels'])
+            ->middleware('feature:reports.stock_levels')->name('reports.stock-levels');
+        Route::get('/reports/financial/pnl', [ReportController::class, 'profitLoss'])
+            ->middleware('feature:reports.profit_loss')->name('reports.pnl');
     });
 
     // Admin-only — Users, Settings
@@ -160,6 +180,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
         Route::post('/settings/receipt/test-print', [SettingController::class, 'testPrintReceipt'])->name('settings.receipt.test-print');
+
+        // Premium's receipt differentiator. Starter/Standard keep the
+        // header/footer/paper-width fields on the Receipt tab and nothing more.
+        Route::post('/settings/receipt-template', [SettingController::class, 'updateReceiptTemplate'])
+            ->middleware('feature:receipts.custom_templates')->name('settings.receipt-template.update');
+
         // Tax rates are part of the demo baseline — editing them mid-pitch would
         // undermine the "always resets clean" property, and VAT is one of the
         // things being demonstrated.
@@ -185,6 +211,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/products/trashed', [ProductController::class, 'trashed'])->name('products.trashed');
 
         Route::post('/settings/permissions', [SettingController::class, 'updatePermissions'])->name('settings.permissions.update');
+
+        // The Plan tab holds two independent controls, each with its own route:
+        //  - tier: which features and seat limits this install is licensed for.
+        //    Vendor territory — the client's own admin must never be able to
+        //    raise their own plan.
+        //  - activation: the trial unlock. ActivationGate lets this route and the
+        //    tier route (plus the tab that hosts both) through while locked.
+        // Neither route touches the other's setting.
+        Route::post('/settings/plan', [SettingController::class, 'updatePlan'])->name('settings.plan.update');
+        Route::post('/settings/activation', [ActivationController::class, 'activate'])->name('settings.activation.activate');
 
         Route::post('/settings/backup/now', [SettingController::class, 'backupNow'])->name('settings.backup.now');
         Route::get('/settings/backup/download/{filename}', [SettingController::class, 'backupDownload'])->name('settings.backup.download');

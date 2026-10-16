@@ -90,7 +90,10 @@
                                     class="text-xs text-red-600 hover:underline">{{ __('pos.ui.clear') }}</button>
                         </div>
 
-                        {{-- Customer: "+ Add customer" until one is attached, then a chip. --}}
+                        {{-- Customer: "+ Add customer" until one is attached, then a chip.
+                             Hidden without the loyalty feature; the search and
+                             quick-add endpoints behind it are gated too. --}}
+                        @if (\App\Support\License::allows('loyalty'))
                         <div class="px-3 py-2 border-b">
                             <button type="button" x-show="!customer" @click="openCustomerModal()"
                                     class="w-full py-1.5 text-sm text-brand-700 border border-dashed border-brand-300 rounded hover:bg-brand-50">
@@ -113,6 +116,7 @@
                                         class="text-red-500 text-sm leading-none shrink-0">&times;</button>
                             </div>
                         </div>
+                        @endif
 
                         <div class="divide-y max-h-[40vh] overflow-y-auto">
                             <template x-for="(line, idx) in cart" :key="line.product_id">

@@ -5,6 +5,7 @@ namespace Tests\Feature\Setup;
 use App\Models\AuditLog;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Activation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -50,6 +51,20 @@ class FirstRunSetupTest extends TestCase
         $this->assertSame(User::ROLE_SUPER_ADMIN, $user->role);
         $this->assertTrue($user->is_active);
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_setup_starts_the_14_day_trial(): void
+    {
+        $this->post('/setup', $this->valid);
+
+        $this->assertSame(Activation::TRIAL, Activation::status());
+        $this->assertSame(14, Activation::daysRemaining());
+        $this->assertNotNull(Setting::get('installed_at'));
+        $this->assertFalse(Activation::isLocked());
+
+        // The provider account is a different thing from the client's admin:
+        // setup makes exactly one account, and it is the super_admin.
+        $this->assertSame(['super_admin'], User::pluck('role')->all());
     }
 
     public function test_the_password_and_pin_are_hashed_not_stored_raw(): void

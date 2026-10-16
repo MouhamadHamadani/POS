@@ -67,13 +67,19 @@
 </style>
 </head>
 <body>
+    @php
+        // Wording shared with App\Services\ReceiptRenderer, which stamps the same
+        // notice onto a Premium custom template. Only the markup differs.
+        $notice = \App\Services\ReceiptRenderer::noticeLines($isTest, $isDemo);
+    @endphp
+
     {{-- A demo/test printout must never be able to pass as a transaction record.
          Both languages, always — whatever receipt language is set. Short lines so it
          still fits 58mm (32 char) paper, not just 80mm. --}}
-    @if ($isDemo || $isTest)
-        <div class="center bold">*** {{ __($isTest ? 'receipt.test_print' : 'receipt.demo_receipt', [], 'en') }} ***</div>
-        <div class="center bold">{{ __('receipt.not_valid', [], 'en') }}</div>
-        <div class="center bold" dir="rtl">{{ __($isTest ? 'receipt.test_ar' : 'receipt.demo_ar', [], 'ar') }}</div>
+    @if ($notice)
+        <div class="center bold">*** {{ $notice['label'] }} ***</div>
+        <div class="center bold">{{ $notice['en'] }}</div>
+        <div class="center bold" dir="rtl">{{ $notice['ar'] }}</div>
         <hr>
     @endif
 
@@ -178,11 +184,11 @@
 
     <div class="center small" style="margin-top: 6mm;">{!! $L('receipt_no') !!} <bdi dir="ltr">{{ $sale->receipt_number }}</bdi></div>
 
-    @if ($isDemo || $isTest)
+    @if ($notice)
         <hr>
-        <div class="center bold">*** {{ __($isTest ? 'receipt.test_print' : 'receipt.demo_receipt', [], 'en') }} ***</div>
-        <div class="center bold">{{ __('receipt.not_valid', [], 'en') }}</div>
-        <div class="center bold" dir="rtl">{{ __($isTest ? 'receipt.test_ar' : 'receipt.demo_ar', [], 'ar') }}</div>
+        <div class="center bold">*** {{ $notice['label'] }} ***</div>
+        <div class="center bold">{{ $notice['en'] }}</div>
+        <div class="center bold" dir="rtl">{{ $notice['ar'] }}</div>
     @endif
 
     <div class="actions">

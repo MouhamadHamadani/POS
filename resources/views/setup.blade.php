@@ -63,9 +63,21 @@
             <x-input-error :messages="$errors->get('language')" class="mt-2" />
         </div>
 
+        <div class="mt-4">
+            <x-input-label for="tier" :value="__('plan.label')" />
+            <select id="tier" name="tier" required
+                    class="block mt-1 w-full border-gray-300 focus:border-brand-500 focus:ring-brand-500 rounded-md shadow-sm">
+                @foreach (\App\Support\License::tiers() as $t)
+                    <option value="{{ $t }}" @selected(old('tier', 'starter') === $t)>{{ __('plan.tier.'.$t) }}</option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-xs text-gray-500">{{ __('setup.plan_hint') }}</p>
+            <x-input-error :messages="$errors->get('tier')" class="mt-2" />
+        </div>
+
         <div class="flex items-center justify-end mt-6">
             <x-primary-button>
-                {{ __('Create owner account') }}
+                {{ __('Create provider account') }}
             </x-primary-button>
         </div>
     </form>

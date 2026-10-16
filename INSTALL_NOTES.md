@@ -84,13 +84,16 @@ login page — every route redirects there until an account exists.
 Do this with the machine in front of you, before the client sits down:
 
 1. Launch the app. You land on **Set up this machine**.
-2. Create the **owner account**. This is the `super_admin` — your account, the
-   one that can take, download, restore and delete database backups, and the
-   only one that can create or edit other admin-tier accounts. Choose the
-   password yourself; nothing is pre-filled.
+2. Create the **provider account** and pick the **Plan** the machine was sold
+   (Starter, Standard or Premium — Starter is pre-selected). The account is the
+   `super_admin` — yours, not the store's: the one that can take, download,
+   restore and delete database backups, set the plan and activate the install
+   (§4a), and the only one that can create or edit other admin-tier accounts.
+   Choose the password yourself; nothing is pre-filled.
 3. The setup screen closes permanently the moment that account is created. It
    returns 404 from then on, so it can never be used to mint a second
-   `super_admin`. Further accounts come from **Users → New User**.
+   `super_admin`. **The 14-day trial starts at this moment** (§4a). Further
+   accounts come from **Users → New User**.
 4. Go to **Users → New User** and create the client's own account with role
    **Admin**. This is the store-owner account they use day to day. Let the
    client choose its password.
@@ -108,8 +111,43 @@ What the client's `admin` account **cannot** do, by design:
   rejects the request even if the form is tampered with.
 
 Do **not** delete or deactivate the `super_admin` account — it is the only way
-back into backups, and the app refuses to leave itself without an active
-admin-tier user.
+back into backups and activation, and the app refuses to leave itself without an
+active admin-tier user.
+
+### 4a. The 14-day trial and activation
+
+This is a paid, perpetual-licence build. A **fresh** install runs normally for
+14 days from the end of setup. Unless you have activated it by then, it **locks**:
+every screen is replaced by "Your 14-day trial has ended — please contact your
+provider" (English and Arabic). Nothing is deleted or hidden at the data level —
+the database is untouched and everything is back the instant you activate.
+
+- **One Plan tab, two independent sections.** *Plan / Tier* is which features and
+  seat limit the install was sold with; *Activation / Trial* is whether it may
+  run at all. Changing one never writes the other, and a locked install is locked
+  whatever its tier says.
+- **Activate:** sign in as `super_admin` → **Settings → Plan** → enter your own
+  password → **Activate permanently**. It is audit-logged. You can do this at any
+  point, including while locked: a locked install lets `super_admin` sign in and
+  reach that one tab (both sections work there), and nothing else. The Plan tab
+  exists for `super_admin` only; the client's `admin` never sees it, and gets a
+  403 on both of its routes. The generic Settings form ignores any key it does
+  not know, so the plan and activation settings cannot be posted through it.
+- **Warning:** from day 10 the client's `admin` or `manager` (the highest account
+  a Starter install can have — it has no admin role) sees an amber banner telling
+  them to contact you. Cashiers and the vendor account do not.
+- **Existing installs do not lock.** An install with no activation record — every
+  machine already in the field — is treated as activated. Only an install that
+  went through setup on this version starts a trial.
+- **Date problems.** If the system date is more than a day earlier than the last
+  time the app ran, a *trial* install shows the lock screen with a "check the
+  date" message until the date is corrected (it is not a permanent lock). If a
+  client's clock was ever far wrong at setup, activate, or the trial will read
+  as locked until real time catches up.
+- **What it is not.** The status is a setting in the local SQLite file, so anyone
+  who opens that file can set it to `activated`. It stops a non-technical client,
+  not a determined one. A vendor-signed activation code is the upgrade if that
+  ever matters (see the note on `Activation::activate()`).
 
 > **If you delete every account**, the machine becomes unprovisioned again and
 > the setup screen comes back. That is the recovery path if the owner password

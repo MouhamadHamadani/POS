@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use App\Models\Setting;
+use App\Services\ReceiptRenderer;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,7 +25,7 @@ class ReceiptController extends Controller
 
         $sale->load('items.product:id,name,name_ar', 'customer', 'user:id,name');
 
-        return view('receipts.thermal', [
+        $data = [
             'sale' => $sale,
             'business' => [
                 'name' => Setting::get('business_name', 'LebaSouk'),
@@ -38,6 +39,15 @@ class ReceiptController extends Controller
             'footer' => (string) Setting::get('receipt_footer', ''),
             'receiptLang' => (string) Setting::get('receipt_language', 'bilingual'),
             'autoPrint' => $request->boolean('auto', true),
-        ]);
+        ];
+
+        // A saved, active receipt template wins; every install that has never
+        // had one — which is all of them until Premium's editor is used — keeps
+        // printing the built-in thermal layout exactly as before.
+        if ($template = ReceiptRenderer::active()) {
+            return response(ReceiptRenderer::render($template, $sale, $data));
+        }
+
+        return view('receipts.thermal', $data);
     }
 }

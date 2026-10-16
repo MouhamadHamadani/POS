@@ -16,6 +16,15 @@
         ['settings',        '/settings',         'admin',                        '⚙️'],
     ];
 
+    // Feature areas the install's tier doesn't include. Cosmetic only — the
+    // routes themselves are gated by `feature:` middleware either way.
+    $nav = array_values(array_filter($nav, fn ($item) => match ($item[1]) {
+        '/customers' => \App\Support\License::allows('loyalty'),
+        '/suppliers', '/purchase-orders' => \App\Support\License::allows('suppliers'),
+        '/returns' => \App\Support\License::allows('returns'),
+        default => true,
+    }));
+
     // Bulk upload is off by default and switched on per role by a super-admin,
     // so it can't be expressed as a role list. Hiding it is cosmetic — the
     // routes are gated by `can:bulk-upload-products` regardless.

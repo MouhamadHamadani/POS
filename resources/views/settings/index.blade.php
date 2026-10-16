@@ -9,11 +9,25 @@
         'loyalty' => __('settings.tabs.loyalty'),
     ];
 
-    // Backups and the bulk-upload switches are vendor/owner territory — see the
-    // role:super_admin route group.
+    // Feature areas this install's tier doesn't include have no settings to show.
+    if (! \App\Support\License::allows('loyalty')) {
+        unset($tabs['loyalty']);
+    }
+    if (\App\Support\License::allows('receipts.custom_templates')) {
+        $tabs['receipt_template'] = __('settings.tabs.receipt_template');
+    }
+
+    // Backups, the bulk-upload switches and the plan are vendor/owner territory
+    // — see the role:super_admin route group.
     if (auth()->user()?->isSuperAdmin()) {
         $tabs['permissions'] = __('settings.tabs.permissions');
         $tabs['backup'] = __('settings.tabs.backup');
+        $tabs['plan'] = __('settings.tabs.plan');
+    }
+
+    // A locked install shows only the Plan tab — the rest is unreachable anyway.
+    if (\App\Support\Activation::isLocked()) {
+        $tabs = array_intersect_key($tabs, ['plan' => true]);
     }
 
     // Business identity, currency and VAT are part of the demo baseline and are
@@ -336,6 +350,138 @@
                         @endforelse
                         </tbody>
                     </table>
+
+                @elseif ($tab === 'receipt_template')
+                    {{-- Premium only. Plain HTML with token placeholders, not Blade
+                         — see App\Services\ReceiptRenderer for why. --}}
+                    <form method="POST" action="{{ route('settings.receipt-template.update') }}" class="space-y-4 text-sm">
+                        @csrf
+                        <p class="text-xs text-gray-500">
+                            {{ __('settings.receipt_template.help') }}
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-500">{{ __('settings.receipt_template.paper_size') }}</label>
+                                <select name="paper_size" class="w-full border-gray-300 rounded text-sm">
+                                    @foreach (['58mm', '80mm', 'A4', 'A5'] as $size)
+                                        <option value="{{ $size }}" @selected(($receiptTemplate->paper_size ?? '80mm') === $size)>{{ $size }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <label class="flex items-center gap-2 md:col-span-2 md:pt-5">
+                                <input type="checkbox" name="is_active" value="1"
+                                       @checked($receiptTemplate?->is_active) class="rounded border-gray-300" />
+                                <span>{{ __('settings.receipt_template.use') }}</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500">{{ __('settings.receipt_template.html') }}</label>
+                            <textarea name="template_html" rows="16" spellcheck="false"
+                                      class="w-full border-gray-300 rounded text-xs font-mono">{{ $receiptTemplate->template_html ?? '' }}</textarea>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <div class="font-medium text-gray-700 mb-1">{{ __('settings.receipt_template.placeholders') }}</div>
+                            <code class="break-words">
+                                &#123;&#123;business_name&#125;&#125; &#123;&#123;business_name_ar&#125;&#125; &#123;&#123;address&#125;&#125;
+                                &#123;&#123;phone&#125;&#125; &#123;&#123;tax_number&#125;&#125; &#123;&#123;header&#125;&#125; &#123;&#123;footer&#125;&#125;
+                                &#123;&#123;receipt_number&#125;&#125; &#123;&#123;date&#125;&#125; &#123;&#123;cashier&#125;&#125; &#123;&#123;customer&#125;&#125;
+                                &#123;&#123;subtotal&#125;&#125; &#123;&#123;discount&#125;&#125; &#123;&#123;tax&#125;&#125; &#123;&#123;total_usd&#125;&#125;
+                                &#123;&#123;total_lbp&#125;&#125; &#123;&#123;payment_method&#125;&#125; &#123;&#123;change_usd&#125;&#125;
+                                &#123;&#123;change_lbp&#125;&#125; &#123;&#123;loyalty_points_earned&#125;&#125;
+                            </code>
+                            <div class="mt-2">
+                                {{ __('settings.receipt_template.repeat') }}
+                                <code dir="ltr">&#123;&#123;#items&#125;&#125; &hellip; &#123;&#123;/items&#125;&#125;</code>, {{ __('settings.receipt_template.using') }}
+                                <code dir="ltr">&#123;&#123;name&#125;&#125; &#123;&#123;qty&#125;&#125; &#123;&#123;unit_price&#125;&#125; &#123;&#123;discount&#125;&#125; &#123;&#123;line_total&#125;&#125;</code>.
+                            </div>
+                        </div>
+                        <div class="flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('common.save') }}</button></div>
+                    </form>
+
+                @elseif ($tab === 'plan')
+                    @php
+                        $tier = \App\Support\License::tier();
+                        $maxUsers = \App\Support\License::maxUsers();
+                        $maxDevices = \App\Support\License::maxDevices();
+
+                        $status = \App\Support\Activation::status();
+                        $badge = ['trial' => 'bg-amber-100 text-amber-800', 'activated' => 'bg-green-100 text-green-800', 'locked' => 'bg-red-100 text-red-800'][$status] ?? 'bg-gray-100 text-gray-800';
+                    @endphp
+
+                    {{-- Two independent controls on one tab: which plan this install is
+                         licensed for (tier), and whether its trial has been paid off
+                         (activation). Separate forms, separate routes, separate settings —
+                         saving one never writes the other. --}}
+                    <div class="space-y-8 text-sm max-w-xl">
+                        <section>
+                            <h3 class="font-semibold mb-3">{{ __('plan.section_tier') }}</h3>
+                            <form method="POST" action="{{ route('settings.plan.update') }}" class="space-y-4">
+                                @csrf
+                                <div>
+                                    <label class="block text-xs text-gray-500">{{ __('plan.label') }}</label>
+                                    <select name="tier" class="w-full border-gray-300 rounded text-sm">
+                                        @foreach (\App\Support\License::tiers() as $t)
+                                            <option value="{{ $t }}" @selected($tier === $t)>{{ __('plan.tier.'.$t) }}</option>
+                                        @endforeach
+                                    </select>
+                                    <p class="mt-1 text-xs text-gray-500">{{ __('plan.tier_help') }}</p>
+                                </div>
+
+                                <dl class="grid grid-cols-2 gap-3 border-t pt-4">
+                                    <div>
+                                        <dt class="text-xs text-gray-500">{{ __('plan.user_accounts') }}</dt>
+                                        <dd class="font-medium">
+                                            <x-ltr>{{ \App\Support\License::seatsUsed() }}</x-ltr> {{ __('plan.of') }} <x-ltr>{{ $maxUsers ?? __('plan.unlimited') }}</x-ltr>
+                                        </dd>
+                                        <p class="text-xs text-gray-500">{{ __('plan.super_admin_not_counted') }}</p>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs text-gray-500">{{ __('plan.devices') }}</dt>
+                                        <dd class="font-medium"><x-ltr>{{ $maxDevices ?? __('plan.unlimited') }}</x-ltr></dd>
+                                        <p class="text-xs text-gray-500">{{ __('plan.devices_help') }}</p>
+                                    </div>
+                                </dl>
+
+                                <div class="flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('plan.save') }}</button></div>
+                            </form>
+                        </section>
+
+                        <section class="border-t pt-6">
+                            <h3 class="font-semibold mb-3">{{ __('activation.section') }}</h3>
+                            <dl class="grid grid-cols-2 gap-y-2">
+                                <dt class="text-gray-500">{{ __('activation.status') }}</dt>
+                                <dd><span class="px-2 py-0.5 rounded text-xs font-medium {{ $badge }}">{{ \App\Support\EnumLabel::get('activation_status', $status) }}</span></dd>
+                                @unless (\App\Support\Activation::isActivated())
+                                    <dt class="text-gray-500">{{ __('activation.installed_on') }}</dt>
+                                    <dd><x-ltr>{{ \App\Support\Activation::installedAt()->format('Y-m-d') }}</x-ltr></dd>
+                                    <dt class="text-gray-500">{{ __('activation.trial_ends_on') }}</dt>
+                                    <dd><x-ltr>{{ \App\Support\Activation::expiresAt()->format('Y-m-d') }}</x-ltr></dd>
+                                    <dt class="text-gray-500">{{ __('activation.days_remaining') }}</dt>
+                                    <dd><x-ltr>{{ \App\Support\Activation::daysRemaining() }}</x-ltr></dd>
+                                @endunless
+                            </dl>
+
+                            @if (\App\Support\Activation::clockRolledBack())
+                                <p class="mt-3 p-3 bg-amber-50 text-amber-800 rounded text-xs">{{ __('activation.clock_body') }}</p>
+                            @endif
+
+                            @if (\App\Support\Activation::isActivated())
+                                <p class="mt-3 text-gray-600">{{ __('activation.activated_note') }}</p>
+                            @else
+                                <form method="POST" action="{{ route('settings.activation.activate') }}" class="mt-4 space-y-3 border-t pt-4">
+                                    @csrf
+                                    <p class="text-xs text-gray-500">{{ __('activation.activate_help') }}</p>
+                                    <div>
+                                        <label class="block text-xs text-gray-500">{{ __('Password') }}</label>
+                                        <input type="password" name="password" dir="ltr" required autocomplete="current-password" class="w-full border-gray-300 rounded text-sm" />
+                                    </div>
+                                    <div class="flex justify-end">
+                                        <button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('activation.activate') }}</button>
+                                    </div>
+                                </form>
+                            @endif
+                        </section>
+                    </div>
                 @endif
             </div>
         </div>

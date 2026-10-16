@@ -9,6 +9,11 @@ return [
         'cashier' => 'Cashier',
         'stock' => 'Stock Keeper',
     ],
+    'activation_status' => [
+        'trial' => 'Trial',
+        'activated' => 'Activated',
+        'locked' => 'Locked',
+    ],
     'customer_group' => [
         'retail' => 'Retail',
         'wholesale' => 'Wholesale',

@@ -4,19 +4,25 @@ namespace App\Http\Controllers;
 
 use App\Http\Middleware\DemoGate;
 use App\Models\AuditLog;
+use App\Models\PrintTemplate;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Setting;
 use App\Models\Tax;
 use App\Services\BackupService;
 use App\Services\CurrencyService;
+use App\Services\ReceiptRenderer;
+use App\Support\Activation;
 use App\Support\Demo;
+use App\Support\License;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class SettingController extends Controller
 {
@@ -39,8 +45,27 @@ class SettingController extends Controller
         // Backup filenames are only listed for the accounts that can act on
         // them (see the role:super_admin group in routes/web.php).
         $isSuperAdmin = $request->user()->isSuperAdmin();
-        if (in_array($tab, ['backup', 'permissions'], true) && !$isSuperAdmin) {
+        if (in_array($tab, ['backup', 'permissions', 'plan'], true) && !$isSuperAdmin) {
             $tab = 'general';
+        }
+
+        // Tabs the install's tier does not include. The routes behind them are
+        // gated too (feature: middleware); this only stops a hand-typed ?tab=
+        // rendering a form that cannot save.
+        $tierLockedTabs = [
+            'loyalty' => 'loyalty',
+            'receipt_template' => 'receipts.custom_templates',
+        ];
+        foreach ($tierLockedTabs as $lockedTab => $feature) {
+            if ($tab === $lockedTab && ! License::allows($feature)) {
+                $tab = 'general';
+            }
+        }
+
+        // Locked: the Plan tab is all ActivationGate lets a super_admin reach, so
+        // don't render the other tabs (backup file names, business data) around it.
+        if (Activation::isLocked()) {
+            $tab = 'plan';
         }
 
         // A demo resets to a fixed baseline on every launch, so the settings
@@ -53,7 +78,11 @@ class SettingController extends Controller
 
         $all = Setting::all()->keyBy('key')->map(fn ($s) => $s->value)->toArray();
 
-        return view('settings.index', compact('tab', 'taxes', 'backups', 'all'));
+        $receiptTemplate = License::allows('receipts.custom_templates')
+            ? PrintTemplate::where('type', 'receipt')->orderByDesc('is_default')->first()
+            : null;
+
+        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate'));
     }
 
     public function update(Request $request): RedirectResponse
@@ -66,6 +95,11 @@ class SettingController extends Controller
 
         if (Demo::enabled() && in_array($data['group'], self::DEMO_LOCKED_GROUPS, true)) {
             return back()->withErrors(['demo' => DemoGate::refusal()]);
+        }
+
+        // Loyalty settings are only meaningful on a tier that has loyalty.
+        if ($data['group'] === 'loyalty' && ! License::allows('loyalty')) {
+            return back()->withErrors(['plan' => __('plan.feature_locked')]);
         }
 
         $typeMap = [
@@ -94,7 +128,15 @@ class SettingController extends Controller
         ];
 
         foreach ($data['settings'] as $key => $value) {
-            $type = $typeMap[$key] ?? 'string';
+            // Only keys this form is known to carry. This route is open to the
+            // client's own admin, so an unlisted key must never be written: it is
+            // how `tier`, `activation_status` or `installed_at` would otherwise be
+            // set straight past the super_admin-only Plan tab.
+            if (! isset($typeMap[$key])) {
+                continue;
+            }
+
+            $type = $typeMap[$key];
             $stored = match ($type) {
                 'bool' => $request->boolean("settings.$key") ? '1' : '0',
                 default => (string) $value,
@@ -122,7 +164,7 @@ class SettingController extends Controller
      * the Receipt tab's typed-but-unsaved width/header/footer. Pure render:
      * nothing is persisted, no receipt number is consumed, nothing is audited.
      */
-    public function testPrintReceipt(Request $request, CurrencyService $currency): View
+    public function testPrintReceipt(Request $request, CurrencyService $currency): View|Response
     {
         $input = fn (string $key, $default) => $request->input("settings.$key", Setting::get($key, $default));
         $width = (int) $input('receipt_width', 80);
@@ -172,7 +214,7 @@ class SettingController extends Controller
         $sale->setRelation('user', $request->user());
         $sale->setRelation('customer', null);
 
-        return view('receipts.thermal', [
+        $data = [
             'sale' => $sale,
             'business' => [
                 'name' => Setting::get('business_name', 'LebaSouk'),
@@ -187,7 +229,16 @@ class SettingController extends Controller
             'receiptLang' => (string) $input('receipt_language', 'bilingual'),
             'autoPrint' => true,
             'isTest' => true,
-        ]);
+        ];
+
+        // Whatever a real sale would print, this has to print too — checking the
+        // layout is the entire point of the button. On Premium that means the
+        // saved template, stamped TEST PRINT the same way the built-in view is.
+        if ($template = ReceiptRenderer::active()) {
+            return response(ReceiptRenderer::render($template, $sale, $data));
+        }
+
+        return view('receipts.thermal', $data);
     }
 
     /**
@@ -220,6 +271,56 @@ class SettingController extends Controller
 
         return redirect()->route('settings.index', ['tab' => 'permissions'])
             ->with('success', __('messages.permissions_saved'));
+    }
+
+    /**
+     * Which tier this install is licensed for. Super-admin only, by the same
+     * route group that guards Backup and Permissions — a client's own admin
+     * raising their own plan would make the whole thing decorative.
+     */
+    public function updatePlan(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'tier' => ['required', Rule::in(License::tiers())],
+        ]);
+
+        License::setTier($data['tier'], $request->user()->id);
+
+        return redirect()->route('settings.index', ['tab' => 'plan'])
+            ->with('success', __('messages.plan_updated', ['plan' => __('plan.tier.'.$data['tier'])]));
+    }
+
+    /**
+     * Premium's receipt template. Stored as plain HTML with {{ placeholders }}
+     * — deliberately not Blade, which would make this textarea an arbitrary-PHP
+     * execution sink for anyone with the Settings tab. See ReceiptRenderer.
+     */
+    public function updateReceiptTemplate(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'template_html' => 'nullable|string|max:65535',
+            'paper_size' => 'required|in:58mm,80mm,A4,A5',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $template = PrintTemplate::where('type', 'receipt')->orderByDesc('is_default')->first();
+        $old = $template?->only(['template_html', 'paper_size', 'is_active']);
+
+        $attributes = [
+            'name' => $template->name ?? 'Receipt',
+            'type' => 'receipt',
+            'template_html' => (string) $data['template_html'],
+            'paper_size' => $data['paper_size'],
+            'is_default' => true,
+            'is_active' => $request->boolean('is_active'),
+        ];
+
+        $template = $template ? tap($template)->update($attributes) : PrintTemplate::create($attributes);
+
+        AuditLog::record($request->user()->id, $old ? 'update' : 'create', PrintTemplate::class, $template->id, $old, $attributes);
+
+        return redirect()->route('settings.index', ['tab' => 'receipt_template'])
+            ->with('success', __('messages.receipt_template_saved'));
     }
 
     // === Tax inline CRUD ===

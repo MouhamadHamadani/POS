@@ -15,6 +15,9 @@
         @if (session('success'))
             <div class="p-3 bg-green-50 text-green-800 rounded text-sm">{{ session('success') }}</div>
         @endif
+        @if ($seatLimit ?? null)
+            <div class="p-3 bg-amber-50 text-amber-800 rounded text-sm">{{ $seatLimit }}</div>
+        @endif
 
         <form method="POST" action="{{ $isEdit ? route('users.update', $user) : route('users.store') }}"
               class="bg-white rounded-lg shadow-card p-6 space-y-4">
@@ -36,8 +39,18 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('users.role') }} *</label>
+                    @php
+                        // Privilege narrowing (who may assign what) intersected with
+                        // the install's tier (which roles exist here at all). Mirrors
+                        // UserController::assignableRoles() — the controller is the
+                        // enforcing copy, this one only avoids offering dead options.
+                        $roleOptions = array_intersect_key(
+                            auth()->user()->isSuperAdmin() ? \App\Models\User::ROLES : \App\Models\User::STAFF_ROLES,
+                            array_flip([...\App\Support\License::allowedRoles(), \App\Models\User::ROLE_SUPER_ADMIN]),
+                        );
+                    @endphp
                     <select name="role" required class="w-full border-gray-300 rounded text-sm">
-                        @foreach (array_keys(auth()->user()->isSuperAdmin() ? \App\Models\User::ROLES : \App\Models\User::STAFF_ROLES) as $v)
+                        @foreach (array_keys($roleOptions) as $v)
                             <option value="{{ $v }}" @selected(old('role', $user->role) === $v)>{{ \App\Support\EnumLabel::get('role', $v) }}</option>
                         @endforeach
                     </select>

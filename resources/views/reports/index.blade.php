@@ -12,16 +12,19 @@
         </p>
 
         @php
-            $reports = [
-                ['daily_sales', 'reports.daily-sales', '📈'],
-                ['sales_by_product', 'reports.sales-by-product', '🏆'],
-                ['stock_levels', 'reports.stock-levels', '📦'],
-                ['pnl', 'reports.pnl', '💵'],
-            ];
+            // The fourth column is the tier feature each report needs; null ships
+            // on every tier. Hiding a card is cosmetic — the routes are gated by
+            // `feature:` middleware regardless.
+            $reports = array_filter([
+                ['daily_sales', 'reports.daily-sales', '📈', null],
+                ['sales_by_product', 'reports.sales-by-product', '🏆', 'reports.sales_by_product'],
+                ['stock_levels', 'reports.stock-levels', '📦', 'reports.stock_levels'],
+                ['pnl', 'reports.pnl', '💵', 'reports.profit_loss'],
+            ], fn ($r) => $r[3] === null || \App\Support\License::allows($r[3]));
         @endphp
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            @foreach ($reports as [$key, $route, $icon])
+            @foreach ($reports as [$key, $route, $icon, $feature])
                 <a href="{{ route($route) }}" class="bg-white rounded-lg shadow-card p-5 hover:shadow-pop hover:border-brand-300 border border-transparent transition">
                     <div class="text-2xl mb-2">{{ $icon }}</div>
                     <div class="font-semibold text-brand-700">{{ __("reports.titles.$key") }}</div>

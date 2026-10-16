@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Middleware\ActivationGate;
 use App\Http\Middleware\DemoGate;
+use App\Http\Middleware\FeatureGate;
 use App\Http\Middleware\RequiresSetup;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SetLocale;
@@ -20,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             RequiresSetup::class,
             SetLocale::class,
+            ActivationGate::class,
         ]);
 
         // Setup has to be decided before authentication is. Otherwise `auth`
@@ -31,10 +34,19 @@ return Application::configure(basePath: dirname(__DIR__))
             RequiresSetup::class,
         );
 
+        // Same for the trial lock: a signed-out visitor to /pos should land on
+        // the lock screen, not on a login form that leads to it. Listed after
+        // RequiresSetup, so setup is still decided first.
+        $middleware->prependToPriorityList(
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            ActivationGate::class,
+        );
+
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'shift' => ShiftRequired::class,
             'demo' => DemoGate::class,
+            'feature' => FeatureGate::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

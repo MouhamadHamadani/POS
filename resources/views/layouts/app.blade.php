@@ -11,6 +11,9 @@
     </head>
     <body class="{{ app()->getLocale() === 'ar' ? 'font-arabic' : 'font-sans' }} antialiased text-gray-900 bg-slate-50">
         @includeWhen(\App\Support\Demo::enabled(), 'partials.demo-banner')
+        {{-- The client's own admin or manager is who can act on it (a Starter install has
+             no admin role at all); the vendor sees the Plan tab instead. --}}
+        @includeWhen(auth()->user()?->hasRole(\App\Models\User::ROLE_ADMIN, \App\Models\User::ROLE_MANAGER) && \App\Support\Activation::shouldWarn(), 'partials.trial-banner')
 
         <div class="flex min-h-screen">
             <x-sidebar />
