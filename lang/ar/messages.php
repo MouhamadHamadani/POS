@@ -27,6 +27,7 @@ return [
     'user_deactivated' => 'تم تعطيل «:username».',
     'setup_done' => 'تم إنشاء حساب المزوّد «:username». بدأت الفترة التجريبية (14 يوماً) وأُغلقت شاشة الإعداد هذه الآن.',
     'settings_saved' => 'تم حفظ الإعدادات.',
+    'exchange_rate_invalid' => 'يجب أن يكون سعر الصرف رقماً أكبر من صفر. تم الإبقاء على السعر السابق.',
     'plan_updated' => 'تم تحديث الخطة إلى :plan.',
     'receipt_template_saved' => 'تم حفظ قالب الإيصال.',
     'permissions_saved' => 'تم حفظ الصلاحيات.',

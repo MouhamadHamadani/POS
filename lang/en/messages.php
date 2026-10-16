@@ -27,6 +27,7 @@ return [
     'user_deactivated' => 'Deactivated \':username\'.',
     'setup_done' => 'Provider account \':username\' created. The 14-day trial has started and this setup screen is now closed.',
     'settings_saved' => 'Settings saved.',
+    'exchange_rate_invalid' => 'The exchange rate must be a number greater than 0. The previous rate was kept.',
     'permissions_saved' => 'Permissions saved.',
     'plan_updated' => 'Plan updated to :plan.',
     'receipt_template_saved' => 'Receipt template saved.',

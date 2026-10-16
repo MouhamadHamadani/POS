@@ -105,7 +105,7 @@
                         @csrf <input type="hidden" name="group" value="currency">
                         <div>
                             <label class="block text-xs text-gray-500">{{ __('settings.exchange_rate') }} *</label>
-                            <input type="number" step="0.01" min="0" name="settings[exchange_rate]" dir="ltr" value="{{ $get('exchange_rate') }}" required class="w-full border-gray-300 rounded text-sm" />
+                            <input type="number" step="0.01" min="0.01" name="settings[exchange_rate]" dir="ltr" value="{{ $get('exchange_rate') }}" required class="w-full border-gray-300 rounded text-sm" />
                             <div class="text-xs text-gray-500 mt-1">{{ __('settings.exchange_rate_help') }}</div>
                         </div>
                         <div>

@@ -105,7 +105,12 @@ class SettingController extends Controller
         $request->validate([
             'settings.receipt_format' => ['nullable', \Illuminate\Validation\Rule::in(ReceiptPrintService::FORMATS)],
             'settings.a4_printer_name' => 'nullable|string|max:255',
-        ]);
+        ] + $this->numericSettingRules(), [
+            // A rate of 0 prices everything at 0 LBP and counts every LBP note as $0 tendered.
+            'settings.exchange_rate.required' => __('messages.exchange_rate_invalid'),
+            'settings.exchange_rate.numeric' => __('messages.exchange_rate_invalid'),
+            'settings.exchange_rate.gt' => __('messages.exchange_rate_invalid'),
+        ], $this->numericSettingLabels());
 
         if (Demo::enabled() && in_array($data['group'], self::DEMO_LOCKED_GROUPS, true)) {
             return back()->withErrors(['demo' => DemoGate::refusal()]);
@@ -172,6 +177,52 @@ class SettingController extends Controller
         Cache::flush();
 
         return redirect()->route('settings.index', ['tab' => $group])->with('success', __('messages.settings_saved'));
+    }
+
+    /**
+     * Server-side limits for the settings that hold a number or a document prefix: the ranges
+     * the form advertises, and an exchange rate that must be above zero. Every rule is
+     * `sometimes`: a tab only posts its own keys. [rules, label lang key]
+     */
+    private const NUMERIC_SETTINGS = [
+        'exchange_rate' => ['required|numeric|gt:0', 'settings.exchange_rate'],
+        'lbp_rounding_step' => ['required|numeric|min:0', 'settings.lbp_rounding'],
+        'max_cashier_discount_pct' => ['nullable|numeric|min:0|max:100', 'settings.max_cashier_discount'],
+        'idle_timeout_min' => ['nullable|integer|min:1|max:600', 'settings.idle_logout'],
+        'receipt_width' => ['required|in:58,80', 'settings.paper_width'],
+        'paper_width_char' => ['nullable|integer|min:20|max:80', 'settings.chars_per_line'],
+        'points_per_dollar' => ['nullable|numeric|min:0', 'settings.points_per_dollar'],
+        'redemption_rate' => ['required|integer|min:1', 'settings.redemption_rate'],
+        'silver_threshold' => ['nullable|integer|min:0', 'settings.silver_threshold'],
+        'gold_threshold' => ['nullable|integer|min:0', 'settings.gold_threshold'],
+        'expiry_days' => ['nullable|integer|min:0', 'settings.points_expire'],
+        'retention_days' => ['nullable|integer|min:0', 'settings.retention'],
+        'receipt_prefix' => ['nullable|string|max:20', 'settings.prefixes.receipt_prefix'],
+        'invoice_prefix' => ['nullable|string|max:20', 'settings.prefixes.invoice_prefix'],
+        'po_prefix' => ['nullable|string|max:20', 'settings.prefixes.po_prefix'],
+        'return_prefix' => ['nullable|string|max:20', 'settings.prefixes.return_prefix'],
+    ];
+
+    /** @return array<string,string> */
+    private function numericSettingRules(): array
+    {
+        $rules = [];
+        foreach (self::NUMERIC_SETTINGS as $key => [$rule]) {
+            $rules["settings.$key"] = "sometimes|$rule";
+        }
+
+        return $rules;
+    }
+
+    /** @return array<string,string> */
+    private function numericSettingLabels(): array
+    {
+        $labels = [];
+        foreach (self::NUMERIC_SETTINGS as $key => [, $label]) {
+            $labels["settings.$key"] = __($label);
+        }
+
+        return $labels;
     }
 
     /**
