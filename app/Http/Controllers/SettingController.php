@@ -37,6 +37,9 @@ class SettingController extends Controller
 
     private const DEMO_LOCKED_GROUPS = ['general', 'currency'];
 
+    /** What a tax-rate audit entry records (old / new values). */
+    private const TAX_AUDITED = ['name', 'name_ar', 'rate', 'is_inclusive', 'is_default', 'is_active'];
+
     public function __construct(private readonly BackupService $backups) {}
 
     public function index(Request $request): View
@@ -404,7 +407,7 @@ class SettingController extends Controller
             Tax::query()->update(['is_default' => false]);
         }
 
-        Tax::create([
+        $tax = Tax::create([
             'name' => $data['name'],
             'name_ar' => $data['name_ar'] ?? null,
             'rate' => $data['rate'],
@@ -412,6 +415,8 @@ class SettingController extends Controller
             'is_default' => $request->boolean('is_default'),
             'is_active' => true,
         ]);
+
+        AuditLog::record($request->user()->id, 'create', Tax::class, $tax->id, null, $tax->only(self::TAX_AUDITED));
 
         return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', __('messages.tax_added'));
     }
@@ -431,6 +436,8 @@ class SettingController extends Controller
             Tax::where('id', '!=', $tax->id)->update(['is_default' => false]);
         }
 
+        $old = $tax->only(self::TAX_AUDITED);
+
         $tax->update([
             'name' => $data['name'],
             'name_ar' => $data['name_ar'] ?? null,
@@ -440,15 +447,19 @@ class SettingController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ]);
 
+        AuditLog::record($request->user()->id, 'update', Tax::class, $tax->id, $old, $tax->only(self::TAX_AUDITED));
+
         return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', __('messages.tax_updated'));
     }
 
-    public function destroyTax(Tax $tax): RedirectResponse
+    public function destroyTax(Request $request, Tax $tax): RedirectResponse
     {
         if (\App\Models\Product::where('tax_id', $tax->id)->exists()) {
             return back()->withErrors(['delete' => __('messages.tax_in_use')]);
         }
+        $old = $tax->only(self::TAX_AUDITED);
         $tax->delete();
+        AuditLog::record($request->user()->id, 'delete', Tax::class, $tax->id, $old, null);
         return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', __('messages.tax_deleted'));
     }
 
