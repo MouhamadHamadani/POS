@@ -56,6 +56,7 @@ return [
     'po_marked' => 'تم تحديد أمر الشراء كـ «:status».',
     'po_cannot_receive' => 'لا يمكن الاستلام والأمر في حالة «:status».',
     'po_over_receive' => 'لا يمكن استلام أكثر من المطلوب (المتبقي :remaining للمنتج :product).',
+    'po_tax_rate_range' => 'يجب أن تكون الضريبة على السطر بين 0% و100%.',
     'goods_received' => 'تم استلام البضاعة.',
     'no_sale_found' => 'لا توجد عملية بيع للبحث «:term».',
     'sale_cannot_return_abort' => 'لا يمكن إرجاع هذه العملية (ملغاة / معلّقة / مستردة بالكامل).',

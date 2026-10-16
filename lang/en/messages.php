@@ -56,6 +56,7 @@ return [
     'po_marked' => 'PO marked as :status.',
     'po_cannot_receive' => 'Cannot receive against :status status.',
     'po_over_receive' => 'Cannot receive more than ordered (:remaining remaining for :product).',
+    'po_tax_rate_range' => 'A line\'s tax must be between 0% and 100%.',
     'goods_received' => 'Goods received.',
     'no_sale_found' => 'No sale found for \':term\'.',
     'sale_cannot_return_abort' => 'This sale cannot be returned (voided / on hold / fully refunded).',

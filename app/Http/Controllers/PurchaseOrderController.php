@@ -250,7 +250,10 @@ class PurchaseOrderController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.qty_ordered' => 'required|numeric|min:0.0001',
             'items.*.cost_usd' => 'required|numeric|min:0',
-            'items.*.tax_rate' => 'nullable|numeric|min:0',
+            // 0..1 like every other tax rate; the form shows a percentage and submits the fraction.
+            'items.*.tax_rate' => 'nullable|numeric|min:0|max:1',
+        ], [
+            'items.*.tax_rate.max' => __('messages.po_tax_rate_range'),
         ]);
         return $data;
     }
