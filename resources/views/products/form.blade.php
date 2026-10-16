@@ -161,7 +161,9 @@
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('products.lbp_price') }}</label>
-                        <input type="number" name="price_lbp" dir="ltr" step="1000" min="0"
+                        {{-- The step is the store's LBP rounding step (0 = no rounding, any amount), not a fixed 1000. --}}
+                        @php $lbpStep = app(\App\Services\CurrencyService::class)->getRoundingStep(); @endphp
+                        <input type="number" name="price_lbp" dir="ltr" step="{{ $lbpStep > 0 ? $lbpStep : 'any' }}" min="0"
                                value="{{ old('price_lbp', $product->price_lbp) }}"
                                class="w-full border-gray-300 rounded text-sm" />
                     </div>
