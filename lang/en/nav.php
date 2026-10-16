@@ -10,6 +10,7 @@ return [
     'customers' => 'Customers',
     'suppliers' => 'Suppliers',
     'purchases' => 'Purchase Orders',
+    'expenses' => 'Expenses',
     'returns' => 'Returns',
     'reports' => 'Reports',
     'users' => 'Users',

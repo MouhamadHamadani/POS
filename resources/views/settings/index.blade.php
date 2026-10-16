@@ -13,6 +13,7 @@
     if (! \App\Support\License::allows('loyalty')) {
         unset($tabs['loyalty']);
     }
+    $tabs['expenses'] = __('settings.tabs.expenses');
     if (\App\Support\License::allows('receipts.custom_templates')) {
         $tabs['receipt_template'] = __('settings.tabs.receipt_template');
     }
@@ -274,6 +275,8 @@
                         <div class="md:col-span-2 flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('common.save') }}</button></div>
                     </form>
 
+                @elseif ($tab === 'expenses')
+                    @include('settings._expenses')
                 @elseif ($tab === 'permissions')
                     <form method="POST" action="{{ route('settings.permissions.update') }}" class="space-y-4 text-sm max-w-xl">
                         @csrf

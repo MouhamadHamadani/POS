@@ -10,6 +10,7 @@ return [
         'receipt' => 'الإيصال',
         'numbering' => 'الترقيم',
         'loyalty' => 'الولاء',
+        'expenses' => 'المصاريف',
         'permissions' => 'الصلاحيات',
         'backup' => 'نسخ احتياطي',
         'plan' => 'الخطة',

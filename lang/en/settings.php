@@ -10,6 +10,7 @@ return [
         'receipt' => 'Receipt',
         'numbering' => 'Numbering',
         'loyalty' => 'Loyalty',
+        'expenses' => 'Expenses',
         'permissions' => 'Permissions',
         'backup' => 'Backup',
         'plan' => 'Plan',

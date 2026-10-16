@@ -38,6 +38,8 @@ class ResetData extends Command
         // The movement log points at products by id; leave it behind and the next
         // product to get an id would inherit a stranger's history.
         'inventory_adjustments',
+        'expenses',
+        'cash_movements',
         'shifts',
         'audit_logs',
     ];

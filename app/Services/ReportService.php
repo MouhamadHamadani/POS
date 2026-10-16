@@ -274,6 +274,11 @@ class ReportService
         $grossProfit = $exVatRevenue - $cogs;
         $marginPct = $exVatRevenue > 0 ? round($grossProfit / $exVatRevenue * 100, 2) : 0;
 
+        // Expenses belong to the period of their own date, not of the day they were keyed in.
+        $spent = $this->expenseTotalsByKind($from, $to);
+        $totalExpenses = $spent['fixed'] + $spent['running'];
+        $netProfit = $grossProfit - $totalExpenses;
+
         return [
             'txn_count' => (int) $agg->txn_count,
             'gross_revenue' => $grossRevenue,
@@ -284,6 +289,92 @@ class ReportService
             'cogs' => $cogs,
             'gross_profit' => $grossProfit,
             'margin_pct' => $marginPct,
+            'fixed_expenses' => $spent['fixed'],
+            'running_expenses' => $spent['running'],
+            'total_expenses' => $totalExpenses,
+            'net_profit' => $netProfit,
+            'net_margin_pct' => $exVatRevenue > 0 ? round($netProfit / $exVatRevenue * 100, 2) : 0,
+        ];
+    }
+
+    /** @return array{fixed: float, running: float} USD, by the date the expense belongs to. */
+    private function expenseTotalsByKind(Carbon $from, Carbon $to): array
+    {
+        $usd = DB::table('expenses as e')
+            ->join('expense_categories as c', 'c.id', '=', 'e.expense_category_id')
+            ->whereNull('e.deleted_at')
+            ->whereBetween('e.date', [$from->toDateString(), $to->toDateString()])
+            ->groupBy('c.kind')
+            ->selectRaw('c.kind AS kind, SUM(e.amount_usd) AS usd')
+            ->pluck('usd', 'kind');
+
+        return ['fixed' => (float) ($usd['fixed'] ?? 0), 'running' => (float) ($usd['running'] ?? 0)];
+    }
+
+    /**
+     * Expenses per category for a date range, split fixed / running, with each
+     * category's share of the total. For a range that spans more than one calendar
+     * month it also returns a month-by-month matrix (category x month).
+     *
+     * @return array{categories: array, fixed: float, running: float, total: float, total_lbp: float, months: array, monthly: array, month_totals: array}
+     */
+    public function expensesByCategory(Carbon $from, Carbon $to): array
+    {
+        $grouped = DB::table('expenses as e')
+            ->join('expense_categories as c', 'c.id', '=', 'e.expense_category_id')
+            ->whereNull('e.deleted_at')
+            ->whereBetween('e.date', [$from->toDateString(), $to->toDateString()])
+            ->groupByRaw('c.id, c.name, c.name_ar, c.kind, c.sort_order, SUBSTR(e.date, 1, 7)')
+            ->selectRaw('c.id, c.name, c.name_ar, c.kind, c.sort_order, SUBSTR(e.date, 1, 7) AS month,
+                         SUM(e.amount_usd) AS usd, SUM(e.amount_lbp) AS lbp')
+            ->get();
+
+        $monthly = [];
+        $categories = [];
+        foreach ($grouped as $r) {
+            $categories[$r->id] ??= [
+                'id' => $r->id,
+                'local_name' => app()->getLocale() === 'ar' && $r->name_ar ? $r->name_ar : $r->name,
+                'kind' => $r->kind,
+                'sort_order' => $r->sort_order,
+                'total' => 0.0,
+                'total_lbp' => 0.0,
+            ];
+            $categories[$r->id]['total'] += (float) $r->usd;
+            $categories[$r->id]['total_lbp'] += (float) $r->lbp;
+            $monthly[$r->id][$r->month] = round((float) $r->usd, 4);
+        }
+
+        $total = round(array_sum(array_column($categories, 'total')), 4);
+        $categories = collect($categories)
+            ->map(fn ($c) => $c + ['pct' => $total > 0 ? round($c['total'] / $total * 100, 1) : 0.0])
+            ->sortBy([['kind', 'asc'], ['sort_order', 'asc']])   // 'fixed' sorts before 'running'
+            ->values()->all();
+
+        $kindTotal = fn (string $kind) => round(array_sum(array_column(array_filter($categories, fn ($c) => $c['kind'] === $kind), 'total')), 4);
+
+        // Every calendar month the range touches, including empty ones, but only
+        // when there is more than one — a single month is just the totals above.
+        $months = [];
+        if ($from->format('Y-m') !== $to->format('Y-m')) {
+            foreach (\Carbon\CarbonPeriod::create($from->copy()->startOfMonth(), '1 month', $to->copy()->startOfMonth()) as $m) {
+                $months[] = $m->format('Y-m');
+            }
+        }
+        $monthTotals = [];
+        foreach ($months as $m) {
+            $monthTotals[$m] = round(array_sum(array_map(fn ($byMonth) => $byMonth[$m] ?? 0, $monthly)), 4);
+        }
+
+        return [
+            'categories' => $categories,
+            'fixed' => $kindTotal('fixed'),
+            'running' => $kindTotal('running'),
+            'total' => $total,
+            'total_lbp' => round(array_sum(array_column($categories, 'total_lbp')), 2),
+            'months' => $months,
+            'monthly' => $monthly,
+            'month_totals' => $monthTotals,
         ];
     }
 }

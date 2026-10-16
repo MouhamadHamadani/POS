@@ -53,6 +53,10 @@ class ArabicScreensTest extends TestCase
             'daily sales report' => ['/reports/sales/daily', 'ملخص المبيعات اليومية', 'Daily Sales Summary'],
             'stock levels report' => ['/reports/inventory/stock-levels', 'مستويات المخزون', 'Inventory Stock Levels'],
             'profit and loss' => ['/reports/financial/pnl', 'الأرباح والخسائر', 'Profit & Loss'],
+            'expenses' => ['/expenses', 'مصروف جديد', 'New expense'],
+            'expenses duplicate' => ['/expenses/duplicate-fixed', 'نسخ المصاريف الثابتة للشهر الماضي', 'Duplicate last month'],
+            'expenses form' => ['/expenses/create', 'مصدر الدفع', 'Paid from'],
+            'expenses report' => ['/reports/financial/expenses', 'المصاريف حسب الفئة', 'Expenses by Category'],
             'inventory by date' => ['/reports/inventory/by-date', 'المخزون في تاريخ معيّن', 'Stock on date'],
             'profile' => ['/profile', 'معلومات الحساب', 'Account info'],
         ];
@@ -75,6 +79,8 @@ class ArabicScreensTest extends TestCase
         $this->actingAs($admin)->get('/settings')->assertOk()->assertSee(self::RTL, false)
             ->assertSee('لغة المتجر الافتراضية')->assertDontSee('Store default language');
         $this->actingAs($admin)->get('/settings?tab=receipt')->assertOk()->assertSee('لغة الإيصال')->assertDontSee('Receipt language');
+        $this->actingAs($admin)->get('/settings?tab=expenses')->assertOk()->assertSee(self::RTL, false)
+            ->assertSee('فئات المصاريف')->assertSee('إيجار')->assertDontSee('Expense categories');
         $this->actingAs($admin)->get('/users')->assertOk()->assertSee(self::RTL, false)
             ->assertSee('مستخدم جديد')->assertDontSee('+ New User');
     }

@@ -4,6 +4,8 @@ use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DemoController;
+use App\Http\Controllers\ExpenseCategoryController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PosController;
@@ -160,6 +162,17 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/customers/{customer}/payment', [CustomerController::class, 'recordPayment'])->name('customers.payment');
         });
 
+        // Expenses: fixed and running costs, optionally paid out of the open shift's drawer.
+        Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+        Route::get('/expenses/export', [ExpenseController::class, 'export'])->middleware('demo:blocked')->name('expenses.export');
+        Route::get('/expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
+        Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+        Route::get('/expenses/duplicate-fixed', [ExpenseController::class, 'duplicateForm'])->name('expenses.duplicate');
+        Route::post('/expenses/duplicate-fixed', [ExpenseController::class, 'duplicateStore'])->name('expenses.duplicate.store');
+        Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
+        Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+
         // The index and the daily summary ship on every tier; the three that
         // expose cost, valuation and margin are Standard+.
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
@@ -171,7 +184,9 @@ Route::middleware(['auth'])->group(function () {
         // Shows value at cost and retail like stock-levels does, so it ships with it.
         Route::get('/reports/inventory/by-date', [ReportController::class, 'inventoryByDate'])
             ->middleware('feature:reports.stock_levels')->name('reports.inventory-by-date');
-        Route::get('/reports/financial/pnl',[ReportController::class, 'profitLoss'])
+        // Expenses ship with the Expenses module on every tier; only the P&L that nets them off is Standard+.
+        Route::get('/reports/financial/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
+        Route::get('/reports/financial/pnl', [ReportController::class, 'profitLoss'])
             ->middleware('feature:reports.profit_loss')->name('reports.pnl');
     });
 
@@ -188,6 +203,11 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
+        // Settings > Expenses: the category list.
+        Route::post('/settings/expense-categories', [ExpenseCategoryController::class, 'store'])->name('settings.expense-categories.store');
+        Route::put('/settings/expense-categories/{category}', [ExpenseCategoryController::class, 'update'])->name('settings.expense-categories.update');
+        Route::delete('/settings/expense-categories/{category}', [ExpenseCategoryController::class, 'destroy'])->name('settings.expense-categories.destroy');
+
         Route::post('/settings/receipt/test-print', [SettingController::class, 'testPrintReceipt'])->name('settings.receipt.test-print');
 
         // Premium's receipt differentiator. Starter/Standard keep the

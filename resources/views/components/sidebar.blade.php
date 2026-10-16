@@ -12,6 +12,7 @@
         ['suppliers',       '/suppliers',        'manager,admin',               '🚚'],
         ['purchases',       '/purchase-orders',  'manager,admin',               '📑'],
         ['returns',         '/returns',          'cashier,manager,admin',       '↩️'],
+        ['expenses',        '/expenses',         'manager,admin',               '💸'],
         ['reports',         '/reports',          'manager,admin',               '📈'],
         ['users',           '/users',            'admin',                        '👤'],
         ['settings',        '/settings',         'admin',                        '⚙️'],

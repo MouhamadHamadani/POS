@@ -8,6 +8,7 @@ return [
         'stock_levels' => 'Inventory Stock Levels',
         'pnl' => 'Profit & Loss',
         'inventory_by_date' => 'Inventory by Date',
+        'expenses' => 'Expenses by Category',
     ],
     'descriptions' => [
         'daily_sales' => 'Sales totals per day with discount and VAT breakdown.',
@@ -15,6 +16,7 @@ return [
         'stock_levels' => 'Current stock with cost / retail valuation totals.',
         'pnl' => 'Gross revenue, COGS, discounts, tax, gross profit, margin.',
         'inventory_by_date' => 'Stock quantity and value on any past date, or the movement between two dates.',
+        'expenses' => 'Fixed and running expenses per category, with share of total and a month-by-month view.',
     ],
     'pick' => 'Pick a report.',
     'demo_no_exports' => 'Exports are disabled in the demo build — reports are viewable on screen.',
@@ -66,6 +68,9 @@ return [
         'total_in' => 'Total in',
         'total_out' => 'Total out',
         'closing_qty' => 'Closing qty',
+        'category' => 'Category',
+        'amount_usd' => 'Amount (USD)',
+        'share_pct' => '% of total',
     ],
     'inv' => [
         'mode_on_date' => 'Stock on date',
@@ -88,6 +93,10 @@ return [
         'cogs' => 'COGS',
         'gross_profit' => 'Gross Profit',
         'margin' => 'Margin',
+        'fixed_expenses' => 'Fixed expenses',
+        'running_expenses' => 'Running expenses',
+        'net_profit' => 'Net Profit',
+        'net_margin' => 'Net margin',
     ],
     'pdf' => [
         'generated_period' => 'Generated :time · Period :from to :to',

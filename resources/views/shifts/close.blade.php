@@ -9,9 +9,27 @@
                 <div><dt class="text-gray-500">{{ __('shifts.sales_count') }}</dt><dd class="font-medium"><x-ltr>{{ $totals['sales_count'] }}</x-ltr></dd></div>
                 <div><dt class="text-gray-500">{{ __('shifts.revenue_usd') }}</dt><dd class="font-medium"><x-ltr>${{ number_format($totals['total_revenue_usd'], 2) }}</x-ltr></dd></div>
                 <div><dt class="text-gray-500">{{ __('shifts.opening_usd') }}</dt><dd class="font-medium"><x-ltr>${{ number_format((float) $shift->opening_cash_usd, 2) }}</x-ltr></dd></div>
-                <div><dt class="text-gray-500">{{ __('shifts.expected_usd') }}</dt><dd class="font-medium"><x-ltr>${{ number_format((float) $shift->opening_cash_usd + $totals['cash_in_usd'], 2) }}</x-ltr></dd></div>
-                <div><dt class="text-gray-500">{{ __('shifts.expected_lbp') }}</dt><dd class="font-medium"><x-ltr>{{ number_format((float) $shift->opening_cash_lbp + $totals['cash_in_lbp']) }}</x-ltr></dd></div>
+                <div><dt class="text-gray-500">{{ __('shifts.expected_usd') }}</dt><dd class="font-medium"><x-ltr>${{ number_format($totals['expected_usd'], 2) }}</x-ltr></dd></div>
+                <div><dt class="text-gray-500">{{ __('shifts.expected_lbp') }}</dt><dd class="font-medium"><x-ltr>{{ number_format($totals['expected_lbp']) }}</x-ltr></dd></div>
+                @if ($totals['cash_out_usd'] > 0 || $totals['cash_out_lbp'] > 0)
+                    <div><dt class="text-gray-500">{{ __('shifts.cash_out_usd') }}</dt><dd class="font-medium"><x-ltr>${{ number_format($totals['cash_out_usd'], 2) }}</x-ltr></dd></div>
+                    <div><dt class="text-gray-500">{{ __('shifts.cash_out_lbp') }}</dt><dd class="font-medium"><x-ltr>{{ number_format($totals['cash_out_lbp']) }}</x-ltr></dd></div>
+                @endif
             </dl>
+
+            @if ($expenses->isNotEmpty())
+                <div class="mb-6">
+                    <h4 class="text-sm font-semibold mb-2">{{ __('shifts.drawer_expenses') }}</h4>
+                    <ul class="text-sm divide-y border rounded">
+                        @foreach ($expenses as $e)
+                            <li class="flex justify-between gap-3 p-2">
+                                <span>{{ $e->category?->localName() }}@if ($e->payee) · {{ $e->payee }}@endif</span>
+                                <x-ltr>{{ $e->currency === 'lbp' ? number_format($e->enteredAmount()).' '.__('shifts.lbp') : '$'.number_format($e->enteredAmount(), 2) }}</x-ltr>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             <form method="POST" action="{{ route('shifts.close.store') }}" class="space-y-5" x-data="denomCounter({
                 usd: [100, 50, 20, 10, 5, 1],

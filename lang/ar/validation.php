@@ -304,5 +304,20 @@ return [
         'label' => 'التسمية',
         'color' => 'اللون',
         'sort_order' => 'الترتيب',
+
+        // Expenses / stock movements / reports
+        'expense_category_id' => 'فئة المصروف',
+        'amount' => 'المبلغ',
+        'currency' => 'العملة',
+        'payee' => 'المستفيد',
+        'paid_from' => 'مصدر الدفع',
+        'kind' => 'النوع',
+        'from' => 'من',
+        'product' => 'المنتج',
+        'product_id' => 'المنتج',
+        'direction' => 'الاتجاه',
+        'mode' => 'نمط التقرير',
+        'only_moved' => 'المنتجات ذات الحركة فقط',
+        'rows' => 'المصاريف',
     ],
 ];

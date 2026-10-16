@@ -10,6 +10,7 @@ return [
     'customers' => 'الزبائن',
     'suppliers' => 'الموردون',
     'purchases' => 'أوامر الشراء',
+    'expenses' => 'المصاريف',
     'returns' => 'المرتجعات',
     'reports' => 'التقارير',
     'users' => 'المستخدمون',

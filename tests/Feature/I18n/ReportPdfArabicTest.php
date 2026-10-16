@@ -46,6 +46,7 @@ class ReportPdfArabicTest extends TestCase
             'sales by product' => ['/reports/sales/by-product'],
             'stock levels' => ['/reports/inventory/stock-levels'],
             'inventory by date' => ['/reports/inventory/by-date'],
+            'expenses' => ['/reports/financial/expenses'],
             'profit and loss' => ['/reports/financial/pnl'],
         ];
     }

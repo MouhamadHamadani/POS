@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Middleware\DemoGate;
 use App\Models\AuditLog;
+use App\Models\ExpenseCategory;
 use App\Models\PrintTemplate;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -82,7 +83,11 @@ class SettingController extends Controller
             ? PrintTemplate::where('type', 'receipt')->orderByDesc('is_default')->first()
             : null;
 
-        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate'));
+        $expenseCategories = $tab === 'expenses'
+            ? ExpenseCategory::withCount(['expenses' => fn ($q) => $q->withTrashed()])->orderBy('kind')->orderBy('sort_order')->get()
+            : collect();
+
+        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate', 'expenseCategories'));
     }
 
     public function update(Request $request): RedirectResponse

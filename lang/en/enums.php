@@ -130,4 +130,12 @@ return [
         'silver' => 'Silver',
         'gold' => 'Gold',
     ],
+    'expense_kind' => [
+        'fixed' => 'Fixed expenses',
+        'running' => 'Running expenses',
+    ],
+    'paid_from' => [
+        'drawer' => 'Cash drawer',
+        'outside' => 'Outside the drawer (bank / owner)',
+    ],
 ];
