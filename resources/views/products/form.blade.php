@@ -161,10 +161,14 @@
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('products.lbp_price') }}</label>
-                        {{-- The step is the store's LBP rounding step (0 = no rounding, any amount), not a fixed 1000. --}}
-                        @php $lbpStep = app(\App\Services\CurrencyService::class)->getRoundingStep(); @endphp
-                        <input type="number" name="price_lbp" dir="ltr" step="{{ $lbpStep > 0 ? $lbpStep : 'any' }}" min="0"
-                               value="{{ old('price_lbp', $product->price_lbp) }}"
+                        {{-- The step is the store's LBP rounding step (0 = no rounding, any amount), not a fixed 1000. A price already stored (or typed) that is not a multiple of it (step raised later, bulk import) gets step="any": a browser refuses to submit a value off its step, which would lock the whole product form. --}}
+                        @php
+                            $lbpStep = app(\App\Services\CurrencyService::class)->getRoundingStep();
+                            $lbpShown = old('price_lbp', $product->price_lbp);
+                            $lbpAnyStep = $lbpStep <= 0 || (filled($lbpShown) && fmod((float) $lbpShown, $lbpStep) != 0);
+                        @endphp
+                        <input type="number" name="price_lbp" dir="ltr" step="{{ $lbpAnyStep ? 'any' : $lbpStep }}" min="0"
+                               value="{{ $lbpShown }}"
                                class="w-full border-gray-300 rounded text-sm" />
                     </div>
                     <div class="flex items-end">
