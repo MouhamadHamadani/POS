@@ -227,7 +227,9 @@ class UserController extends Controller
             && User::whereIn('role', $adminTier)->where('is_active', true)->count() <= 1) {
             return back()->withErrors(['active' => __('messages.need_one_admin')]);
         }
-        $user->update(['is_active' => !$user->is_active]);
+        $was = (bool) $user->is_active;
+        $user->update(['is_active' => !$was]);
+        AuditLog::record($request->user()->id, 'update', User::class, $user->id, ['is_active' => $was], ['is_active' => !$was]);
         return back()->with('success', $user->is_active ? __('messages.user_activated', ['username' => $user->username]) : __('messages.user_deactivated', ['username' => $user->username]));
     }
 }
