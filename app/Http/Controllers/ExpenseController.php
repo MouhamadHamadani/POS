@@ -127,6 +127,6 @@ class ExpenseController extends Controller
             'category_id' => 'nullable|integer',
             'kind' => 'nullable|in:fixed,running',
             'paid_from' => 'nullable|in:drawer,outside',
-        ]));
+        ], [], ['from' => __('reports.from'), 'to' => __('reports.to')]));
     }
 }

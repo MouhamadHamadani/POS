@@ -25,16 +25,22 @@
         @error('demo')
             <div class="p-2 bg-amber-50 text-amber-800 rounded text-xs">{{ $message }}</div>
         @enderror
+        {{-- A rejected date range (to before from) redirects back here; say why instead of silently showing the old results. --}}
+        @foreach (['from', 'to'] as $field)
+            @error($field)
+                <div class="p-3 bg-red-50 text-red-700 rounded text-sm">{{ $message }}</div>
+            @enderror
+        @endforeach
 
         <div class="bg-white rounded-lg shadow-sm p-4">
             <form method="GET" class="grid grid-cols-1 md:grid-cols-6 gap-2 items-end text-sm">
                 <div>
                     <label class="block text-xs text-gray-500">{{ __('reports.from') }}</label>
-                    <input type="date" name="from" dir="ltr" value="{{ $f['from']->format('Y-m-d') }}" class="w-full border-gray-300 rounded text-sm" />
+                    <input type="date" name="from" dir="ltr" value="{{ old('from', $f['from']->format('Y-m-d')) }}" class="w-full border-gray-300 rounded text-sm" />
                 </div>
                 <div>
                     <label class="block text-xs text-gray-500">{{ __('reports.to') }}</label>
-                    <input type="date" name="to" dir="ltr" value="{{ $f['to']->format('Y-m-d') }}" class="w-full border-gray-300 rounded text-sm" />
+                    <input type="date" name="to" dir="ltr" value="{{ old('to', $f['to']->format('Y-m-d')) }}" class="w-full border-gray-300 rounded text-sm" />
                 </div>
                 <div>
                     <label class="block text-xs text-gray-500">{{ __('expenses.cols.category') }}</label>
