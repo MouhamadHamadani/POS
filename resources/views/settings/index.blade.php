@@ -111,9 +111,18 @@
                         <div>
                             <label class="block text-xs text-gray-500">{{ __('settings.lbp_rounding') }}</label>
                             <select name="settings[lbp_rounding_step]" class="w-full border-gray-300 rounded text-sm">
-                                @foreach ([100, 500, 1000, 5000] as $step)
-                                    <option value="{{ $step }}" @selected((int) $get('lbp_rounding_step') === $step)>{{ __('settings.lbp_step', ['amount' => number_format($step)]) }}</option>
+                                @php
+                                    $steps = [100, 500, 1000, 5000];
+                                    $currentStep = (float) $get('lbp_rounding_step', 1000); // CurrencyService's own default
+                                @endphp
+                                @foreach ($steps as $step)
+                                    <option value="{{ $step }}" @selected($currentStep === (float) $step)>{{ __('settings.lbp_step', ['amount' => number_format($step)]) }}</option>
                                 @endforeach
+                                {{-- The server accepts any step >= 0 (0 = no rounding; a seed or client profile may store
+                                     others): keep an unlisted stored step as an extra option, or Save would submit 100. --}}
+                                @unless (in_array($currentStep, array_map('floatval', $steps), true))
+                                    <option value="{{ $currentStep }}" selected>{{ __('settings.lbp_step', ['amount' => number_format($currentStep)]) }}</option>
+                                @endunless
                             </select>
                         </div>
                         <div class="md:col-span-2 flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('common.save') }}</button></div>
