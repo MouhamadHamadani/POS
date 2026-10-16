@@ -59,6 +59,13 @@ final class ReleaseEnv
             $problems[] = 'APP_KEY is empty. Run `php artisan key:generate`.';
         }
 
+        // A typo'd POS_CLIENT matches no profile, and Client treats that as
+        // "no client" — it would package plain LebaSouk under the client's name.
+        $client = $env['POS_CLIENT'] ?? '';
+        if ($client !== '' && ! is_file(dirname(__DIR__, 2)."/config/clients/{$client}.php")) {
+            $problems[] = 'POS_CLIENT is "'.$client.'" but config/clients/'.$client.'.php does not exist.';
+        }
+
         $isDemo = self::bool($env['POS_DEMO_MODE'] ?? null);
 
         if ($expectDemo !== null && $isDemo !== $expectDemo) {

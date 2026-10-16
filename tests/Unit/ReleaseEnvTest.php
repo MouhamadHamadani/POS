@@ -41,7 +41,15 @@ class ReleaseEnvTest extends TestCase
             'debug on as 1'  => [['APP_DEBUG' => '1'], 'APP_DEBUG'],
             'no key'         => [['APP_KEY' => ''], 'APP_KEY'],
             'missing key'    => [['APP_KEY' => null], 'APP_KEY'],
+            'typo\'d client' => [['POS_CLIENT' => 'Vortx'], 'POS_CLIENT'],
         ];
+    }
+
+    public function test_a_client_build_with_an_existing_profile_is_shippable(): void
+    {
+        $this->assertSame([], ReleaseEnv::problemsIn(
+            array_merge(self::SHIPPABLE, ['POS_CLIENT' => 'vortex']),
+        ));
     }
 
     public function test_an_unreadable_env_is_refused_rather_than_assumed_fine(): void

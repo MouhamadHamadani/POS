@@ -63,6 +63,12 @@ return [
      */
     'demo_mode' => env('POS_DEMO_MODE', false),
 
+    /**
+     * Client build profile (App\Support\Client). null is plain LebaSouk; a name
+     * activates config/clients/{name}.php and resources/clients/{name}/.
+     */
+    'client' => env('POS_CLIENT'),
+
     /** Shared password for the four seeded demo accounts. Demo builds only. */
     'demo_password' => env('POS_DEMO_PASSWORD', 'demo1234'),
 

@@ -112,6 +112,44 @@ the store `language` setting -> `en`. Western digits (0-9) are used in both.
   human step, not something to script around. Ship unsigned builds only
   when explicitly told that's acceptable for the current milestone.
 
+## Client builds
+
+A client build is a profile, not a fork — same codebase, same pattern as the
+demo build. `POS_CLIENT=<name>` (`config('pos.client')`, default `null` = plain
+LebaSouk) activates `config/clients/<name>.php` and `resources/clients/<name>/`.
+Views and controllers go through `App\Support\Client` (`is()`, `config()`,
+`view()`), never inline string checks. `Client::view($name, $fallback)` returns
+`resources/clients/<name>/views/<name>.blade.php` if it exists, else the core
+view. First-run setup writes the profile's `settings` block once
+(`Client::seedSettings()`); after that the admin owns those values.
+
+Only content that can't be config or a template belongs on a `client/<name>`
+branch; keep it rebased on `main`.
+
+**Vortex Energy** (`POS_CLIENT=vortex`, `.env.vortex.example`, app id
+`com.buildsyntax.lebasouk.vortex`, app name "Vortex Energy POS"). One unsigned
+Windows installer goes on both store computers. Each install creates its own
+SQLite database under `%APPDATA%\Vortex Energy POS\` on first run and runs
+first-run setup separately — two `super_admin` setups, two store admins. The
+stores do not sync. Build on Windows:
+
+```bash
+cp .env.vortex.example .env && php artisan key:generate
+```
+
+Bump `NATIVEPHP_APP_VERSION` in `.env`, then:
+
+```bash
+php artisan native:build win x64
+```
+
+`native:build` aborts if `.env` isn't a production env or `POS_CLIENT` names a
+profile with no `config/clients/<name>.php`. Check `dist/` for a freshly
+timestamped `Vortex Energy POS-<version>-setup.exe` (it exits 0 even when it
+fails — see `docs/demo-build.md`). To build plain LebaSouk again, copy
+`.env.example` back over `.env`. A cached config left by the build overrides
+`phpunit.xml`; run `php artisan optimize:clear` before `php artisan test`.
+
 ## Guardrails (still apply)
 
 - Never read, echo, log or commit secrets from `.env` — `APP_KEY`, DB

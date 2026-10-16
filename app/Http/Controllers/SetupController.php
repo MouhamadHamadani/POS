@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\Activation;
+use App\Support\Client;
 use App\Support\License;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,10 @@ class SetupController extends Controller
         // login screen and every new account start in.
         Setting::set('language', $user->language, 'appearance');
 
+        // A client build starts with that client's name and receipt footer.
+        // Safe to overwrite: setup only runs before any account exists.
+        Client::seedSettings();
+
         // The 14-day trial clock starts when setup finishes, not at first launch:
         // the installer may stage a machine days before the client sits down.
         Activation::startTrial();
@@ -72,6 +77,7 @@ class SetupController extends Controller
             'username' => $user->username,
             'role' => $user->role,
             'activation_status' => Activation::status(),
+            'client' => Client::name(),
         ]);
 
         // Set before login so the very first authenticated request already sees
