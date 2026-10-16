@@ -195,19 +195,21 @@ class ReturnController extends Controller
         if (!$request->user()->isManagerial()) {
             abort(403);
         }
-        if ($return->status !== ReturnTransaction::STATUS_PENDING) {
-            return back()->withErrors(['status' => __('messages.return_not_pending')]);
-        }
 
-        DB::transaction(function () use ($return, $request) {
-            $return->update([
-                'status' => ReturnTransaction::STATUS_APPROVED,
-                'approved_by' => $request->user()->id,
-                'approved_at' => now(),
-            ]);
+        // Claim the pending return with one conditional UPDATE inside the transaction: of two overlapping
+        // approvals (double click, two managers) only the first changes a row, the other applies nothing.
+        $applied = DB::transaction(function () use ($return, $request) {
+            if (!$this->claimPending($return, ReturnTransaction::STATUS_APPROVED, $request->user()->id)) {
+                return false;
+            }
             $this->processApproval($return->fresh('items'));
             AuditLog::record($request->user()->id, 'return_approve', ReturnTransaction::class, $return->id);
+
+            return true;
         });
+        if (!$applied) {
+            return back()->withErrors(['status' => __('messages.return_not_pending')]);
+        }
 
         return back()->with('success', __('messages.return_approved', ['number' => $return->return_number]));
     }
@@ -217,17 +219,19 @@ class ReturnController extends Controller
         if (!$request->user()->isManagerial()) {
             abort(403);
         }
-        if ($return->status !== ReturnTransaction::STATUS_PENDING) {
+        if (!$this->claimPending($return, ReturnTransaction::STATUS_REJECTED, $request->user()->id)) {
             return back()->withErrors(['status' => __('messages.return_not_pending')]);
         }
-
-        $return->update([
-            'status' => ReturnTransaction::STATUS_REJECTED,
-            'approved_by' => $request->user()->id,
-            'approved_at' => now(),
-        ]);
         AuditLog::record($request->user()->id, 'return_reject', ReturnTransaction::class, $return->id);
         return back()->with('success', __('messages.return_rejected'));
+    }
+
+    /** Move a return out of `pending` only if it is still pending in the database (not just in memory). */
+    private function claimPending(ReturnTransaction $return, string $status, int $userId): bool
+    {
+        return ReturnTransaction::where('id', $return->id)
+            ->where('status', ReturnTransaction::STATUS_PENDING)
+            ->update(['status' => $status, 'approved_by' => $userId, 'approved_at' => now()]) === 1;
     }
 
     /**
