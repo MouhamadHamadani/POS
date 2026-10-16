@@ -36,7 +36,8 @@ class PurchaseOrder extends Model
 
     public function supplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class);
+        // A deleted supplier still owns its orders: show and receive must keep working on them.
+        return $this->belongsTo(Supplier::class)->withTrashed();
     }
 
     public function user(): BelongsTo

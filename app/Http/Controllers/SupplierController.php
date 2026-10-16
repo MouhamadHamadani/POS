@@ -70,6 +70,11 @@ class SupplierController extends Controller
 
     public function destroy(Request $request, Supplier $supplier): RedirectResponse
     {
+        // Goods can still arrive for an order that is not received/closed/cancelled yet; keep its supplier.
+        if (PurchaseOrder::where('supplier_id', $supplier->id)
+            ->whereIn('status', [PurchaseOrder::STATUS_DRAFT, PurchaseOrder::STATUS_SENT, PurchaseOrder::STATUS_PARTIAL])->exists()) {
+            return back()->withErrors(['delete' => __('messages.supplier_has_open_pos')]);
+        }
         $name = $supplier->name;
         $supplier->delete();
         AuditLog::record($request->user()->id, 'delete', Supplier::class, $supplier->id, ['name' => $name], null);
