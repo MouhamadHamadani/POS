@@ -12,6 +12,7 @@ use App\Models\Setting;
 use App\Models\Tax;
 use App\Services\BackupService;
 use App\Services\CurrencyService;
+use App\Services\ReceiptPrintService;
 use App\Services\ReceiptRenderer;
 use App\Support\Activation;
 use App\Support\Demo;
@@ -87,7 +88,10 @@ class SettingController extends Controller
             ? ExpenseCategory::withCount(['expenses' => fn ($q) => $q->withTrashed()])->orderBy('kind')->orderBy('sort_order')->get()
             : collect();
 
-        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate', 'expenseCategories'));
+        // The installed printers, for the A4 printer dropdown (empty outside the desktop app).
+        $printers = $tab === 'receipt' ? app(ReceiptPrintService::class)->printers() : [];
+
+        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate', 'expenseCategories', 'printers'));
     }
 
     public function update(Request $request): RedirectResponse
@@ -96,6 +100,11 @@ class SettingController extends Controller
         $data = $request->validate([
             'group' => 'required|in:general,currency,pos,receipt,numbering,loyalty,backup,appearance',
             'settings' => 'required|array',
+        ]);
+        // Separate call on purpose: rules for nested keys would make validated() drop every other setting.
+        $request->validate([
+            'settings.receipt_format' => ['nullable', \Illuminate\Validation\Rule::in(ReceiptPrintService::FORMATS)],
+            'settings.a4_printer_name' => 'nullable|string|max:255',
         ]);
 
         if (Demo::enabled() && in_array($data['group'], self::DEMO_LOCKED_GROUPS, true)) {
@@ -121,6 +130,7 @@ class SettingController extends Controller
             // receipt
             'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
             'receipt_header' => 'string', 'receipt_footer' => 'string',
+            'receipt_format' => 'string', 'a4_printer_name' => 'string',
             // numbering
             'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
             // loyalty

@@ -222,6 +222,31 @@
                             </select>
                             <div class="text-xs text-gray-500 mt-1">{{ __('settings.receipt_language_help') }}</div>
                         </div>
+                        <div>
+                            <label class="block text-xs text-gray-500">{{ __('settings.receipt_format') }}</label>
+                            <select name="settings[receipt_format]" class="w-full border-gray-300 rounded text-sm">
+                                @foreach (\App\Services\ReceiptPrintService::FORMATS as $rf)
+                                    <option value="{{ $rf }}" @selected($get('receipt_format', 'thermal') === $rf)>{{ __("settings.receipt_format_options.$rf") }}</option>
+                                @endforeach
+                            </select>
+                            <div class="text-xs text-gray-500 mt-1">{{ __('settings.receipt_format_help') }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500">{{ __('settings.a4_printer') }}</label>
+                            @php $a4Printer = $get('a4_printer_name'); @endphp
+                            @if (count($printers))
+                                <select name="settings[a4_printer_name]" class="w-full border-gray-300 rounded text-sm">
+                                    <option value="">{{ __('settings.a4_printer_ask') }}</option>
+                                    @foreach ($printers + ($a4Printer !== '' && ! isset($printers[$a4Printer]) ? [$a4Printer => $a4Printer] : []) as $name => $display)
+                                        <option value="{{ $name }}" @selected($a4Printer === $name)>{{ $display }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="text-xs text-gray-500 mt-1">{{ __('settings.a4_printer_help') }}</div>
+                            @else
+                                <input type="text" name="settings[a4_printer_name]" dir="ltr" value="{{ $a4Printer }}" class="w-full border-gray-300 rounded text-sm" />
+                                <div class="text-xs text-gray-500 mt-1">{{ __('settings.a4_printer_text_help') }}</div>
+                            @endif
+                        </div>
                         <div class="md:col-span-2">
                             <label class="block text-xs text-gray-500">{{ __('settings.receipt_header') }}</label>
                             <textarea name="settings[receipt_header]" dir="auto" rows="2" class="w-full border-gray-300 rounded text-sm">{{ $get('receipt_header') }}</textarea>

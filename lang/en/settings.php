@@ -88,4 +88,15 @@ return [
     'confirm_restore' => 'Restore this backup? Current DB will be overwritten.',
     'confirm_delete_backup' => 'Delete this backup file?',
     'no_backups' => 'No backups yet.',
+    'receipt_format' => 'Print format',
+    'receipt_format_options' => [
+        'thermal' => 'Small receipt (thermal)',
+        'a4' => 'A4 invoice',
+        'ask' => 'Ask after each sale',
+    ],
+    'receipt_format_help' => 'What prints automatically after a sale and with Ctrl+P. "Ask" prints nothing until the cashier picks a format. Both formats can always be printed from the sale screen (A4 with Ctrl+Shift+P).',
+    'a4_printer' => 'A4 printer',
+    'a4_printer_ask' => 'Ask each time (system print dialog)',
+    'a4_printer_help' => 'A4 invoices go straight to this printer with no dialog. Keep "Ask each time" if your default printer is the receipt printer and you want to choose. Direct printing works only in the installed desktop app.',
+    'a4_printer_text_help' => 'The list of installed printers appears in the desktop app. Type the printer name exactly as Windows shows it, or leave empty to use the print dialog.',
 ];

@@ -53,6 +53,9 @@ Route::middleware(['auth'])->group(function () {
     // Receipt reprint — accessible outside the shift gate so cashier can
     // print receipts for earlier sales after closing a shift.
     Route::get('/pos/receipts/{sale}/print', [ReceiptController::class, 'show'])->name('receipts.print');
+    // A4 invoice straight to the printer chosen in Settings (desktop app only; the sell screen
+    // falls back to the print dialog when this reports it did not print).
+    Route::post('/pos/receipts/{sale}/print-a4', [ReceiptController::class, 'printA4'])->name('receipts.print-a4');
 
     // Shifts
     Route::get('/shifts/open', [ShiftController::class, 'showOpen'])->name('shifts.open');

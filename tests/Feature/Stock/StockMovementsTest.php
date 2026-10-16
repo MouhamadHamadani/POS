@@ -88,7 +88,7 @@ class StockMovementsTest extends TestCase
 
         $this->assertEqualsWithDelta(-5, (float) $rows['sale']->qty_change, 0.0001);
         $this->assertSame($sale->receipt_number, $rows['sale']->ref_label);
-        $this->assertSame(route('receipts.print', $sale->id), $rows['sale']->ref_url);
+        $this->assertSame(route('receipts.print', ['sale' => $sale->id, 'auto' => 0]), $rows['sale']->ref_url);
 
         $this->assertEqualsWithDelta(20, (float) $rows['po_receive']->qty_change, 0.0001);
         $this->assertSame('PO-0001', $rows['po_receive']->ref_label);
