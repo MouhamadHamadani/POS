@@ -60,4 +60,34 @@ class ReturnApprovalGuardTest extends TestCase
         $this->assertSame(ReturnTransaction::STATUS_COMPLETED, $pending[0]->fresh()->status);
         $this->assertSame(ReturnTransaction::STATUS_PENDING, $pending[1]->fresh()->status);
     }
+
+    public function test_the_form_offers_no_inputs_for_units_already_on_a_pending_return(): void
+    {
+        $manager = User::factory()->manager()->create();
+        $cashier = User::factory()->create();
+        $shift = Shift::create([
+            'user_id' => $manager->id, 'opened_at' => now(),
+            'opening_cash_usd' => 0, 'opening_cash_lbp' => 0, 'status' => Shift::STATUS_OPEN,
+        ]);
+        $product = Product::factory()->create(['stock_qty' => 10, 'track_stock' => true]);
+        $sale = Sale::create([
+            'receipt_number' => 'R-0901', 'user_id' => $manager->id, 'shift_id' => $shift->id,
+            'subtotal_usd' => 20, 'total_usd' => 20, 'exchange_rate' => 90000,
+            'payment_method' => 'cash_usd', 'status' => Sale::STATUS_COMPLETED,
+        ]);
+        $line = SaleItem::create([
+            'sale_id' => $sale->id, 'product_id' => $product->id, 'product_name' => $product->name,
+            'qty' => 2, 'unit_price_usd' => 10, 'line_total_usd' => 20,
+        ]);
+        $payload = ['items' => [['sale_item_id' => $line->id, 'qty_returned' => 2]], 'reason' => 'defective', 'refund_method' => 'cash_usd'];
+
+        $this->actingAs($cashier)->post(route('returns.store', $sale), $payload)->assertSessionHasNoErrors();
+        // The second attempt for the same two units is refused up front, with the normal message.
+        $this->actingAs($cashier)->post(route('returns.store', $sale), $payload)->assertSessionHasErrors('items');
+        $this->assertSame(1, ReturnTransaction::count());
+
+        $html = $this->actingAs($cashier)->get(route('returns.create', $sale))->assertOk()->getContent();
+        $this->assertStringNotContainsString('items[0][qty_returned]', $html);
+        $this->assertStringContainsString(__('returns.qty_pending', ['qty' => 2]), $html);
+    }
 }
