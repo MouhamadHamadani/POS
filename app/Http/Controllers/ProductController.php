@@ -229,9 +229,10 @@ class ProductController extends Controller
         ]);
 
         $qty = (float) $data['qty'];
+        $before = (float) $product->stock_qty;
 
         try {
-            match ($data['action']) {
+            $after = match ($data['action']) {
                 'add' => $this->inventory->adjust($product, $qty, \App\Models\InventoryAdjustment::TYPE_ADD, $request->user()->id, reason: $data['reason']),
                 'remove' => $this->inventory->adjust($product, -$qty, \App\Models\InventoryAdjustment::TYPE_REMOVE, $request->user()->id, reason: $data['reason'], allowNegative: false),
                 'set', 'count' => $this->inventory->setStock($product, $qty, $request->user()->id, $data['reason']),
@@ -239,6 +240,15 @@ class ProductController extends Controller
         } catch (\App\Exceptions\InsufficientStockException $e) {
             return back()->withErrors(['stock' => $e->getMessage()]);
         }
+
+        AuditLog::record(
+            $request->user()->id,
+            'stock_adjust',
+            Product::class,
+            $product->id,
+            ['stock_qty' => $before],
+            ['stock_qty' => $after, 'action' => $data['action'], 'qty' => $qty, 'reason' => $data['reason']],
+        );
 
         return redirect()->route('products.edit', $product)->with('success', __('messages.stock_adjusted'));
     }
