@@ -26,6 +26,10 @@ class CategoryController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
         $data['is_active'] = $request->boolean('is_active', true);
+        // sort_order is NOT NULL DEFAULT 0: a blank input arrives as null, and blank means "first / 0".
+        if (array_key_exists('sort_order', $data)) {
+            $data['sort_order'] ??= 0;
+        }
         Category::create($data);
         return back()->with('success', __('messages.category_created', ['name' => $data['name']]));
     }
@@ -40,6 +44,10 @@ class CategoryController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
         $data['is_active'] = $request->boolean('is_active', true);
+        // Blank means 0; a request that omits the field entirely keeps the stored order.
+        if (array_key_exists('sort_order', $data)) {
+            $data['sort_order'] ??= 0;
+        }
         $category->update($data);
         return back()->with('success', __('messages.category_updated', ['name' => $category->localName()]));
     }
