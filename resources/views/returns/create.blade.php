@@ -63,6 +63,8 @@
                                        class="w-20 text-end border-gray-300 rounded text-sm" />
                             </td>
                             <td class="p-2 text-center">
+                                {{-- An un-ticked box sends nothing, and a missing restock means "restock": send an explicit 0 first. --}}
+                                <input type="hidden" name="items[{{ $idx }}][restock]" value="0">
                                 <input type="checkbox" name="items[{{ $idx }}][restock]" value="1" checked
                                        x-model="lines[{{ $idx }}].restock" />
                             </td>
