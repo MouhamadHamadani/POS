@@ -8,6 +8,7 @@
 
     <div class="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
         @if (session('success'))<div class="p-3 bg-green-50 text-green-800 rounded text-sm">{{ session('success') }}</div>@endif
+        @if ($errors->any())<div class="p-3 bg-red-50 text-red-700 rounded text-sm">{{ $errors->first() }}</div>@endif
 
         <div class="bg-white rounded-lg shadow-card p-4">
             <form method="GET" class="flex gap-2 items-end text-sm">
