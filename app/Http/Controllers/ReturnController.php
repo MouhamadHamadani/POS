@@ -86,7 +86,12 @@ class ReturnController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $positiveItems = collect($data['items'])->filter(fn ($i) => (float) $i['qty_returned'] > 0);
+        // One entry per sale line: a line posted twice has its quantities summed (the last entry's
+        // restock/condition win), so the check below sees the real total and the refund is counted once.
+        $positiveItems = collect($data['items'])
+            ->filter(fn ($i) => (float) $i['qty_returned'] > 0)
+            ->groupBy('sale_item_id')
+            ->map(fn ($rows) => array_merge($rows->last(), ['qty_returned' => $rows->sum(fn ($r) => (float) $r['qty_returned'])]));
         if ($positiveItems->isEmpty()) {
             return back()->withErrors(['items' => __('messages.select_return_item')]);
         }
