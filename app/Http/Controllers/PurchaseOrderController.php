@@ -90,7 +90,9 @@ class PurchaseOrderController extends Controller
             abort(403, __('messages.po_not_editable'));
         }
         $purchase->load('items.product:id,name,name_ar,sku,unit,cost_usd,tax_id');
-        $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
+        // The PO's own supplier stays selectable even if it has been deactivated since (marked "(Inactive)"),
+        // otherwise the required select would force a different supplier on every save. New POs only offer active ones.
+        $suppliers = Supplier::where(fn ($q) => $q->where('is_active', true)->orWhere('id', $purchase->supplier_id))->orderBy('name')->get();
         $products = Product::with('tax:id,rate')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'name_ar', 'sku', 'cost_usd', 'unit', 'tax_id', 'stock_qty']);
         return view('purchases.form', [
             'po' => $purchase,

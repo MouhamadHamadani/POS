@@ -59,7 +59,7 @@
                     <select name="supplier_id" required class="w-full border-gray-300 rounded text-sm">
                         <option value="">{{ __('purchases.select') }}</option>
                         @foreach ($suppliers as $s)
-                            <option value="{{ $s->id }}" @selected(old('supplier_id', $po->supplier_id) == $s->id)>{{ $s->name }}</option>
+                            <option value="{{ $s->id }}" @selected(old('supplier_id', $po->supplier_id) == $s->id)>{{ $s->name }}@unless ($s->is_active) ({{ __('common.inactive') }})@endunless</option>
                         @endforeach
                     </select>
                 </div>
