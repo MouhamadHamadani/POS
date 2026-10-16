@@ -65,6 +65,8 @@
                         {{ __('customers.tax_exempt') }}
                     </label>
                     <label class="text-sm flex items-center gap-2">
+                        {{-- An un-ticked checkbox sends nothing; the hidden 0 (overridden by the box when ticked) lets Save turn Active off. --}}
+                        <input type="hidden" name="is_active" value="0">
                         <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $customer->is_active ?? true))>
                         {{ __('common.active') }}
                     </label>
