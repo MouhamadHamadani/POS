@@ -84,7 +84,7 @@
                     </div>
                     <div>
                         <x-input-label for="closing_cash_lbp" :value="__('shifts.counted_lbp')" />
-                        <x-text-input id="closing_cash_lbp" name="closing_cash_lbp" type="number" step="1000" min="0" dir="ltr"
+                        <x-text-input id="closing_cash_lbp" name="closing_cash_lbp" type="number" step="any" min="0" dir="ltr"
                                       :value="old('closing_cash_lbp', 0)" required class="block mt-1 w-full"
                                       x-bind:value="lbpTotal() || {{ old('closing_cash_lbp', 0) }}"
                                       x-bind:readonly="hasLbpDenom()" />
