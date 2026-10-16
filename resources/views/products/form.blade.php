@@ -222,7 +222,8 @@
                         <select name="tax_id" class="w-full border-gray-300 rounded text-sm">
                             <option value="">{{ __('products.no_tax') }}</option>
                             @foreach ($taxes as $t)
-                                <option value="{{ $t->id }}" @selected(old('tax_id', $product->tax_id ?? $defaultTaxId) == $t->id)>
+                                {{-- The default tax is only a suggestion for a NEW product. A saved product with no tax stays "No tax". --}}
+                                <option value="{{ $t->id }}" @selected(old('tax_id', $product->exists ? $product->tax_id : $defaultTaxId) == $t->id)>
                                     {{ app()->getLocale() === 'ar' && $t->name_ar ? $t->name_ar : $t->name }} ({{ number_format((float) $t->rate * 100, 2) }}%)
                                 </option>
                             @endforeach

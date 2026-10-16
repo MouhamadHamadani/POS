@@ -32,6 +32,18 @@ class ProductCrudTest extends TestCase
             ->assertSee('Pricing');
     }
 
+    public function test_the_default_tax_is_preselected_on_create_but_not_on_edit_of_an_untaxed_product(): void
+    {
+        $vat = Tax::factory()->default()->create(['name' => 'VAT 11%', 'rate' => 0.11]);
+        $untaxed = Product::factory()->create(['tax_id' => null]);
+        $admin = $this->admin();
+
+        // Scoped to the tax <select>: a category option can share the same id.
+        $selected = '~name="tax_id"(?:(?!</select>).)*?<option value="'.$vat->id.'"\s+selected~s';
+        $this->assertMatchesRegularExpression($selected, $this->actingAs($admin)->get('/products/create')->assertOk()->getContent());
+        $this->assertDoesNotMatchRegularExpression($selected, $this->actingAs($admin)->get(route('products.edit', $untaxed))->assertOk()->getContent());
+    }
+
     public function test_creating_a_minimum_product_succeeds(): void
     {
         $cat = Category::factory()->create();
