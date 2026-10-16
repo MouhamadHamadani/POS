@@ -17,6 +17,9 @@ use Illuminate\View\View;
 
 class ReturnController extends Controller
 {
+    /** A sale in one of these states cannot take a return: not found by "Find sale", refused by create()/store(). */
+    private const NOT_RETURNABLE = [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED];
+
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly CurrencyService $currency,
@@ -42,9 +45,10 @@ class ReturnController extends Controller
         $data = $request->validate(['query' => 'required|string|max:120']);
         $term = trim($data['query']);
 
-        $sale = Sale::where('receipt_number', $term)
-            ->orWhereHas('customer', fn ($w) => $w->where('phone', $term))
-            ->whereNotIn('status', [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD])
+        // The status filter must bind to BOTH ways of finding the sale, hence the closure around the OR.
+        $sale = Sale::whereNotIn('status', self::NOT_RETURNABLE)
+            ->where(fn ($q) => $q->where('receipt_number', $term)
+                ->orWhereHas('customer', fn ($w) => $w->where('phone', $term)))
             ->latest()
             ->first();
 
@@ -57,7 +61,7 @@ class ReturnController extends Controller
 
     public function create(Sale $sale): View
     {
-        if (in_array($sale->status, [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED], true)) {
+        if (in_array($sale->status, self::NOT_RETURNABLE, true)) {
             abort(403, __('messages.sale_cannot_return_abort'));
         }
         $sale->load('items.product:id,name,name_ar,sku,track_stock', 'customer');
@@ -66,7 +70,7 @@ class ReturnController extends Controller
 
     public function store(Request $request, Sale $sale): RedirectResponse
     {
-        if (in_array($sale->status, [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED], true)) {
+        if (in_array($sale->status, self::NOT_RETURNABLE, true)) {
             return redirect()->route('returns.index')->withErrors(['sale' => __('messages.sale_cannot_return')]);
         }
 
