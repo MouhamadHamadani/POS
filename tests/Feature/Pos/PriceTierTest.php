@@ -15,7 +15,9 @@ use Tests\TestCase;
 
 /**
  * Retail / wholesale / VIP price lists. The server is the only source of price:
- * the browser says which list it wants, never what a line costs.
+ * the browser says which list it wants, never what a line costs. (The one thing it
+ * may propose is a cashier price override, which the server checks in full: see
+ * PriceOverrideTest.)
  */
 class PriceTierTest extends TestCase
 {
@@ -106,18 +108,18 @@ class PriceTierTest extends TestCase
         $this->assertEqualsWithDelta(10.00, (float) $sale->items[0]->unit_price_usd, 0.0001);
     }
 
-    public function test_a_price_posted_by_the_browser_is_ignored(): void
+    public function test_a_price_posted_by_the_browser_is_not_taken_on_trust(): void
     {
         $product = $this->product();
 
-        $saleId = $this->actingAs($this->userWithShift())->postJson('/pos/api/sales', [
+        // A hand-made 1-cent price is a 99.9% cut: past a cashier's limit, so no sale without a manager.
+        $this->actingAs($this->userWithShift())->postJson('/pos/api/sales', [
             'cart' => [['product_id' => $product->id, 'qty' => 1, 'unit_price' => 0.01]],
             'payment' => ['method' => 'cash_usd', 'amount_usd' => 20],
-        ])->assertCreated()->json('sale.id');
+        ])->assertStatus(422)->assertJsonStructure(['error' => ['cart.0.price']]);
 
-        $sale = Sale::with('items')->findOrFail($saleId);
-        $this->assertEqualsWithDelta(10.00, (float) $sale->items[0]->unit_price_usd, 0.0001);
-        $this->assertEqualsWithDelta(10.00, (float) $sale->total_usd, 0.0001);
+        $this->assertSame(0, Sale::count());
+        $this->assertSame('50.0000', (string) $product->fresh()->stock_qty);
     }
 
     public function test_an_unknown_price_list_is_rejected(): void
@@ -213,7 +215,7 @@ class PriceTierTest extends TestCase
         $product = $this->product();
 
         $this->actingAs($user)->postJson('/pos/api/holds', [
-            'cart' => [['product_id' => $product->id, 'qty' => 3, 'unit_price' => 0.01]],
+            'cart' => [['product_id' => $product->id, 'qty' => 3]],
             'price_tier' => 'wholesale',
         ])->assertCreated();
 
