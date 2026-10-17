@@ -124,12 +124,22 @@
                                     <div class="flex-1 min-w-0">
                                         <button type="button" @click="openLineEditor(idx)" :title="t('discount') + ' (F8)'"
                                                 class="font-medium text-start hover:underline" x-text="line.name"></button>
-                                        <div class="text-xs text-gray-500">
-                                            <span dir="ltr" class="inline-block">
+                                        <div class="text-xs text-gray-500 flex flex-wrap items-center gap-x-1">
+                                            {{-- Click the price (or F2) to change it for this sale. A struck-through figure is the list price. --}}
+                                            <button type="button" @click="openPriceEditor(idx)" :disabled="!priceOverride.enabled"
+                                                    :title="priceOverride.enabled ? t('price_edit') + ' (F2)' : ''" dir="ltr"
+                                                    class="inline-block text-start hover:underline disabled:no-underline disabled:cursor-default">
                                                 <x-ltr>$<span x-text="Number(line.unit_price).toFixed(2)"></span></x-ltr>
-                                                <span x-show="line.unit_price !== line.retail_price" class="line-through text-gray-400"><x-ltr>$<span x-text="Number(line.retail_price).toFixed(2)"></span></x-ltr></span>
+                                                <span x-show="line.override ? true : line.unit_price !== line.retail_price" class="line-through text-gray-400"><x-ltr>$<span x-text="Number(line.override ? catalogPrice(line) : line.retail_price).toFixed(2)"></span></x-ltr></span>
                                                 × <span x-text="line.qty"></span>
-                                            </span>
+                                            </button>
+                                            <span x-show="line.override" x-cloak
+                                                  :class="line.unit_price < catalogPrice(line) ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
+                                                  :title="line.unit_price < catalogPrice(line) ? t('price_lowered') : t('price_raised')"
+                                                  class="px-1 rounded text-[10px] font-bold leading-4"
+                                                  x-text="line.unit_price < catalogPrice(line) ? '↓' : '↑'"></span>
+                                            <button type="button" x-show="line.override" x-cloak @click="resetPrice(idx)" :title="t('price_reset')"
+                                                    class="text-gray-400 hover:text-gray-700 leading-none">↺</button>
                                         </div>
                                         <div x-show="lineDiscountText(idx)" x-cloak class="text-xs text-green-700">
                                             <span dir="ltr" class="inline-block" x-text="lineDiscountText(idx)"></span>
@@ -393,6 +403,83 @@
                 </div>
             </div>
 
+            {{-- Price editor: change one cart line's unit price for this sale only (F2). The list price
+                 never changes. A cut beyond the cashier's limit asks for a manager's login + PIN/password. --}}
+            <div x-show="priceEditor.open" x-cloak @keydown.escape.window="priceEditor.open && closePriceEditor()"
+                 class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-bold" x-text="t('price_for', { name: peLine()?.name || '' })"></h3>
+                        <button type="button" @click="closePriceEditor()" class="text-gray-400 hover:text-gray-700 text-xl">&times;</button>
+                    </div>
+
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between text-gray-600">
+                            <span x-text="t('list_price')"></span>
+                            <span><x-ltr>$<span x-text="peCatalog().toFixed(2)"></span></x-ltr></span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600" x-text="t('new_price')"></label>
+                            <input type="number" x-ref="priceInput" x-model="priceEditor.price" min="0" step="0.01" dir="ltr"
+                                   :disabled="priceEditor.approving" @keydown.enter.prevent="applyPrice()"
+                                   class="w-full border-gray-300 rounded mt-1 text-sm" />
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span x-text="t('lbp_equiv')"></span>
+                                <span dir="ltr" x-text="formatLbp(pePrice() * exchangeRate)"></span>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <template x-for="q in [-10, -5, 5]" :key="q">
+                                <button type="button" @click="peQuick(q)" dir="ltr"
+                                        class="flex-1 py-1 bg-gray-100 rounded text-xs hover:bg-gray-200"
+                                        x-text="(q > 0 ? '+' : '−') + Math.abs(q) + '%'"></button>
+                            </template>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600"
+                                   x-text="peReasonRequired() ? t('price_reason') : t('price_reason_optional')"></label>
+                            <input type="text" dir="auto" maxlength="255" x-model="priceEditor.reason"
+                                   :disabled="priceEditor.approving" @keydown.enter.prevent="applyPrice()"
+                                   class="w-full border-gray-300 rounded mt-1 text-sm" />
+                        </div>
+
+                        <div x-show="peNeedsApproval()" x-cloak class="p-3 bg-amber-50 rounded space-y-2">
+                            <div class="font-medium text-amber-900" x-text="t('approval_title')"></div>
+                            <p class="text-xs text-amber-800"
+                               x-text="t('approval_help', { pct: peCut().toFixed(1), limit: Number(priceOverride.limit) })"></p>
+                            <template x-if="peApproved()">
+                                <p class="text-xs font-medium text-green-700" x-text="peLine().override.approver ? t('approved_by', { name: peLine().override.approver }) : t('approved')"></p>
+                            </template>
+                            <template x-if="!peApproved()">
+                                <div class="space-y-2">
+                                    <input type="text" dir="ltr" autocomplete="off" x-model="priceEditor.login"
+                                           :placeholder="t('approver_login')" :disabled="priceEditor.approving"
+                                           class="w-full border-gray-300 rounded text-sm" />
+                                    <input type="password" dir="ltr" autocomplete="off" x-model="priceEditor.secret"
+                                           :placeholder="t('approver_secret')" :disabled="priceEditor.approving"
+                                           @keydown.enter.prevent="applyPrice()"
+                                           class="w-full border-gray-300 rounded text-sm" />
+                                </div>
+                            </template>
+                        </div>
+
+                        <div x-show="priceEditor.error" x-cloak class="text-sm text-red-600 bg-red-50 p-2 rounded" x-text="priceEditor.error"></div>
+
+                        <div class="flex gap-2">
+                            <button type="button" x-show="peLine()?.override" x-cloak
+                                    @click="resetPrice(priceEditor.idx); closePriceEditor()"
+                                    class="px-3 py-2 bg-gray-100 rounded text-sm" x-text="t('price_reset')"></button>
+                            <button type="button" @click="applyPrice()" :disabled="priceEditor.approving"
+                                    class="flex-1 py-2 bg-brand-600 text-white rounded font-medium hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    x-text="peNeedsApproval() && !peApproved() ? t('approve_apply') : t('apply')"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- Payment modal --}}
             <div x-show="showPayment" x-cloak @keydown.escape.window="showPayment=false"
                  class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -563,6 +650,8 @@
                 maxDiscountPct: @json($maxDiscountPct), // effective % of a line's gross; 100 = unlimited
                 cartDiscount: { type: 'pct', value: 0 }, // whole-cart discount, split over lines by computeCart()
                 editor: { open: false, target: 'line', idx: null, type: 'pct', value: '', error: '' },
+                priceOverride: @json($priceOverride), // {enabled, limit (% a cut may reach without a manager), requireReason}
+                priceEditor: { open: false, idx: null, price: '', reason: '', error: '', login: '', secret: '', approving: false },
                 search: '',
                 activeCategory: null,
                 filtered: [],
@@ -612,6 +701,8 @@
                             e.preventDefault();
                             if (e.shiftKey) this.openCartEditor(); else this.openLineEditor(this.selectedLine());
                         }
+                        // F2 changes the price of the selected line for this sale only.
+                        if (e.key === 'F2' && !this.anyModalOpen()) { e.preventDefault(); this.openPriceEditor(this.selectedLine()); }
                         if (e.key === 'F12' && this.showPayment) { e.preventDefault(); this.submit(); }
                         // Ctrl+P prints the default format, Ctrl+Shift+P always A4.
                         if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P') && this.lastSale?.id) {
@@ -640,7 +731,7 @@
 
                 anyModalOpen() {
                     return this.showCustomerModal || this.showHoldModal || this.showHeldList
-                        || this.showPayment || this.editor.open || !!this.lastSale;
+                        || this.showPayment || this.editor.open || this.priceEditor.open || !!this.lastSale;
                 },
 
                 async refreshHeldCount() {
@@ -777,6 +868,7 @@
                                     discount_pct: l.discount_pct,
                                     discount_amount: l.discount_amount,
                                     note: l.note,
+                                    ...this._overridePayload(l),
                                 })),
                                 price_tier: this.priceTier,
                                 cart_discount: Number(this.cartDiscount.value) > 0
@@ -947,19 +1039,28 @@
                     this.applyTier(this.tiers[(this.tiers.indexOf(this.priceTier) + 1) % this.tiers.length]);
                 },
 
-                // Switch list and re-price every line already in the cart.
+                // Switch list and re-price every line already in the cart. An overridden line keeps the
+                // price the cashier set (and is re-checked against the new list), unless that price now
+                // equals the list price.
                 applyTier(tier) {
                     this.priceTier = this.normTier(tier);
-                    for (const l of this.cart) l.unit_price = l.tier_prices[this.priceTier];
+                    for (const l of this.cart) {
+                        const list = l.tier_prices[this.priceTier];
+                        if (!l.override || Math.abs(l.unit_price - list) <= 0.00005) { l.unit_price = list; l.override = null; }
+                    }
                     this.recompute();
                 },
 
                 // The one place a cart line is built (add, recall) so both price and discount rules stay together.
                 makeLine(p, qty = 1, saved = {}) {
                     const tp = this.tierPrices(p);
+                    // A recalled hold may carry a price override; it is re-checked when the sale is rung up.
+                    const overridden = saved.unit_price != null && Math.abs(Number(saved.unit_price) - tp[this.priceTier]) > 0.00005;
                     return {
                         product_id: p.id, name: this.pname(p),
-                        unit_price: tp[this.priceTier], retail_price: tp.retail, tier_prices: tp,
+                        unit_price: overridden ? Number(saved.unit_price) : tp[this.priceTier],
+                        override: overridden ? { reason: saved.price_reason || '', approval: saved.price_approval || null, approvalPrice: saved.price_approval ? Number(saved.unit_price) : null, approver: null } : null,
+                        retail_price: tp.retail, tier_prices: tp,
                         qty,
                         discount_pct: Number(saved.discount_pct || 0),
                         discount_amount: Number(saved.discount_amount || 0),
@@ -1133,7 +1234,7 @@
                     return out;
                 },
 
-                get issues() { return this.discountIssues(this.cart, this.cartDiscount); },
+                get issues() { return [...this.discountIssues(this.cart, this.cartDiscount), ...this.priceIssues]; },
 
                 lineDiscountText(i) {
                     const l = this.cart[i], c = this.calc.lines[i];
@@ -1230,6 +1331,129 @@
 
                 clearCartDiscount() { this.cartDiscount = { type: 'pct', value: 0 }; },
 
+                // --- price override (one line, this sale only) ---------------------
+                // The server re-derives every figure (PriceOverrideService); this only keeps the cashier
+                // from sending what it would refuse. The list price itself is never touched.
+
+                // The line's price on the active list: what an override is measured against.
+                catalogPrice(l) { return l.tier_prices[this.priceTier]; },
+
+                // % below the list price (negative above it).
+                cutPct(l, price = l.unit_price) {
+                    const c = this.catalogPrice(l);
+                    return c > 0 ? (c - price) / c * 100 : 0;
+                },
+
+                // Beyond the user's limit a cut needs a manager (managers and up have a limit of 100).
+                exceedsLimit(l, price = l.unit_price) { return this.cutPct(l, price) > this.priceOverride.limit + 0.000001; },
+
+                get priceIssues() {
+                    return this.cart
+                        .filter(l => l.override && this.exceedsLimit(l) && !l.override.approval)
+                        .map(l => this.t('price_needs_approval', { name: l.name }));
+                },
+
+                // Fields a line adds to the checkout / hold payload when its price is overridden.
+                _overridePayload(l) {
+                    return l.override ? {
+                        unit_price: l.unit_price,
+                        original_unit_price: this.catalogPrice(l),
+                        price_reason: l.override.reason || null,
+                        price_approval: l.override.approval || null,
+                    } : {};
+                },
+
+                peLine() { return this.cart[this.priceEditor.idx] ?? null; },
+                pePrice() {
+                    const v = Number(String(this.priceEditor.price ?? '').trim());
+                    return Number.isFinite(v) && v > 0 ? v : 0;
+                },
+                peCatalog() { const l = this.peLine(); return l ? this.catalogPrice(l) : 0; },
+                peIsCut() { return this.pePrice() > 0 && this.pePrice() < this.peCatalog() - 0.00005; },
+                peCut() { const l = this.peLine(); return l ? this.cutPct(l, this.pePrice()) : 0; },
+                peNeedsApproval() { const l = this.peLine(); return !!l && this.peIsCut() && this.exceedsLimit(l, this.pePrice()); },
+                peReasonRequired() { return this.peIsCut() && this.priceOverride.requireReason; },
+                // An approval already earned for exactly the price now typed.
+                peApproved() {
+                    const o = this.peLine()?.override;
+                    return !!o?.approval && o.approvalPrice === Number(this.pePrice().toFixed(4));
+                },
+                peQuick(pct) {
+                    this.priceEditor.price = String(Number((this.peCatalog() * (1 + pct / 100)).toFixed(4)));
+                    this.priceEditor.error = '';
+                },
+
+                openPriceEditor(i) {
+                    const l = this.cart[i];
+                    if (i == null || !l || !this.priceOverride.enabled) return;
+                    this.lastScannedIndex = i;
+                    this.priceEditor = {
+                        open: true, idx: i, price: String(l.unit_price), reason: l.override?.reason || '',
+                        error: '', login: '', secret: '', approving: false,
+                    };
+                    this.$nextTick(() => { this.$refs.priceInput?.focus(); this.$refs.priceInput?.select(); });
+                },
+
+                closePriceEditor() {
+                    this.priceEditor.open = false;
+                    this.priceEditor.secret = '';
+                    // Hand focus back so the next barcode scan lands in the search box.
+                    this.$nextTick(() => this.$refs.search?.focus());
+                },
+
+                resetPrice(i) {
+                    const l = this.cart[i];
+                    if (!l) return;
+                    l.unit_price = this.catalogPrice(l);
+                    l.override = null;
+                },
+
+                async applyPrice() {
+                    const e = this.priceEditor, l = this.peLine();
+                    if (!l || e.approving) return;
+                    const price = Number(this.pePrice().toFixed(4));
+                    if (!(price > 0)) { e.error = this.t('price_invalid'); return; }
+                    if (Math.abs(price - this.catalogPrice(l)) <= 0.00005) { this.resetPrice(e.idx); this.closePriceEditor(); return; }
+
+                    const cut = price < this.catalogPrice(l);
+                    const reason = e.reason.trim();
+                    if (cut && l.allow_discount === false) { e.error = this.t('price_cut_blocked'); return; }
+                    if (cut && this.priceOverride.requireReason && !reason) { e.error = this.t('price_reason_needed'); return; }
+
+                    let approval = null, approver = null;
+                    if (this.exceedsLimit(l, price)) {
+                        if (this.peApproved()) {
+                            approval = l.override.approval;
+                            approver = l.override.approver;
+                        } else {
+                            if (!e.login.trim() || !e.secret) { e.error = this.t('approval_fill'); return; }
+                            e.approving = true;
+                            e.error = '';
+                            try {
+                                const res = await fetch('/pos/api/price-approval', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this._csrf() },
+                                    body: JSON.stringify({ product_id: l.product_id, price, login: e.login.trim(), secret: e.secret }),
+                                });
+                                const data = await res.json().catch(() => ({}));
+                                if (!res.ok) { e.error = this.errorText(data); return; }
+                                approval = data.token;
+                                approver = data.approver.name;
+                            } catch (err) {
+                                e.error = this.t('network_error', { msg: err.message });
+                                return;
+                            } finally {
+                                e.approving = false;
+                                e.secret = '';
+                            }
+                        }
+                    }
+
+                    l.unit_price = price;
+                    l.override = { reason, approval, approvalPrice: approval ? price : null, approver };
+                    this.closePriceEditor();
+                },
+
                 openPayment() {
                     if (!this.cart.length || this.issues.length) return;
                     this.payment = { method: 'cash_usd', amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', change_usd_out: null };
@@ -1297,12 +1521,14 @@
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                             },
                             body: JSON.stringify({
-                                // No prices: the server prices every line from the product and price list.
+                                // No prices, bar a price override: the server prices every line from the product and
+                                // price list, and re-checks an override (PriceOverrideService) before it stands.
                                 cart: this.cart.map(l => ({
                                     product_id: l.product_id,
                                     qty: l.qty,
                                     discount_pct: l.discount_pct,
                                     discount_amount: l.discount_amount,
+                                    ...this._overridePayload(l),
                                 })),
                                 price_tier: this.priceTier,
                                 cart_discount_pct: this.cartDiscount.type === 'pct' && this.cartDiscount.value > 0
