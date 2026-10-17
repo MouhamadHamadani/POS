@@ -20,6 +20,7 @@ return [
     'change_usd' => 'Change USD',
     'change_lbp' => 'Change LBP',
     'disc' => 'disc:',
+    'was' => 'was',
     'loyalty_earned' => '+:count loyalty points earned',
     'receipt_no' => 'Receipt #',
     'default_footer' => 'Thank you for your business!',

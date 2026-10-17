@@ -26,6 +26,7 @@
     $lbpUnit = __('shifts.lbp', [], $rtl ? 'ar' : 'en');
     // Item sub-line: one short label (English abbreviation unless the receipt is Arabic-only).
     $discLabel = __('receipt.disc', [], $rtl ? 'ar' : 'en');
+    $wasLabel = __('receipt.was', [], $rtl ? 'ar' : 'en'); // a line the cashier sold off the price list
     $money = fn ($v) => '$'.number_format((float) $v, 2);
     $footerText = trim((string) $footer) !== '' ? $footer : null;
 @endphp
@@ -122,6 +123,9 @@
             <td>
                 <bdi dir="ltr">{{ rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.') }}
                 × {{ $money($item->unit_price_usd) }}</bdi>
+                @if ($item->isPriceOverridden() && $item->original_unit_price_usd !== null)
+                    <br>&nbsp;&nbsp;{{ $wasLabel }} <s><bdi dir="ltr">{{ $money($item->original_unit_price_usd) }}</bdi></s>
+                @endif
                 @if ($item->discount_amount_usd > 0)
                     <br>&nbsp;&nbsp;{{ $discLabel }} @if ($rtl)<bdi dir="ltr">-{{ $money($item->discount_amount_usd) }}</bdi>@else-{{ $money($item->discount_amount_usd) }}@endif
                 @endif

@@ -20,6 +20,7 @@ return [
     'change_usd' => 'الباقي دولار',
     'change_lbp' => 'الباقي ليرة',
     'disc' => 'حسم:',
+    'was' => 'كان',
     'loyalty_earned' => '+:count نقطة ولاء مكتسبة',
     'receipt_no' => 'إيصال رقم',
     'default_footer' => 'شكراً لزيارتكم',

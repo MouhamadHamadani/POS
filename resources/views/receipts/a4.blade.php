@@ -159,7 +159,7 @@
                 <td class="c-code small"><bdi dir="ltr">{{ $line['code'] ?: '—' }}</bdi></td>
                 <td>{{ $rtl && $line['name_ar'] ? $line['name_ar'] : $line['name'] }}</td>
                 <td class="num">{{ $line['qty'] }}@if ($line['unit']) {{ \App\Support\EnumLabel::get('unit', $line['unit']) }}@endif</td>
-                <td class="num">{{ $money($line['unit_price']) }}</td>
+                <td class="num">{{ $money($line['unit_price']) }}@if ($line['was'] !== null)<br><s class="muted">{{ $money($line['was']) }}</s>@endif</td>
                 @if ($inv['has_line_discount'])
                     <td class="num">{{ $line['discount'] > 0 ? '-'.$money($line['discount']) : '' }}</td>
                 @endif
