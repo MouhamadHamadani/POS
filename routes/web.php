@@ -184,6 +184,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/reports/sales/daily', [ReportController::class, 'dailySales'])->name('reports.daily-sales');
         Route::get('/reports/sales/by-product', [ReportController::class, 'salesByProduct'])
             ->middleware('feature:reports.sales_by_product')->name('reports.sales-by-product');
+        // Cashier price overrides: an audit of prices changed at the till, so it ships on every tier.
+        Route::get('/reports/sales/price-overrides', [ReportController::class, 'priceOverrides'])->name('reports.price-overrides');
         Route::get('/reports/inventory/stock-levels', [ReportController::class, 'stockLevels'])
             ->middleware('feature:reports.stock_levels')->name('reports.stock-levels');
         // Shows value at cost and retail like stock-levels does, so it ships with it.

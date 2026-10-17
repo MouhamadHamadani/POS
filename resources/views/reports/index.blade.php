@@ -22,6 +22,7 @@
                 ['inventory_by_date', 'reports.inventory-by-date', '🗓️', 'reports.stock_levels'],
                 ['pnl', 'reports.pnl', '💵', 'reports.profit_loss'],
                 ['expenses', 'reports.expenses', '🧾', null],
+                ['price_overrides', 'reports.price-overrides', '🏷️', null],
             ], fn ($r) => $r[3] === null || \App\Support\License::allows($r[3]));
         @endphp
 

@@ -53,6 +53,24 @@ class ReportController extends Controller
         });
     }
 
+    public function priceOverrides(Request $request): View|Response
+    {
+        $request->validate(['from' => 'nullable|date', 'to' => 'nullable|date|after_or_equal:from']);
+        [$from, $to] = $this->range($request);
+        $data = $this->reports->priceOverrides($from, $to);
+        $payload = array_merge($data, ['from' => $from, 'to' => $to]);
+
+        return $this->respond($request, 'reports.price-overrides', $payload, 'price_overrides', function () use ($data) {
+            $rows = [$this->headings('date', 'receipt', 'product', 'cashier', 'approver', 'units', 'list_price', 'charged_price', 'difference', 'reason')];
+            foreach ($data['rows'] as $r) {
+                $rows[] = [$r['date'], $r['receipt'], $r['local_name'], $r['cashier'], $r['approver'], $r['qty'], $r['list_price'], $r['charged_price'], $r['difference'], $r['reason']];
+            }
+            $rows[] = [__('reports.cols.net_difference'), '', '', '', '', '', '', '', $data['totals']['net_difference'], ''];
+
+            return $rows;
+        });
+    }
+
     public function stockLevels(Request $request): View|Response
     {
         $statusFilter = $request->query('status_filter');

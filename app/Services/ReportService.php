@@ -81,6 +81,55 @@ class ReportService
     }
 
     /**
+     * Lines a cashier sold off the price list: who, who approved it, why, and by how much.
+     * `difference` is (charged - list price) x qty, so a cut is negative and a raise positive;
+     * voided sales and unfinished holds are left out, a later refund does not remove the line.
+     *
+     * @return array{rows: array, totals: array{count: int, net_difference: float}}
+     */
+    public function priceOverrides(Carbon $from, Carbon $to): array
+    {
+        $rows = SaleItem::query()
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->leftJoin('products', 'products.id', '=', 'sale_items.product_id')
+            ->leftJoin('users as setter', 'setter.id', '=', 'sale_items.price_overridden_by')
+            ->leftJoin('users as approver', 'approver.id', '=', 'sale_items.price_override_approved_by')
+            ->whereNotNull('sale_items.price_overridden_by')
+            ->whereNotIn('sales.status', [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD])
+            ->whereBetween('sales.created_at', [$from, $to])
+            ->orderByDesc('sales.created_at')
+            ->orderByDesc('sale_items.id')
+            ->get([
+                'sales.created_at as sold_at', 'sales.receipt_number',
+                'sale_items.product_name', 'products.name_ar as product_name_ar',
+                'sale_items.qty', 'sale_items.original_unit_price_usd as list_price',
+                'sale_items.unit_price_usd as charged_price', 'sale_items.price_override_reason as reason',
+                'setter.name as cashier', 'approver.name as approver',
+            ])
+            ->map(fn ($r) => [
+                'date' => Carbon::parse($r->sold_at)->format('Y-m-d H:i'),
+                'receipt' => $r->receipt_number,
+                'local_name' => app()->getLocale() === 'ar' && $r->product_name_ar ? $r->product_name_ar : $r->product_name,
+                'qty' => (float) $r->qty,
+                'list_price' => (float) $r->list_price,
+                'charged_price' => (float) $r->charged_price,
+                'difference' => round(((float) $r->charged_price - (float) $r->list_price) * (float) $r->qty, 4),
+                'reason' => $r->reason,
+                'cashier' => $r->cashier,
+                'approver' => $r->approver,
+            ])
+            ->all();
+
+        return [
+            'rows' => $rows,
+            'totals' => [
+                'count' => count($rows),
+                'net_difference' => round(array_sum(array_column($rows, 'difference')), 4),
+            ],
+        ];
+    }
+
+    /**
      * Current stock levels.
      */
     public function stockLevels(?string $statusFilter = null): array
