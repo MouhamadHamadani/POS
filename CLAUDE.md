@@ -66,8 +66,10 @@ about this repo being read-only; they no longer apply.)
   `price_overridden_by` marks an overridden line. Line and cart discounts stack on
   the overridden price. Every overridden line is audited (`price_override`);
   Reports -> Price Overrides lists them. Refunds, reports and receipts already
-  read the charged price. Custom receipt templates (`ReceiptRenderer`) show the
-  charged price only.
+  read the charged price. Thermal and A4 receipts also print the list price
+  struck through ("was") unless `price_override_show_original` is off
+  (`SaleItem::receiptWasPrice()`); custom receipt templates (`ReceiptRenderer`)
+  show the charged price only.
 - `SaleService::totalsFromCart()` and `computeCart()` in `pos/sell.blade.php` are
   the same arithmetic in PHP and JS (per-line 4-dp rounding, cart-discount
   allocation, tax-exempt). Change both together — `CartMathParityTest` runs the

@@ -123,8 +123,8 @@
             <td>
                 <bdi dir="ltr">{{ rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.') }}
                 × {{ $money($item->unit_price_usd) }}</bdi>
-                @if ($item->isPriceOverridden() && $item->original_unit_price_usd !== null)
-                    <br>&nbsp;&nbsp;{{ $wasLabel }} <s><bdi dir="ltr">{{ $money($item->original_unit_price_usd) }}</bdi></s>
+                @if (($was = $item->receiptWasPrice()) !== null)
+                    <br>&nbsp;&nbsp;{{ $wasLabel }} <s><bdi dir="ltr">{{ $money($was) }}</bdi></s>
                 @endif
                 @if ($item->discount_amount_usd > 0)
                     <br>&nbsp;&nbsp;{{ $discLabel }} @if ($rtl)<bdi dir="ltr">-{{ $money($item->discount_amount_usd) }}</bdi>@else-{{ $money($item->discount_amount_usd) }}@endif

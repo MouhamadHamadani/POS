@@ -204,6 +204,10 @@
                             <input type="checkbox" name="settings[price_override_require_reason]" value="1" @checked($get('price_override_require_reason', true))>
                             {{ __('pos.settings.price_override_require_reason') }}
                         </label>
+                        <label class="text-sm flex items-center gap-2">
+                            <input type="checkbox" name="settings[price_override_show_original]" value="1" @checked($get('price_override_show_original', true))>
+                            {{ __('pos.settings.price_override_show_original') }}
+                        </label>
                         <p class="md:col-span-2 text-xs text-gray-500">{{ __('pos.settings.price_override_help') }}</p>
                         <div>
                             <label class="block text-xs text-gray-500">{{ __('settings.idle_logout') }}</label>

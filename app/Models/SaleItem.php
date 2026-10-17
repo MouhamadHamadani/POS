@@ -56,6 +56,16 @@ class SaleItem extends Model
         return $this->price_overridden_by !== null;
     }
 
+    /** The list price a receipt prints as "was", or null: not overridden, or the store keeps it off receipts. */
+    public function receiptWasPrice(): ?float
+    {
+        return $this->isPriceOverridden()
+            && $this->original_unit_price_usd !== null
+            && app(\App\Services\PriceOverrideService::class)->showOriginalOnReceipt()
+            ? (float) $this->original_unit_price_usd
+            : null;
+    }
+
     public function priceOverriddenBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'price_overridden_by');

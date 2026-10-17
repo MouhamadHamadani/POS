@@ -61,6 +61,12 @@ class PriceOverrideService
         return (bool) Setting::get('price_override_require_reason', true);
     }
 
+    /** Do receipts print the list price ("was") next to an overridden line's charged price? */
+    public function showOriginalOnReceipt(): bool
+    {
+        return (bool) Setting::get('price_override_show_original', true);
+    }
+
     /** The biggest cut, in % of the list price, this user may make without a manager. */
     public function limitFor(User $user): float
     {

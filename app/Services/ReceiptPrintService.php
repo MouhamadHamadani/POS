@@ -136,8 +136,8 @@ class ReceiptPrintService
                 'qty' => rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.'),
                 'unit' => $product?->unit,
                 'unit_price' => (float) $item->unit_price_usd,
-                // The price list's price, when the cashier sold the line at another one.
-                'was' => $item->isPriceOverridden() && $item->original_unit_price_usd !== null ? (float) $item->original_unit_price_usd : null,
+                // The price list's price, when the cashier sold the line at another one and the store shows it.
+                'was' => $item->receiptWasPrice(),
                 'discount' => (float) $item->discount_amount_usd,
                 'total' => (float) $item->line_total_usd,
             ];

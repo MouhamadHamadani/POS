@@ -129,7 +129,7 @@ class SettingController extends Controller
             'cashier_can_change_price_tier' => 'bool',
             'max_cashier_discount_pct' => 'float', 'idle_timeout_min' => 'int',
             'price_override_enabled' => 'bool', 'price_override_max_decrease_pct' => 'int',
-            'price_override_require_reason' => 'bool',
+            'price_override_require_reason' => 'bool', 'price_override_show_original' => 'bool',
             // receipt
             'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
             'receipt_header' => 'string', 'receipt_footer' => 'string',
@@ -164,7 +164,7 @@ class SettingController extends Controller
 
         // Reset bool keys that weren't submitted (unchecked checkboxes)
         if ($group === 'pos') {
-            foreach (['auto_print', 'require_shift', 'pos_display_cost', 'cashier_can_change_price_tier', 'price_override_enabled', 'price_override_require_reason'] as $bk) {
+            foreach (['auto_print', 'require_shift', 'pos_display_cost', 'cashier_can_change_price_tier', 'price_override_enabled', 'price_override_require_reason', 'price_override_show_original'] as $bk) {
                 if (!isset($data['settings'][$bk])) {
                     Setting::set($bk, '0', 'pos', 'bool');
                 }

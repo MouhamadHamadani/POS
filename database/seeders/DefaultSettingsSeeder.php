@@ -33,6 +33,7 @@ class DefaultSettingsSeeder extends Seeder
             ['pos', 'price_override_enabled', '1', 'bool'],
             ['pos', 'price_override_max_decrease_pct', '20', 'int'],
             ['pos', 'price_override_require_reason', '1', 'bool'],
+            ['pos', 'price_override_show_original', '1', 'bool'],
             ['pos', 'idle_timeout_min', '30', 'int'],
             ['pos', 'pos_display_cost', '0', 'bool'],
             ['pos', 'require_customer_credit', '1', 'bool'],
