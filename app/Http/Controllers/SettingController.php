@@ -57,6 +57,9 @@ class SettingController extends Controller
             'max_cashier_discount_pct' => 'float', 'idle_timeout_min' => 'int',
             // debt book: days a credit sale is due after, whether a credit receipt prints the balance owed
             'default_credit_days' => 'int', 'show_balance_on_receipt' => 'bool',
+            // price override: master switch, biggest cut a cashier may make alone, reason required
+            'price_override_enabled' => 'bool', 'price_override_max_decrease_pct' => 'int',
+            'price_override_require_reason' => 'bool',
         ],
         'receipt' => [
             'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
@@ -208,7 +211,7 @@ class SettingController extends Controller
 
         // Reset bool keys that weren't submitted (unchecked checkboxes)
         if ($group === 'pos') {
-            foreach (['auto_print', 'require_shift', 'pos_display_cost', 'cashier_can_change_price_tier'] as $bk) {
+            foreach (['auto_print', 'require_shift', 'pos_display_cost', 'cashier_can_change_price_tier', 'price_override_enabled', 'price_override_require_reason'] as $bk) {
                 if (!isset($data['settings'][$bk])) {
                     Setting::set($bk, '0', 'pos', 'bool');
                 }
@@ -254,6 +257,7 @@ class SettingController extends Controller
         'max_cashier_discount_pct' => ['nullable|numeric|min:0|max:100', 'settings.max_cashier_discount'],
         'idle_timeout_min' => ['nullable|integer|min:1|max:600', 'settings.idle_logout'],
         'default_credit_days' => ['nullable|integer|min:0|max:3650', 'settings.default_credit_days'],
+        'price_override_max_decrease_pct' => ['nullable|integer|min:0|max:100', 'pos.settings.price_override_max_decrease'],
         'receipt_width' => ['required|in:58,80', 'settings.paper_width'],
         'paper_width_char' => ['nullable|integer|min:20|max:80', 'settings.chars_per_line'],
         'points_per_dollar' => ['nullable|numeric|min:0', 'settings.points_per_dollar'],
