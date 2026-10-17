@@ -192,6 +192,19 @@
                             <label class="block text-xs text-gray-500">{{ __('settings.max_cashier_discount') }}</label>
                             <input type="number" step="0.01" min="0" max="100" name="settings[max_cashier_discount_pct]" dir="ltr" value="{{ $get('max_cashier_discount_pct') }}" class="w-full border-gray-300 rounded text-sm" />
                         </div>
+                        <label class="text-sm flex items-center gap-2">
+                            <input type="checkbox" name="settings[price_override_enabled]" value="1" @checked($get('price_override_enabled', true))>
+                            {{ __('pos.settings.price_override_enabled') }}
+                        </label>
+                        <div>
+                            <label class="block text-xs text-gray-500">{{ __('pos.settings.price_override_max_decrease') }}</label>
+                            <input type="number" step="1" min="0" max="100" name="settings[price_override_max_decrease_pct]" dir="ltr" value="{{ $get('price_override_max_decrease_pct', 20) }}" class="w-full border-gray-300 rounded text-sm" />
+                        </div>
+                        <label class="text-sm flex items-center gap-2">
+                            <input type="checkbox" name="settings[price_override_require_reason]" value="1" @checked($get('price_override_require_reason', true))>
+                            {{ __('pos.settings.price_override_require_reason') }}
+                        </label>
+                        <p class="md:col-span-2 text-xs text-gray-500">{{ __('pos.settings.price_override_help') }}</p>
                         <div>
                             <label class="block text-xs text-gray-500">{{ __('settings.idle_logout') }}</label>
                             <input type="number" min="1" max="600" name="settings[idle_timeout_min]" dir="ltr" value="{{ $get('idle_timeout_min') }}" class="w-full border-gray-300 rounded text-sm" />

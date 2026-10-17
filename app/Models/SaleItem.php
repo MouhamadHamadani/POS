@@ -13,7 +13,8 @@ class SaleItem extends Model
     protected $fillable = [
         'sale_id', 'product_id', 'product_variant_id',
         'product_name', 'product_sku',
-        'qty', 'unit_price_usd', 'price_tier', 'cost_usd',
+        'qty', 'unit_price_usd', 'original_unit_price_usd', 'price_tier', 'cost_usd',
+        'price_overridden_by', 'price_override_approved_by', 'price_override_reason', 'price_approval_ref',
         'discount_pct', 'discount_amount_usd',
         'tax_rate', 'tax_amount_usd', 'line_total_usd',
         'is_taxable', 'is_returned', 'returned_qty', 'note',
@@ -22,6 +23,7 @@ class SaleItem extends Model
     protected $casts = [
         'qty' => 'decimal:4',
         'unit_price_usd' => 'decimal:4',
+        'original_unit_price_usd' => 'decimal:4',
         'cost_usd' => 'decimal:4',
         'discount_pct' => 'decimal:2',
         'discount_amount_usd' => 'decimal:4',
@@ -46,5 +48,21 @@ class SaleItem extends Model
     public function variant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
+    /** Did the cashier sell this line at a price other than the price list's? */
+    public function isPriceOverridden(): bool
+    {
+        return $this->price_overridden_by !== null;
+    }
+
+    public function priceOverriddenBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'price_overridden_by');
+    }
+
+    public function priceOverrideApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'price_override_approved_by');
     }
 }

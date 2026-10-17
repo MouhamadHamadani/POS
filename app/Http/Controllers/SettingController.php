@@ -105,7 +105,8 @@ class SettingController extends Controller
         $request->validate([
             'settings.receipt_format' => ['nullable', \Illuminate\Validation\Rule::in(ReceiptPrintService::FORMATS)],
             'settings.a4_printer_name' => 'nullable|string|max:255',
-        ]);
+            'settings.price_override_max_decrease_pct' => 'nullable|integer|min:0|max:100',
+        ], [], ['settings.price_override_max_decrease_pct' => __('pos.settings.price_override_max_decrease')]);
 
         if (Demo::enabled() && in_array($data['group'], self::DEMO_LOCKED_GROUPS, true)) {
             return back()->withErrors(['demo' => DemoGate::refusal()]);
@@ -127,6 +128,8 @@ class SettingController extends Controller
             'auto_print' => 'bool', 'require_shift' => 'bool', 'pos_display_cost' => 'bool',
             'cashier_can_change_price_tier' => 'bool',
             'max_cashier_discount_pct' => 'float', 'idle_timeout_min' => 'int',
+            'price_override_enabled' => 'bool', 'price_override_max_decrease_pct' => 'int',
+            'price_override_require_reason' => 'bool',
             // receipt
             'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
             'receipt_header' => 'string', 'receipt_footer' => 'string',
@@ -161,7 +164,7 @@ class SettingController extends Controller
 
         // Reset bool keys that weren't submitted (unchecked checkboxes)
         if ($group === 'pos') {
-            foreach (['auto_print', 'require_shift', 'pos_display_cost', 'cashier_can_change_price_tier'] as $bk) {
+            foreach (['auto_print', 'require_shift', 'pos_display_cost', 'cashier_can_change_price_tier', 'price_override_enabled', 'price_override_require_reason'] as $bk) {
                 if (!isset($data['settings'][$bk])) {
                     Setting::set($bk, '0', 'pos', 'bool');
                 }
