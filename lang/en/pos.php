@@ -34,6 +34,7 @@ return [
         'price_override_enabled' => 'Cashiers can change a line\'s price for the current sale',
         'price_override_max_decrease' => 'Biggest price cut without a manager (%)',
         'price_override_require_reason' => 'Require a reason when a price is lowered',
+        'price_override_show_original' => 'Show the list price ("was") on receipts for lines sold at another price',
         'price_override_help' => 'Raising a price never needs approval. A bigger cut than the limit needs a manager, admin or super admin to enter their username and PIN / password at the till. Managers and above are not limited.',
     ],
     'users' => [

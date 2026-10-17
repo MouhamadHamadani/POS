@@ -453,6 +453,23 @@ class PriceOverrideTest extends TestCase
             ->assertOk()->assertSee('<s class="muted">$10.00</s>', false);
     }
 
+    public function test_a_store_can_keep_the_list_price_off_its_receipts(): void
+    {
+        Setting::set('price_override_show_original', '0', 'pos', 'bool');
+        $product = $this->product();
+        $manager = $this->manager();
+        $saleId = $this->sell($manager, $this->line($product, 8.00))->assertCreated()->json('sale.id');
+
+        $this->actingAs($manager)->get("/pos/receipts/{$saleId}/print")
+            ->assertOk()->assertSee('× $8.00', false)->assertDontSee('$10.00')->assertDontSee('<s>', false);
+        $this->actingAs($manager)->get("/pos/receipts/{$saleId}/print?format=a4")
+            ->assertOk()->assertDontSee('$10.00')->assertDontSee('<s class="muted">', false);
+
+        // Only the printout is affected: the sale line and the report still carry the list price.
+        $this->assertEqualsWithDelta(10.00, (float) SaleItem::firstOrFail()->original_unit_price_usd, 0.00001);
+        $this->actingAs($manager)->get(route('reports.price-overrides'))->assertOk()->assertSee('$10.00');
+    }
+
     public function test_the_price_overrides_report_lists_lines_and_nets_the_difference(): void
     {
         $product = $this->product();
@@ -508,13 +525,15 @@ class PriceOverrideTest extends TestCase
         ])->assertRedirect();
         $this->assertFalse((bool) Setting::get('price_override_enabled', true));      // unchecked box
         $this->assertFalse((bool) Setting::get('price_override_require_reason', true));
+        $this->assertFalse((bool) Setting::get('price_override_show_original', true));
         $this->assertSame(35, Setting::get('price_override_max_decrease_pct'));
 
         $this->actingAs($admin)->post(route('settings.update'), [
             'group' => 'pos',
-            'settings' => ['price_override_enabled' => '1', 'price_override_require_reason' => '1', 'price_override_max_decrease_pct' => 20],
+            'settings' => ['price_override_enabled' => '1', 'price_override_require_reason' => '1', 'price_override_show_original' => '1', 'price_override_max_decrease_pct' => 20],
         ])->assertRedirect();
         $this->assertTrue((bool) Setting::get('price_override_enabled', false));
+        $this->assertTrue((bool) Setting::get('price_override_show_original', false));
 
         $this->actingAs($admin)->post(route('settings.update'), [
             'group' => 'pos', 'settings' => ['price_override_max_decrease_pct' => 101],
@@ -529,6 +548,7 @@ class PriceOverrideTest extends TestCase
         $this->assertTrue($svc->enabled());
         $this->assertSame(20.0, $svc->maxDecreasePct());
         $this->assertTrue($svc->requireReason());
+        $this->assertTrue($svc->showOriginalOnReceipt());
     }
 
     // ---- migration -------------------------------------------------------------------
