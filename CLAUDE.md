@@ -45,9 +45,29 @@ about this repo being read-only; they no longer apply.)
 - VAT and other tax rates are stored as `0..1` decimals, not percentages.
 - Business logic lives in `app/Services/*`, not in controllers.
 - Prices and discount limits are server-authoritative. `SaleService` prices every
-  line from `Product::priceForGroup($tier)` and never reads a price from the
-  request; the sell screen sends only a `price_tier`. Who may use which tier and
-  how much discount comes from `User::canChangePriceTier()` / `maxDiscountPct()`.
+  line from `Product::priceForGroup($tier)`; the sell screen sends a `price_tier`
+  and nothing else about price, with one exception: a cashier **price override**
+  (below). Who may use which tier and how much discount comes from
+  `User::canChangePriceTier()` / `maxDiscountPct()`.
+- **Price override** (`App\Services\PriceOverrideService`, setting-gated). A cart
+  line may carry `unit_price` (+ `original_unit_price`, `price_reason`,
+  `price_approval`): the one price the browser may propose, for that line in this
+  sale only. The service re-derives the list price and returns 422 on
+  `cart.N.price` unless the user may do it: the feature is on
+  (`price_override_enabled`), a cut is within `price_override_max_decrease_pct`
+  (managers and up are unlimited), a reason is given when
+  `price_override_require_reason`, and the product allows discounts. A deeper cut
+  needs a manager/admin/super_admin to vouch at the till
+  (`POST /pos/api/price-approval`, login + PIN or password, throttled): that
+  returns an encrypted, expiring, **single-use** approval tied to cashier +
+  product + price, which travels in the cart (so holds keep it) and is spent when
+  the sale is saved (`sale_items.price_approval_ref`, unique). Charged price =
+  `unit_price_usd`; the list price at sale time = `original_unit_price_usd`;
+  `price_overridden_by` marks an overridden line. Line and cart discounts stack on
+  the overridden price. Every overridden line is audited (`price_override`);
+  Reports -> Price Overrides lists them. Refunds, reports and receipts already
+  read the charged price. Custom receipt templates (`ReceiptRenderer`) show the
+  charged price only.
 - `SaleService::totalsFromCart()` and `computeCart()` in `pos/sell.blade.php` are
   the same arithmetic in PHP and JS (per-line 4-dp rounding, cart-discount
   allocation, tax-exempt). Change both together — `CartMathParityTest` runs the
