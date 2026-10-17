@@ -23,6 +23,7 @@
                 ['pnl', 'reports.pnl', '💵', 'reports.profit_loss'],
                 ['expenses', 'reports.expenses', '🧾', 'expenses'],
                 ['receivables', 'reports.receivables', '📒', 'customer_credit'],
+                ['price_overrides', 'reports.price-overrides', '🏷️', null],
             ], fn ($r) => $r[3] === null || feature($r[3])
                 // The receivables card stays while anyone still owes money, even with the feature switched off.
                 || ($r[0] === 'receivables' && app(\App\Services\CustomerLedgerService::class)->anyDebt()));
