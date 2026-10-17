@@ -9,6 +9,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\PriceApprovalController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\ProfileController;
@@ -75,6 +76,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/pos/api/customers/quick-add', [CustomerController::class, 'quickAdd'])->name('pos.api.customers.quick-add');
         });
         Route::post('/pos/api/sales', [SaleController::class, 'store'])->name('pos.api.sales');
+        Route::post('/pos/api/price-approval', [PriceApprovalController::class, 'store'])->name('pos.api.price-approval');
         Route::get('/pos/api/sales/{sale}', [SaleController::class, 'show'])->name('pos.api.sales.show');
 
         // Hold / recall (in-flight carts that survive serving other customers)

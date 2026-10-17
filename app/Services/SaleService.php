@@ -23,16 +23,20 @@ class SaleService
         private readonly CurrencyService $currency,
         private readonly InventoryService $inventory,
         private readonly LoyaltyService $loyalty,
+        private readonly PriceOverrideService $priceOverrides,
     ) {}
 
     /**
      * Process a sale atomically: validate, snapshot prices, deduct stock,
      * collect payment, calculate change, award loyalty points.
      *
-     * Cart line shape. There is deliberately no price: the server prices every
-     * line from the product row and the resolved price list.
+     * Cart line shape. The server prices every line from the product row and the
+     * resolved price list. The one thing a line may add is a price override
+     * (PriceOverrideService decides whether it stands):
      *   ['product_id'=>int, 'qty'=>float,
-     *    'discount_pct'=>float, 'discount_amount'=>float, 'note'=>string|null]
+     *    'discount_pct'=>float, 'discount_amount'=>float, 'note'=>string|null,
+     *    'unit_price'=>float|null, 'original_unit_price'=>float|null,
+     *    'price_reason'=>string|null, 'price_approval'=>string|null]
      *
      * $priceTier is what the client asked for; null means "the customer's
      * group, else retail" (see resolvePriceTier() for who may override it).
@@ -69,7 +73,8 @@ class SaleService
 
         return DB::transaction(function () use ($cart, $payment, $user, $userId, $shift, $customer, $notes, $tier, $cartDiscount) {
             $exchangeRate = $this->currency->getRate();
-            $totals = $this->totalsFromCart($cart, $customer, $tier, $cartDiscount);
+            $overrides = $this->priceOverrides->resolve($cart, $tier, $user);
+            $totals = $this->totalsFromCart($cart, $customer, $tier, $cartDiscount, $overrides);
             $this->assertWithinDiscountLimit($totals, $user);
 
             // Pre-flight stock check: reject the whole sale before any DB write
@@ -154,13 +159,19 @@ class SaleService
             ]);
 
             foreach ($totals['lines'] as $line) {
-                SaleItem::create([
+                $override = $line['override'];
+                $item = SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_id' => $line['product']->id,
                     'product_name' => $line['product']->name,
                     'product_sku' => $line['product']->sku,
                     'qty' => $line['qty'],
                     'unit_price_usd' => $line['unit_price'],
+                    'original_unit_price_usd' => $line['original_unit_price'],
+                    'price_overridden_by' => $override ? $userId : null,
+                    'price_override_approved_by' => $override['approved_by'] ?? null,
+                    'price_override_reason' => $override['reason'] ?? null,
+                    'price_approval_ref' => $override['approval_ref'] ?? null,
                     'price_tier' => $tier,
                     'cost_usd' => $line['product']->cost_usd,
                     'discount_pct' => $line['discount_pct'],
@@ -171,6 +182,22 @@ class SaleService
                     'is_taxable' => $line['product']->is_taxable,
                     'note' => $line['note'] ?? null,
                 ]);
+
+                if ($override) {
+                    AuditLog::record($userId, 'price_override', SaleItem::class, $item->id,
+                        ['unit_price' => $override['original']],
+                        [
+                            'sale_id' => $sale->id,
+                            'receipt' => $sale->receipt_number,
+                            'product_id' => $line['product']->id,
+                            'product' => $line['product']->name,
+                            'unit_price' => $override['price'],
+                            'change_pct' => $override['change_pct'],
+                            'cashier_id' => $userId,
+                            'approver_id' => $override['approved_by'],
+                            'reason' => $override['reason'],
+                        ]);
+                }
 
                 $this->inventory->deductForSale($line['product'], (float) $line['qty'], $userId, $sale->id);
             }
@@ -190,6 +217,7 @@ class SaleService
                 'discount_total' => $totals['discount'],
                 'cart_discount' => $totals['cart_discount'],
                 'max_line_discount_pct' => $totals['max_line_discount_pct'],
+                'price_overrides' => count($overrides),
             ]);
 
             return $sale->load('items', 'customer');
@@ -230,8 +258,10 @@ class SaleService
      * resources/views/pos/sell.blade.php (computeCart) mirrors this arithmetic
      * step for step so the on-screen total matches — change both or neither.
      *
-     * The unit price is always `Product::priceForGroup($priceTier)`; any price
-     * the client sent is ignored. $priceTier defaults to the customer's group.
+     * The unit price is `Product::priceForGroup($priceTier)` unless the line is in
+     * $overrides (PriceOverrideService::resolve(), keyed by line position), which
+     * is the only way a price from the client gets in. $priceTier defaults to the
+     * customer's group.
      *
      * $cartDiscount is ['pct' => % of the discountable net, 'amount' => flat $]
      * (both optional, summed if both are given). It is split across the lines
@@ -245,6 +275,7 @@ class SaleService
         ?Customer $customer = null,
         ?string $priceTier = null,
         array $cartDiscount = [],
+        array $overrides = [],
     ): array {
         $tier = $priceTier ?? ($customer->customer_group ?? Customer::GROUP_RETAIL);
 
@@ -257,7 +288,8 @@ class SaleService
             }
 
             $qty = (float) ($row['qty'] ?? 1);
-            $unitPrice = $product->priceForGroup($tier);
+            $catalogPrice = $product->priceForGroup($tier);
+            $unitPrice = $overrides[$i]['price'] ?? $catalogPrice;
             $discountPct = (float) ($row['discount_pct'] ?? 0);
             $discountAmt = (float) ($row['discount_amount'] ?? 0);
 
@@ -279,6 +311,8 @@ class SaleService
                 'product' => $product,
                 'qty' => $qty,
                 'unit_price' => $unitPrice,
+                'original_unit_price' => $catalogPrice,
+                'override' => $overrides[$i] ?? null,
                 'discount_pct' => $discountPct,
                 'gross' => $gross,
                 'line_discount' => $lineDiscount,
@@ -351,6 +385,8 @@ class SaleService
                 'product' => $product,
                 'qty' => $l['qty'],
                 'unit_price' => $l['unit_price'],
+                'original_unit_price' => $l['original_unit_price'],
+                'override' => $l['override'],
                 'discount_pct' => $l['discount_pct'],
                 'discount_amount' => $disc,
                 'discount_effective_pct' => $effectivePct,

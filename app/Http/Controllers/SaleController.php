@@ -20,7 +20,12 @@ class SaleController extends Controller
             'cart' => 'required|array|min:1',
             'cart.*.product_id' => 'required|integer|exists:products,id',
             'cart.*.qty' => 'required|numeric|min:0.0001',
-            // No cart.*.unit_price: the server prices every line (SaleService).
+            // The server prices every line (SaleService). unit_price is only a *proposed* override:
+            // PriceOverrideService re-derives the list price and refuses what the user may not do.
+            'cart.*.unit_price' => 'nullable|numeric|gt:0',
+            'cart.*.original_unit_price' => 'nullable|numeric|min:0',
+            'cart.*.price_reason' => 'nullable|string|max:255',
+            'cart.*.price_approval' => 'nullable|string|max:2000',
             'cart.*.discount_pct' => 'nullable|numeric|min:0|max:100',
             'cart.*.discount_amount' => 'nullable|numeric|min:0',
             'cart.*.note' => 'nullable|string|max:255',

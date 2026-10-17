@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Services\PriceOverrideService;
 use App\Services\ReceiptPrintService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,7 +13,7 @@ use Illuminate\View\View;
 
 class PosController extends Controller
 {
-    public function sell(Request $request, ReceiptPrintService $prints): View
+    public function sell(Request $request, ReceiptPrintService $prints, PriceOverrideService $priceOverrides): View
     {
         $user = $request->user();
 
@@ -52,6 +53,7 @@ class PosController extends Controller
             'canChangeTier' => $user->canChangePriceTier(),
             'showCost' => $user->isManagerial(),
             'maxDiscountPct' => $user->maxDiscountPct(),
+            'priceOverride' => $priceOverrides->configFor($user),
             'business' => [
                 'name' => Setting::get('business_name', 'LebaSouk'),
             ],
