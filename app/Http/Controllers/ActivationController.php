@@ -30,4 +30,22 @@ class ActivationController extends Controller
         return redirect()->route('settings.index', ['tab' => 'plan'])
             ->with('success', __('activation.activated'));
     }
+
+    /**
+     * Lock the install now. Same route group and same password re-check as
+     * activate(), plus a ticked box: this one shuts the client out immediately.
+     * The super_admin stays able to sign in and reach the Plan tab (ActivationGate).
+     */
+    public function deactivate(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'password' => ['required', 'current_password'],
+            'confirm' => ['accepted'],
+        ], ['confirm.accepted' => __('activation.confirm_required')]);
+
+        Activation::deactivate($request->user());
+
+        return redirect()->route('settings.index', ['tab' => 'plan'])
+            ->with('success', __('activation.deactivated'));
+    }
 }

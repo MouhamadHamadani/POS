@@ -1,14 +1,18 @@
 {{--
-    Trial-expired lock screen (see App\Http\Middleware\ActivationGate). Reachable
-    signed out — the people it is for cannot sign in to anything — and says
-    nothing about the store's data beyond "it is safe".
+    Lock screen (see App\Http\Middleware\ActivationGate): trial expired, or paused
+    by the provider. Reachable signed out — the people it is for cannot sign in
+    to anything — and says nothing about the store's data beyond "it is safe".
 --}}
 <x-guest-layout>
-    @php $clock = \App\Support\Activation::clockRolledBack(); @endphp
+    @php
+        // A provider pause wins over a wrong date: fixing the clock would not lift it.
+        $paused = \App\Support\Activation::lockReason() === \App\Support\Activation::REASON_MANUAL;
+        $clock = ! $paused && \App\Support\Activation::clockRolledBack();
+    @endphp
 
     <div class="text-center">
-        <h1 class="text-lg font-semibold text-gray-900">{{ $clock ? __('activation.clock_title') : __('activation.lock_title') }}</h1>
-        <p class="mt-2 text-sm text-gray-600">{{ $clock ? __('activation.clock_body') : __('activation.lock_body') }}</p>
+        <h1 class="text-lg font-semibold text-gray-900">{{ $paused ? __('activation.paused_title') : ($clock ? __('activation.clock_title') : __('activation.lock_title')) }}</h1>
+        <p class="mt-2 text-sm text-gray-600">{{ $paused ? __('activation.paused_body') : ($clock ? __('activation.clock_body') : __('activation.lock_body')) }}</p>
     </div>
 
     <div class="mt-6 flex items-center justify-center gap-4 text-sm">

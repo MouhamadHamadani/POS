@@ -68,6 +68,13 @@ class DefaultSettingsSeeder extends Seeder
             ['appearance', 'language', 'en', 'string'],
             ['appearance', 'rtl', '0', 'bool'],
             ['appearance', 'dark_mode', '0', 'bool'],
+
+            // Deliberately absent: `activation_status`, `installed_at`, `tier`.
+            // Activation::startTrial() writes `trial` and the start date only
+            // while they are unset, so seeding `activated` here would silently
+            // switch the 14-day trial off on every fresh install. SetupController
+            // owns all three; the backfill_license_settings migration fills them
+            // in for installs that predate them.
         ];
 
         foreach ($defaults as [$group, $key, $value, $type]) {

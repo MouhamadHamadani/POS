@@ -216,11 +216,14 @@ Route::middleware(['auth'])->group(function () {
         //  - tier: which features and seat limits this install is licensed for.
         //    Vendor territory — the client's own admin must never be able to
         //    raise their own plan.
-        //  - activation: the trial unlock. ActivationGate lets this route and the
-        //    tier route (plus the tab that hosts both) through while locked.
-        // Neither route touches the other's setting.
+        //  - activation: unlock (activate) or lock by hand (deactivate).
+        //    ActivationGate lets these routes and the tier route (plus the tab
+        //    that hosts them) through while locked.
+        // Neither control touches the other's setting. Both sit in this group's
+        // demo:blocked, so a demo build refuses them server-side.
         Route::post('/settings/plan', [SettingController::class, 'updatePlan'])->name('settings.plan.update');
         Route::post('/settings/activation', [ActivationController::class, 'activate'])->name('settings.activation.activate');
+        Route::post('/settings/activation/deactivate', [ActivationController::class, 'deactivate'])->name('settings.activation.deactivate');
 
         Route::post('/settings/backup/now', [SettingController::class, 'backupNow'])->name('settings.backup.now');
         Route::get('/settings/backup/download/{filename}', [SettingController::class, 'backupDownload'])->name('settings.backup.download');

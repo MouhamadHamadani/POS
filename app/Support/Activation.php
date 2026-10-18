@@ -13,10 +13,12 @@ use Illuminate\Support\Carbon;
  * A fresh install runs normally for TRIAL_DAYS from the moment setup finishes.
  * If the vendor has not marked it `activated` by then, `evaluate()` flips it to
  * `locked` and ActivationGate shows a lock screen until a super_admin unlocks it.
- * Locking is the whole mechanism: nothing here deletes or alters business data.
+ * The vendor can also lock an install by hand (`deactivate()`). Locking is the
+ * whole mechanism: nothing here deletes or alters business data.
  *
- * Everything is resolved locally from three settings (`installed_at`,
- * `activation_status`, `activation_seen_at`) — no network, no license server.
+ * Everything is resolved locally from four settings (`installed_at`,
+ * `activation_status`, `activation_lock_reason`, `activation_seen_at`) — no
+ * network, no license server.
  * That also bounds what it can prove: it deters a non-technical client, it is
  * not DRM. Anyone who can open the SQLite file can write `activated` into it.
  * (A vendor-signed activation code would close that; see the ponytail note on
@@ -27,6 +29,10 @@ final class Activation
     public const TRIAL = 'trial';
     public const ACTIVATED = 'activated';
     public const LOCKED = 'locked';
+
+    /** Why a locked install is locked (`activation_lock_reason`): the trial ran out, or the vendor paused it. */
+    public const REASON_TRIAL_EXPIRED = 'trial_expired';
+    public const REASON_MANUAL = 'manual';
 
     public const TRIAL_DAYS = 14;
 
@@ -76,6 +82,20 @@ final class Activation
             self::TRIAL => self::clockRolledBack(),
             default => false,
         };
+    }
+
+    /**
+     * Why the install is locked; null when it is not. A lock written before
+     * reasons existed can only have been the trial running out, so a missing
+     * reason on a locked install reads as that.
+     */
+    public static function lockReason(): ?string
+    {
+        if (self::status() !== self::LOCKED) {
+            return null;
+        }
+
+        return Setting::get('activation_lock_reason') ?: self::REASON_TRIAL_EXPIRED;
     }
 
     /**
@@ -143,6 +163,7 @@ final class Activation
 
         if (now()->getTimestamp() >= self::expiresAt()->getTimestamp()) {
             Setting::set('activation_status', self::LOCKED, 'activation');
+            Setting::set('activation_lock_reason', self::REASON_TRIAL_EXPIRED, 'activation');
 
             AuditLog::record(null, 'trial_expired', 'Setting', null,
                 ['activation_status' => self::TRIAL],
@@ -171,9 +192,38 @@ final class Activation
 
         Setting::set('activation_status', self::ACTIVATED, 'activation');
 
+        if (Setting::get('activation_lock_reason')) {
+            Setting::set('activation_lock_reason', '', 'activation');
+        }
+
         AuditLog::record($actor->id, 'activate', 'Setting', null,
             ['activation_status' => $was],
             ['activation_status' => self::ACTIVATED],
+        );
+    }
+
+    /**
+     * Lock the install on purpose (client stopped paying, or it shipped before
+     * payment). The mirror of activate(): same super_admin check, same audit
+     * trail, and like every lock it only closes the door — no row is touched.
+     * Re-activating brings the till back exactly as it was left.
+     */
+    public static function deactivate(User $actor): void
+    {
+        abort_unless($actor->isSuperAdmin(), 403);
+
+        $was = self::status();
+
+        if ($was === self::LOCKED) {
+            return;
+        }
+
+        Setting::set('activation_status', self::LOCKED, 'activation');
+        Setting::set('activation_lock_reason', self::REASON_MANUAL, 'activation');
+
+        AuditLog::record($actor->id, 'deactivate', 'Setting', null,
+            ['activation_status' => $was],
+            ['activation_status' => self::LOCKED],
         );
     }
 

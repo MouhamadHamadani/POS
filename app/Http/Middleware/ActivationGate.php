@@ -8,8 +8,8 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Once the 14-day trial has lapsed (see App\Support\Activation), every route
- * funnels to the lock screen. Runs in the `web` group for the same reason
+ * Once the 14-day trial has lapsed, or the vendor has locked the install by hand
+ * (see App\Support\Activation), every route funnels to the lock screen. Runs in the `web` group for the same reason
  * RequiresSetup does: a deep link, a restored Electron window or a bookmark
  * must not slip past by naming a route nobody thought to guard.
  *
@@ -45,9 +45,15 @@ class ActivationGate
             return true;
         }
 
-        // super_admin: the Plan tab and the two forms on it (activate, and set the
-        // tier) — not settings.update, backups or anything else.
+        // super_admin: the Plan tab and the forms on it (activate, deactivate, and
+        // set the tier) — not settings.update, backups or anything else. Deactivate
+        // is here so a vendor can never lock themselves out of the way back.
         return (bool) $request->user()?->isSuperAdmin()
-            && $request->routeIs('settings.index', 'settings.activation.activate', 'settings.plan.update');
+            && $request->routeIs(
+                'settings.index',
+                'settings.activation.activate',
+                'settings.activation.deactivate',
+                'settings.plan.update',
+            );
     }
 }

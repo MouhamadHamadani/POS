@@ -14,6 +14,10 @@ return [
         'activated' => 'Activated',
         'locked' => 'Locked',
     ],
+    'activation_lock_reason' => [
+        'trial_expired' => 'Trial expired',
+        'manual' => 'Locked by provider',
+    ],
     'customer_group' => [
         'retail' => 'Retail',
         'wholesale' => 'Wholesale',

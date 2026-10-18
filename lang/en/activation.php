@@ -18,4 +18,12 @@ return [
     'activate' => 'Activate permanently',
     'activated' => 'This installation is now activated.',
     'activated_note' => 'This installation is activated. Nothing more to do.',
+    'paused_title' => 'This installation has been paused',
+    'paused_body' => 'This installation has been paused by your provider. Your data is safe. Please contact your provider.',
+    'lock_reason' => 'Lock reason',
+    'deactivate' => 'Deactivate (lock now)',
+    'deactivate_help' => 'The client will be locked out immediately. No data is deleted. You can re-activate at any time.',
+    'deactivate_confirm' => 'I understand the client will be locked out immediately.',
+    'confirm_required' => 'Tick the box to confirm you want to lock this installation.',
+    'deactivated' => 'This installation is now locked. The client is locked out and no data was deleted.',
 ];

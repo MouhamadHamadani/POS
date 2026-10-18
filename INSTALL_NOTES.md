@@ -133,12 +133,19 @@ the database is untouched and everything is back the instant you activate.
   exists for `super_admin` only; the client's `admin` never sees it, and gets a
   403 on both of its routes. The generic Settings form ignores any key it does
   not know, so the plan and activation settings cannot be posted through it.
+- **Deactivate (lock now):** the same section has a red button for when a client
+  stops paying, or the install was delivered before payment. Enter your password
+  and tick the box; the client is locked out at once with "paused by your
+  provider" (no mention of a trial). Nothing is deleted, and **Activate
+  permanently** brings everything back. Audit-logged; not available in a demo build.
 - **Warning:** from day 10 the client's `admin` or `manager` (the highest account
   a Starter install can have — it has no admin role) sees an amber banner telling
   them to contact you. Cashiers and the vendor account do not.
 - **Existing installs do not lock.** An install with no activation record — every
-  machine already in the field — is treated as activated. Only an install that
-  went through setup on this version starts a trial.
+  machine already in the field — is treated as activated, and the next update
+  writes that down (`activation_status`, `installed_at` and `tier` rows, only
+  where missing). Only an install that went through setup on this version starts
+  a trial.
 - **Date problems.** If the system date is more than a day earlier than the last
   time the app ran, a *trial* install shows the lock screen with a "check the
   date" message until the date is corrected (it is not a permanent lock). If a
