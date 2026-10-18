@@ -450,7 +450,8 @@
                         $maxDevices = \App\Support\License::maxDevices();
 
                         $status = \App\Support\Activation::status();
-                        $badge = ['trial' => 'bg-amber-100 text-amber-800', 'activated' => 'bg-green-100 text-green-800', 'locked' => 'bg-red-100 text-red-800'][$status] ?? 'bg-gray-100 text-gray-800';
+                        $lockReason = \App\Support\Activation::lockReason();
+                        $badge =['trial' => 'bg-amber-100 text-amber-800', 'activated' => 'bg-green-100 text-green-800', 'locked' => 'bg-red-100 text-red-800'][$status] ?? 'bg-gray-100 text-gray-800';
                     @endphp
 
                     {{-- Two independent controls on one tab: which plan this install is
@@ -496,14 +497,19 @@
                             <dl class="grid grid-cols-2 gap-y-2">
                                 <dt class="text-gray-500">{{ __('activation.status') }}</dt>
                                 <dd><span class="px-2 py-0.5 rounded text-xs font-medium {{ $badge }}">{{ \App\Support\EnumLabel::get('activation_status', $status) }}</span></dd>
-                                @unless (\App\Support\Activation::isActivated())
-                                    <dt class="text-gray-500">{{ __('activation.installed_on') }}</dt>
-                                    <dd><x-ltr>{{ \App\Support\Activation::installedAt()->format('Y-m-d') }}</x-ltr></dd>
+                                @if ($lockReason)
+                                    <dt class="text-gray-500">{{ __('activation.lock_reason') }}</dt>
+                                    <dd>{{ \App\Support\EnumLabel::get('activation_lock_reason', $lockReason) }}</dd>
+                                @endif
+                                <dt class="text-gray-500">{{ __('activation.installed_on') }}</dt>
+                                <dd><x-ltr>{{ \App\Support\Activation::installedAt()->format('Y-m-d') }}</x-ltr></dd>
+                                {{-- The countdown only means something while the trial is what decides. --}}
+                                @if (\App\Support\Activation::isTrial() || $lockReason === \App\Support\Activation::REASON_TRIAL_EXPIRED)
                                     <dt class="text-gray-500">{{ __('activation.trial_ends_on') }}</dt>
                                     <dd><x-ltr>{{ \App\Support\Activation::expiresAt()->format('Y-m-d') }}</x-ltr></dd>
                                     <dt class="text-gray-500">{{ __('activation.days_remaining') }}</dt>
                                     <dd><x-ltr>{{ \App\Support\Activation::daysRemaining() }}</x-ltr></dd>
-                                @endunless
+                                @endif
                             </dl>
 
                             @if (\App\Support\Activation::clockRolledBack())
@@ -525,6 +531,26 @@
                                     </div>
                                 </form>
                             @endif
+
+                            {{-- Lock the client out by hand. The tick box is checked by the server too
+                                 (no JS dialog); a demo build never locks, so it never offers this. --}}
+                            @unless (\App\Support\Demo::enabled() || $status === \App\Support\Activation::LOCKED)
+                                <form method="POST" action="{{ route('settings.activation.deactivate') }}" class="mt-4 space-y-3 border-t pt-4">
+                                    @csrf
+                                    <p class="p-3 bg-red-50 text-red-800 rounded text-xs">{{ __('activation.deactivate_help') }}</p>
+                                    <label class="flex items-start gap-2 text-xs text-gray-700">
+                                        <input type="checkbox" name="confirm" value="1" required class="mt-0.5 rounded border-gray-300" />
+                                        <span>{{ __('activation.deactivate_confirm') }}</span>
+                                    </label>
+                                    <div>
+                                        <label class="block text-xs text-gray-500">{{ __('Password') }}</label>
+                                        <input type="password" name="password" dir="ltr" required autocomplete="current-password" class="w-full border-gray-300 rounded text-sm" />
+                                    </div>
+                                    <div class="flex justify-end">
+                                        <button class="px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700">{{ __('activation.deactivate') }}</button>
+                                    </div>
+                                </form>
+                            @endunless
                         </section>
                     </div>
                 @endif

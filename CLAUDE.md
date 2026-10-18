@@ -39,7 +39,12 @@ about this repo being read-only; they no longer apply.)
   (a web-group middleware, prioritised ahead of `auth`). Status `trial` is written
   only by `SetupController`; an unset status means `activated`, so installs that
   predate it never lock. Unlock is `super_admin`-only (Settings → Plan) and the
-  lock never deletes data.
+  lock never deletes data. The same tab can lock an install by hand
+  (`Activation::deactivate()`, password + tick box); `activation_lock_reason`
+  (`trial_expired` | `manual`) picks the lock-screen text, and a locked install
+  with no reason reads as `trial_expired`. A migration backfills `activation_status`
+  / `installed_at` / `tier` on installs that predate them; the seeder must not
+  carry them (it would switch the trial off).
 - Four roles: `admin`, `manager`, `cashier`, `stock`, enforced via the
   `role:` route middleware (`App\Http\Middleware\RoleMiddleware`).
 - VAT and other tax rates are stored as `0..1` decimals, not percentages.

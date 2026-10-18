@@ -14,6 +14,10 @@ return [
         'activated' => 'مفعّلة',
         'locked' => 'مقفلة',
     ],
+    'activation_lock_reason' => [
+        'trial_expired' => 'انتهت الفترة التجريبية',
+        'manual' => 'مقفلة من المزوّد',
+    ],
     'customer_group' => [
         'retail' => 'مفرق',
         'wholesale' => 'جملة',
