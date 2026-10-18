@@ -66,6 +66,19 @@ return [
         'low' => 'Low',
         'ok' => 'OK',
     ],
+    'stock_movement_type' => [
+        'sale' => 'Sale',
+        'return' => 'Return',
+        'po_receive' => 'Goods received',
+        'opening' => 'Opening stock',
+        'add' => 'Manual add',
+        'remove' => 'Manual remove',
+        'set' => 'Set quantity',
+        'count' => 'Stock count',
+    ],
+    'stock_reason' => [
+        'sale_void' => 'Sale voided',
+    ],
     'product_type' => [
         'simple' => 'Simple',
         'service' => 'Service (no stock)',
@@ -120,5 +133,13 @@ return [
         'bronze' => 'Bronze',
         'silver' => 'Silver',
         'gold' => 'Gold',
+    ],
+    'expense_kind' => [
+        'fixed' => 'Fixed expenses',
+        'running' => 'Running expenses',
+    ],
+    'paid_from' => [
+        'drawer' => 'Cash drawer',
+        'outside' => 'Outside the drawer (bank / owner)',
     ],
 ];

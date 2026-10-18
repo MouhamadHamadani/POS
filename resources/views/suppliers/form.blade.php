@@ -60,6 +60,8 @@
                     </select>
                 </div>
                 <div class="md:col-span-2 flex items-center gap-2">
+                    {{-- An un-ticked checkbox sends nothing; the hidden 0 (overridden by the box when ticked) lets Save turn Active off and keeps it off on redisplay. --}}
+                    <input type="hidden" name="is_active" value="0">
                     <input type="checkbox" name="is_active" value="1" id="is_active" @checked(old('is_active', $supplier->is_active ?? true))>
                     <label for="is_active" class="text-sm">{{ __('common.active') }}</label>
                 </div>
@@ -71,21 +73,25 @@
 
             <div class="flex justify-between items-center pt-4 border-t">
                 @if ($isEdit)
-                    <form method="POST" action="{{ route('suppliers.destroy', $supplier) }}"
-                          onsubmit="return confirm({{ Js::from(__('suppliers.confirm_delete', ['name' => $supplier->name])) }})">
-                        @csrf @method('DELETE')
-                        <button class="px-4 py-2 text-sm text-danger hover:bg-red-50 rounded">{{ __('common.delete') }}</button>
-                    </form>
+                    {{-- Submits the separate delete form below; forms cannot be nested. --}}
+                    <button type="submit" form="delete-supplier-form" class="px-4 py-2 text-sm text-danger hover:bg-red-50 rounded">{{ __('common.delete') }}</button>
                 @else
                     <span></span>
                 @endif
                 <div class="flex gap-2">
                     <a href="{{ route('suppliers.index') }}" class="px-4 py-2 bg-gray-100 rounded text-sm">{{ __('common.cancel') }}</a>
-                    <button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">
+                    <button type="submit" class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">
                         {{ $isEdit ? __('common.save_changes') : __('suppliers.create_supplier') }}
                     </button>
                 </div>
             </div>
         </form>
+
+        @if ($isEdit)
+            <form id="delete-supplier-form" method="POST" action="{{ route('suppliers.destroy', $supplier) }}" class="hidden"
+                  onsubmit="return confirm({{ Js::from(__('suppliers.confirm_delete', ['name' => $supplier->name])) }})">
+                @csrf @method('DELETE')
+            </form>
+        @endif
     </div>
 </x-app-layout>

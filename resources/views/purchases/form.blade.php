@@ -13,8 +13,25 @@
             'product_name' => $i->product?->localName() ?? $i->product_name,
             'qty_ordered' => (float) $i->qty_ordered,
             'cost_usd' => (float) $i->cost_usd,
-            'tax_rate' => (float) $i->tax_rate,
+            // The stored rate is a 0..1 fraction; the "Tax %" input works in percent.
+            'tax_pct' => round((float) $i->tax_rate * 100, 4),
         ])->values();
+
+        // After a failed submit the lines come back from what was typed, not from the stored
+        // lines (empty on create, the saved ones on edit). The form posts no product name, so it
+        // is looked up; tax_rate was posted as a 0..1 fraction and goes back to a percentage.
+        if (session()->hasOldInput()) {
+            $names = $products->mapWithKeys(fn($p) => [$p->id => $p->localName()])
+                ->union($items->mapWithKeys(fn($i) => [$i->product_id => $i->product?->localName() ?? $i->product_name]));
+            $itemsForJs = collect(old('items', []))->filter(fn($l) => is_array($l))->map(fn($l) => [
+                'id' => ($l['id'] ?? '') === '' ? null : (int) $l['id'],
+                'product_id' => (int) ($l['product_id'] ?? 0),
+                'product_name' => $names[(int) ($l['product_id'] ?? 0)] ?? '',
+                'qty_ordered' => $l['qty_ordered'] ?? '',
+                'cost_usd' => $l['cost_usd'] ?? '',
+                'tax_pct' => ($l['tax_rate'] ?? '') === '' ? '' : round((float) $l['tax_rate'] * 100, 4),
+            ])->values();
+        }
 
         $productsForJs = $products->map(fn($p) => [
             'id' => $p->id,
@@ -42,7 +59,7 @@
                     <select name="supplier_id" required class="w-full border-gray-300 rounded text-sm">
                         <option value="">{{ __('purchases.select') }}</option>
                         @foreach ($suppliers as $s)
-                            <option value="{{ $s->id }}" @selected(old('supplier_id', $po->supplier_id) == $s->id)>{{ $s->name }}</option>
+                            <option value="{{ $s->id }}" @selected(old('supplier_id', $po->supplier_id) == $s->id)>{{ $s->name }}@unless ($s->is_active) ({{ __('common.inactive') }})@endunless</option>
                         @endforeach
                     </select>
                 </div>
@@ -105,16 +122,18 @@
                                     <div class="font-medium" x-text="line.product_name"></div>
                                 </td>
                                 <td class="py-2 text-end">
-                                    <input type="number" step="0.0001" min="0.0001" :name="`items[${idx}][qty_ordered]`" dir="ltr"
+                                    <input type="number" step="0.0001" min="0.0001" required :name="`items[${idx}][qty_ordered]`" dir="ltr"
                                            x-model.number="line.qty_ordered" class="w-20 text-end border-gray-300 rounded text-sm">
                                 </td>
                                 <td class="py-2 text-end">
-                                    <input type="number" step="0.01" min="0" :name="`items[${idx}][cost_usd]`" dir="ltr"
+                                    <input type="number" step="0.01" min="0" required :name="`items[${idx}][cost_usd]`" dir="ltr"
                                            x-model.number="line.cost_usd" class="w-24 text-end border-gray-300 rounded text-sm">
                                 </td>
                                 <td class="py-2 text-end">
-                                    <input type="number" step="0.0001" min="0" :name="`items[${idx}][tax_rate]`" dir="ltr"
-                                           x-model.number="line.tax_rate" class="w-16 text-end border-gray-300 rounded text-sm">
+                                    {{-- Typed as a percentage; the server contract is the 0..1 fraction, sent by the hidden input. --}}
+                                    <input type="hidden" :name="`items[${idx}][tax_rate]`" :value="rateOf(line)">
+                                    <input type="number" step="0.01" min="0" max="100" dir="ltr"
+                                           x-model.number="line.tax_pct" class="w-16 text-end border-gray-300 rounded text-sm">
                                 </td>
                                 <td class="py-2 text-end font-medium"><x-ltr>$<span x-text="lineTotal(line).toFixed(2)"></span></x-ltr></td>
                                 <td class="py-2 text-end">
@@ -163,21 +182,26 @@
                         product_name: p.name,
                         qty_ordered: 1,
                         cost_usd: Number(p.cost_usd) || 0,
-                        tax_rate: p.tax ? Number(p.tax.rate) : 0,
+                        tax_pct: p.tax ? Number((Number(p.tax.rate) * 100).toFixed(4)) : 0,
                     });
                     this.picker = '';
                 },
                 removeLine(i) { this.lines.splice(i, 1); },
+                // Percent typed in the line -> the 0..1 fraction the server stores. Blank stays blank
+                // (the server then falls back to the product's own tax).
+                rateOf(line) {
+                    return line.tax_pct === '' || line.tax_pct == null ? '' : Number((Number(line.tax_pct) / 100).toFixed(4));
+                },
                 lineTotal(line) {
                     const sub = Number(line.qty_ordered || 0) * Number(line.cost_usd || 0);
-                    return sub * (1 + Number(line.tax_rate || 0));
+                    return sub * (1 + Number(this.rateOf(line) || 0));
                 },
                 totals() {
                     let subtotal = 0, tax = 0;
                     for (const l of this.lines) {
                         const sub = Number(l.qty_ordered || 0) * Number(l.cost_usd || 0);
                         subtotal += sub;
-                        tax += sub * Number(l.tax_rate || 0);
+                        tax += sub * Number(this.rateOf(l) || 0);
                     }
                     return { subtotal, tax, total: subtotal + tax };
                 },

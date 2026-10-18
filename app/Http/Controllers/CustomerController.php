@@ -167,6 +167,11 @@ class CustomerController extends Controller
             'birth_date' => 'nullable|date',
             'notes' => 'nullable|string|max:2000',
         ]);
+        // credit_limit is NOT NULL DEFAULT 0: a blank input arrives as null, and blank means "no credit" (0).
+        // A request that omits the field entirely still leaves the stored limit alone.
+        if (array_key_exists('credit_limit', $data)) {
+            $data['credit_limit'] ??= 0;
+        }
         $data['tax_exempt'] = $request->boolean('tax_exempt');
         $data['is_active'] = $request->boolean('is_active', true);
         return $data;

@@ -61,10 +61,14 @@
                 </div>
                 <div class="flex items-end gap-4">
                     <label class="text-sm flex items-center gap-2">
+                        {{-- Hidden 0 first: an un-ticked box sends nothing, so without it old() is empty after a validation error and the stored value comes back. --}}
+                        <input type="hidden" name="tax_exempt" value="0">
                         <input type="checkbox" name="tax_exempt" value="1" @checked(old('tax_exempt', $customer->tax_exempt))>
                         {{ __('customers.tax_exempt') }}
                     </label>
                     <label class="text-sm flex items-center gap-2">
+                        {{-- An un-ticked checkbox sends nothing; the hidden 0 (overridden by the box when ticked) lets Save turn Active off. --}}
+                        <input type="hidden" name="is_active" value="0">
                         <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $customer->is_active ?? true))>
                         {{ __('common.active') }}
                     </label>
@@ -77,21 +81,25 @@
 
             <div class="flex justify-between items-center pt-4 border-t">
                 @if ($isEdit)
-                    <form method="POST" action="{{ route('customers.destroy', $customer) }}"
-                          onsubmit="return confirm({{ Js::from(__('customers.confirm_delete', ['name' => $customer->name])) }})">
-                        @csrf @method('DELETE')
-                        <button class="px-4 py-2 text-sm text-danger hover:bg-red-50 rounded">{{ __('common.delete') }}</button>
-                    </form>
+                    {{-- Submits the separate delete form below; forms cannot be nested. --}}
+                    <button type="submit" form="delete-customer-form" class="px-4 py-2 text-sm text-danger hover:bg-red-50 rounded">{{ __('common.delete') }}</button>
                 @else
                     <span></span>
                 @endif
                 <div class="flex gap-2">
                     <a href="{{ route('customers.index') }}" class="px-4 py-2 bg-gray-100 rounded text-sm">{{ __('common.cancel') }}</a>
-                    <button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">
+                    <button type="submit" class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">
                         {{ $isEdit ? __('common.save_changes') : __('customers.create_customer') }}
                     </button>
                 </div>
             </div>
         </form>
+
+        @if ($isEdit)
+            <form id="delete-customer-form" method="POST" action="{{ route('customers.destroy', $customer) }}" class="hidden"
+                  onsubmit="return confirm({{ Js::from(__('customers.confirm_delete', ['name' => $customer->name])) }})">
+                @csrf @method('DELETE')
+            </form>
+        @endif
     </div>
 </x-app-layout>

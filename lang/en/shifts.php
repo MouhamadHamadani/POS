@@ -23,4 +23,7 @@ return [
     'count_lbp' => 'Count LBP in drawer',
     'counted_usd' => 'Counted Cash (USD)',
     'counted_lbp' => 'Counted Cash (LBP)',
+    'cash_out_usd' => 'Paid out of drawer (USD)',
+    'cash_out_lbp' => 'Paid out of drawer (LBP)',
+    'drawer_expenses' => 'Expenses paid from this drawer',
 ];

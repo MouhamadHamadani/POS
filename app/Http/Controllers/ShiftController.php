@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Sale;
 use App\Models\Shift;
+use App\Services\ShiftService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ShiftController extends Controller
 {
+    public function __construct(private readonly ShiftService $shifts) {}
+
     public function showOpen(): View|RedirectResponse
     {
         $open = $this->currentShift();
@@ -61,9 +63,10 @@ class ShiftController extends Controller
             return redirect('/shifts/open')->with('warning', __('messages.no_shift_open'));
         }
 
-        $totals = $this->shiftTotals($shift);
+        $totals = $this->shifts->totals($shift);
+        $expenses = $this->shifts->drawerExpenses($shift);
 
-        return view('shifts.close', compact('shift', 'totals'));
+        return view('shifts.close', compact('shift', 'totals', 'expenses'));
     }
 
     public function close(Request $request): RedirectResponse
@@ -90,9 +93,9 @@ class ShiftController extends Controller
         $data['closing_cash_usd'] = $closingUsd;
         $data['closing_cash_lbp'] = $closingLbp;
 
-        $totals = $this->shiftTotals($shift);
-        $expectedUsd = (float) $shift->opening_cash_usd + $totals['cash_in_usd'] - $totals['cash_out_usd'];
-        $expectedLbp = (float) $shift->opening_cash_lbp + $totals['cash_in_lbp'] - $totals['cash_out_lbp'];
+        $totals = $this->shifts->totals($shift);
+        $expectedUsd = $totals['expected_usd'];
+        $expectedLbp = $totals['expected_lbp'];
 
         $shift->update([
             'closed_at' => now(),
@@ -113,10 +116,7 @@ class ShiftController extends Controller
 
     private function currentShift(): ?Shift
     {
-        return Shift::where('user_id', auth()->id())
-            ->where('status', Shift::STATUS_OPEN)
-            ->latest('opened_at')
-            ->first();
+        return auth()->user() ? $this->shifts->openFor(auth()->user()) : null;
     }
 
     /**
@@ -145,24 +145,5 @@ class ShiftController extends Controller
         foreach ($denoms['usd'] ?? [] as $d => $c) $usd += (int) $d * (int) $c;
         foreach ($denoms['lbp'] ?? [] as $d => $c) $lbp += (int) $d * (int) $c;
         return [(float) $usd, (float) $lbp];
-    }
-
-    private function shiftTotals(Shift $shift): array
-    {
-        $sales = Sale::where('shift_id', $shift->id)
-            ->where('status', Sale::STATUS_COMPLETED)
-            ->get();
-
-        $cashInUsd = (float) $sales->sum('amount_tendered_usd') - (float) $sales->sum('change_usd');
-        $cashInLbp = (float) $sales->sum('amount_tendered_lbp') - (float) $sales->sum('change_lbp');
-
-        return [
-            'sales_count' => $sales->count(),
-            'total_revenue_usd' => round((float) $sales->sum('total_usd'), 2),
-            'cash_in_usd' => round($cashInUsd, 2),
-            'cash_in_lbp' => round($cashInLbp, 0),
-            'cash_out_usd' => 0,
-            'cash_out_lbp' => 0,
-        ];
     }
 }

@@ -5,13 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Services\ReceiptPrintService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PosController extends Controller
 {
-    public function sell(Request $request): View
+    public function sell(Request $request, ReceiptPrintService $prints): View
     {
         $user = $request->user();
 
@@ -46,6 +47,8 @@ class PosController extends Controller
             'exchangeRate' => $exchangeRate,
             'lbpStep' => $lbpStep,
             'autoPrint' => (bool) Setting::get('auto_print', false),
+            'receiptFormat' => $prints->formatSetting(),
+            'a4Silent' => $prints->silentA4Available(),
             'canChangeTier' => $user->canChangePriceTier(),
             'showCost' => $user->isManagerial(),
             'maxDiscountPct' => $user->maxDiscountPct(),

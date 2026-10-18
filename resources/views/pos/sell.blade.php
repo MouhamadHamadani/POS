@@ -523,11 +523,19 @@
                     <template x-if="lastSale && Number(lastSale.change_usd) > 0">
                         <div class="text-sm text-gray-700 mt-2">{{ __('pos.ui.change') }}: <x-ltr>$<span x-text="Number(lastSale.change_usd).toFixed(2)"></span></x-ltr></div>
                     </template>
-                    <div class="flex gap-2 mt-4">
-                        <button type="button" @click="reprintLast()"
-                                class="flex-1 py-2 bg-slate-600 text-white rounded text-sm hover:bg-slate-700">{{ __('pos.ui.reprint') }}</button>
+                    <div class="mt-4 space-y-2">
+                        <p x-show="receiptFormat === 'ask'" class="text-sm font-medium text-gray-700">{{ __('pos.ui.choose_format') }}</p>
+                        <div class="flex gap-2">
+                            {{-- Always both formats, whatever the setting. With "ask" these two are the choice. --}}
+                            <button type="button" @click="printLast('thermal')" title="{{ 'Ctrl+P' }}"
+                                    class="flex-1 py-2 bg-slate-600 text-white rounded text-sm hover:bg-slate-700"
+                                    x-text="t(receiptFormat === 'ask' ? 'small_receipt' : 'print_receipt')"></button>
+                            <button type="button" @click="printLast('a4')" title="{{ 'Ctrl+Shift+P' }}"
+                                    class="flex-1 py-2 bg-slate-600 text-white rounded text-sm hover:bg-slate-700"
+                                    x-text="t(receiptFormat === 'ask' ? 'a4_invoice' : 'print_a4')"></button>
+                        </div>
                         <button type="button" @click="lastSale=null"
-                                class="flex-1 py-2 bg-brand-600 text-white rounded">{{ __('pos.ui.new_sale') }}</button>
+                                class="w-full py-2 bg-brand-600 text-white rounded">{{ __('pos.ui.new_sale') }}</button>
                     </div>
                 </div>
             </div>
@@ -544,6 +552,8 @@
                 exchangeRate: {{ $exchangeRate }},
                 lbpStep: {{ $lbpStep }},
                 autoPrint: {{ $autoPrint ? 'true' : 'false' }},
+                receiptFormat: @json($receiptFormat),   // thermal | a4 | ask (the receipt_format setting)
+                a4Silent: @json($a4Silent),             // desktop app with an A4 printer chosen: no dialog
                 strings: @json(__('pos.ui')),
                 units: @json(__('enums.unit')),
                 tiers: ['retail', 'wholesale', 'vip'],
@@ -603,8 +613,10 @@
                             if (e.shiftKey) this.openCartEditor(); else this.openLineEditor(this.selectedLine());
                         }
                         if (e.key === 'F12' && this.showPayment) { e.preventDefault(); this.submit(); }
+                        // Ctrl+P prints the default format, Ctrl+Shift+P always A4.
                         if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P') && this.lastSale?.id) {
-                            e.preventDefault(); this._printReceipt(this.lastSale.id);
+                            e.preventDefault();
+                            this.printLast(e.shiftKey ? 'a4' : this.defaultFormat());
                         }
                     });
                 },
@@ -1315,8 +1327,9 @@
                             if (p && p.track_stock) p.stock_qty = Number(p.stock_qty) - Number(item.qty);
                         }
                         this.filter();
-                        if (this.autoPrint && this.lastSale?.id) {
-                            this._printReceipt(this.lastSale.id);
+                        // "Ask" prints nothing until the cashier picks a format on the panel.
+                        if (this.autoPrint && this.lastSale?.id && this.receiptFormat !== 'ask') {
+                            this.printLast(this.defaultFormat());
                         }
                     } catch (e) {
                         this.errorMsg = this.t('network_error', { msg: e.message });
@@ -1325,12 +1338,38 @@
                     }
                 },
 
-                _printReceipt(saleId) {
+                // What Ctrl+P and auto-print use: A4 only when the setting says so ("ask" has no default).
+                defaultFormat() { return this.receiptFormat === 'a4' ? 'a4' : 'thermal'; },
+
+                printLast(format) {
+                    if (!this.lastSale?.id) return;
+                    if (format === 'a4') this._printA4(this.lastSale.id);
+                    else this._printReceipt(this.lastSale.id);
+                },
+
+                // A4 goes straight to the printer chosen in Settings when the desktop app can do that;
+                // otherwise (or if the printer refuses) the A4 page opens with the system print dialog,
+                // so the user picks the A4 printer instead of the invoice landing on receipt paper.
+                async _printA4(saleId) {
+                    if (this.a4Silent) {
+                        try {
+                            const res = await fetch(`/pos/receipts/${saleId}/print-a4`, {
+                                method: 'POST',
+                                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this._csrf() },
+                            });
+                            if (res.ok && (await res.json()).printed) return;
+                        } catch (e) { /* fall through to the dialog */ }
+                    }
+                    this._printReceipt(saleId, 'a4');
+                },
+
+                _printReceipt(saleId, format = 'thermal') {
                     // Open the receipt in a hidden popup. The receipt view auto-calls
                     // window.print() on load. A user-initiated event (the Pay click) is
                     // the trigger, so popups are not blocked in Electron / modern browsers.
-                    const w = window.open(`/pos/receipts/${saleId}/print?auto=1`,
-                        'receipt-' + saleId, 'width=420,height=640');
+                    const url = `/pos/receipts/${saleId}/print?format=${format}&auto=1`;
+                    const w = window.open(url, 'receipt-' + saleId + '-' + format,
+                        format === 'a4' ? 'width=900,height=1000' : 'width=420,height=640');
                     // Some browsers block; fall back to navigating an iframe.
                     if (!w) {
                         let iframe = document.getElementById('__receipt_iframe');
@@ -1344,12 +1383,8 @@
                             iframe.style.border = '0';
                             document.body.appendChild(iframe);
                         }
-                        iframe.src = `/pos/receipts/${saleId}/print?auto=1`;
+                        iframe.src = url;
                     }
-                },
-
-                reprintLast() {
-                    if (this.lastSale?.id) this._printReceipt(this.lastSale.id);
                 },
 
                 // Western digits in every language; only the unit is translated.

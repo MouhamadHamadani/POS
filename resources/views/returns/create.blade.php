@@ -41,30 +41,46 @@
                     <tbody class="divide-y">
                     @foreach ($sale->items as $idx => $item)
                         @php
-                            $remaining = (float) $item->qty - (float) $item->returned_qty;
+                            $pending = $item->pendingReturnQty();
+                            $remaining = $item->returnableQty();
+                            $canReturn = $remaining > 0.0001;
                             $perUnit = (float) $item->qty > 0 ? (float) $item->line_total_usd / (float) $item->qty : 0;
                         @endphp
-                        <tr @class(['opacity-50' => $remaining <= 0])>
+                        <tr @class(['opacity-50' => ! $canReturn])>
                             <td class="p-2">
-                                <input type="hidden" name="items[{{ $idx }}][sale_item_id]" value="{{ $item->id }}">
+                                {{-- A line with nothing left sends no inputs at all: a disabled quantity beside an enabled
+                                     hidden id makes the server reject the whole return as "qty_returned is required". --}}
+                                @if ($canReturn)
+                                    <input type="hidden" name="items[{{ $idx }}][sale_item_id]" value="{{ $item->id }}">
+                                @endif
                                 <div class="font-medium">{{ $item->product?->localName() ?? $item->product_name }}</div>
                                 <div class="text-xs text-gray-500"><x-ltr>{{ $item->product?->sku ?? $item->product_sku }}</x-ltr></div>
                             </td>
                             <td class="p-2 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.') }}</x-ltr></td>
-                            <td class="p-2 text-end text-gray-500"><x-ltr>{{ rtrim(rtrim(number_format((float) $item->returned_qty, 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                            <td class="p-2 text-end text-gray-500">
+                                <x-ltr>{{ rtrim(rtrim(number_format((float) $item->returned_qty, 4, '.', ''), '0'), '.') }}</x-ltr>
+                                @if ($pending > 0)
+                                    <div class="text-xs text-amber-600">{{ __('returns.qty_pending', ['qty' => rtrim(rtrim(number_format($pending, 4, '.', ''), '0'), '.')]) }}</div>
+                                @endif
+                            </td>
                             <td class="p-2 text-end font-medium"><x-ltr>{{ rtrim(rtrim(number_format($remaining, 4, '.', ''), '0'), '.') }}</x-ltr></td>
                             <td class="p-2 text-end text-xs"><x-ltr>${{ number_format($perUnit, 4) }}</x-ltr></td>
                             <td class="p-2 text-end">
-                                <input type="number" step="0.0001" min="0" max="{{ $remaining }}" value="0" dir="ltr"
-                                       name="items[{{ $idx }}][qty_returned]"
-                                       x-model.number="lines[{{ $idx }}].qty"
-                                       @input="recompute({{ $idx }}, {{ $perUnit }})"
-                                       :disabled="{{ $remaining <= 0 ? 'true' : 'false' }}"
-                                       class="w-20 text-end border-gray-300 rounded text-sm" />
+                                @if ($canReturn)
+                                    <input type="number" step="0.0001" min="0" max="{{ $remaining }}" value="0" dir="ltr"
+                                           name="items[{{ $idx }}][qty_returned]"
+                                           x-model.number="lines[{{ $idx }}].qty"
+                                           @input="recompute({{ $idx }}, {{ $perUnit }})"
+                                           class="w-20 text-end border-gray-300 rounded text-sm" />
+                                @endif
                             </td>
                             <td class="p-2 text-center">
-                                <input type="checkbox" name="items[{{ $idx }}][restock]" value="1" checked
-                                       x-model="lines[{{ $idx }}].restock" />
+                                @if ($canReturn)
+                                    {{-- An un-ticked box sends nothing, and a missing restock means "restock": send an explicit 0 first. --}}
+                                    <input type="hidden" name="items[{{ $idx }}][restock]" value="0">
+                                    <input type="checkbox" name="items[{{ $idx }}][restock]" value="1" checked
+                                           x-model="lines[{{ $idx }}].restock" />
+                                @endif
                             </td>
                             <td class="p-2 text-end font-medium"><x-ltr>$<span x-text="(lines[{{ $idx }}].refund || 0).toFixed(2)"></span></x-ltr></td>
                         </tr>

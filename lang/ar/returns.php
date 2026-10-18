@@ -21,6 +21,7 @@ return [
     'items_to_return' => 'الأصناف المراد إرجاعها',
     'sold' => 'المباع',
     'already_returned' => 'سبق إرجاعه',
+    'qty_pending' => '+:qty بانتظار الموافقة',
     'unit_price' => 'سعر الوحدة',
     'return_qty' => 'كمية الإرجاع',
     'restock' => 'إعادة للمخزون؟',

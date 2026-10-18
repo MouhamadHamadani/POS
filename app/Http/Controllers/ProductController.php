@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Tax;
 use App\Services\BarcodeService;
 use App\Services\InventoryService;
+use App\Services\StockMovementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -88,17 +89,20 @@ class ProductController extends Controller
             ]),
             'categories' => Category::orderBy('sort_order')->get(),
             'taxes' => Tax::where('is_active', true)->get(),
-            'defaultTaxId' => Tax::where('is_default', true)->value('id'),
+            'defaultTaxId' => Tax::where('is_active', true)->where('is_default', true)->value('id'),
         ]);
     }
 
-    public function edit(Product $product): View
+    public function edit(Product $product, StockMovementService $movements): View
     {
         return view('products.form', [
             'product' => $product,
+            'movements' => $movements->recent($product),
             'categories' => Category::orderBy('sort_order')->get(),
-            'taxes' => Tax::where('is_active', true)->get(),
-            'defaultTaxId' => Tax::where('is_default', true)->value('id'),
+            // The product's own tax stays selectable even once the rate is deactivated; otherwise
+            // the select would show "No tax" and Save would silently strip it.
+            'taxes' => Tax::where(fn ($q) => $q->where('is_active', true)->orWhere('id', $product->tax_id))->get(),
+            'defaultTaxId' => Tax::where('is_active', true)->where('is_default', true)->value('id'),
         ]);
     }
 
@@ -134,9 +138,21 @@ class ProductController extends Controller
 
         $data['created_by'] = $request->user()->id;
 
-        $product = Product::create($data);
+        // Initial stock goes through InventoryService so it lands in the movement
+        // log as an `opening` row instead of appearing out of nowhere.
+        $opening = (float) ($data['stock_qty'] ?? 0);
+        unset($data['stock_qty']);
 
-        AuditLog::record($request->user()->id, 'create', Product::class, $product->id, null, $data);
+        $product = DB::transaction(function () use ($data, $opening, $request) {
+            $product = Product::create($data);
+            if ($opening != 0.0) {
+                $this->inventory->recordOpening($product, $opening, $request->user()->id);
+            }
+
+            return $product;
+        });
+
+        AuditLog::record($request->user()->id, 'create', Product::class, $product->id, null, $data + ['stock_qty' => $opening]);
 
         return redirect()->route('products.index')->with('success', __('messages.product_created', ['name' => $product->localName()]));
     }
@@ -157,6 +173,11 @@ class ProductController extends Controller
             unset($data['image']);
         }
         unset($data['remove_image']);
+
+        // The form's stock field is read-only on edit. Writing it back would
+        // silently overwrite a sale that landed since the page loaded and leave
+        // no trace in the movement log — stock only changes through adjustStock().
+        unset($data['stock_qty']);
 
         $old = $product->only(array_keys($data));
         $product->update($data);
@@ -208,9 +229,10 @@ class ProductController extends Controller
         ]);
 
         $qty = (float) $data['qty'];
+        $before = (float) $product->stock_qty;
 
         try {
-            match ($data['action']) {
+            $after = match ($data['action']) {
                 'add' => $this->inventory->adjust($product, $qty, \App\Models\InventoryAdjustment::TYPE_ADD, $request->user()->id, reason: $data['reason']),
                 'remove' => $this->inventory->adjust($product, -$qty, \App\Models\InventoryAdjustment::TYPE_REMOVE, $request->user()->id, reason: $data['reason'], allowNegative: false),
                 'set', 'count' => $this->inventory->setStock($product, $qty, $request->user()->id, $data['reason']),
@@ -218,6 +240,15 @@ class ProductController extends Controller
         } catch (\App\Exceptions\InsufficientStockException $e) {
             return back()->withErrors(['stock' => $e->getMessage()]);
         }
+
+        AuditLog::record(
+            $request->user()->id,
+            'stock_adjust',
+            Product::class,
+            $product->id,
+            ['stock_qty' => $before],
+            ['stock_qty' => $after, 'action' => $data['action'], 'qty' => $qty, 'reason' => $data['reason']],
+        );
 
         return redirect()->route('products.edit', $product)->with('success', __('messages.stock_adjusted'));
     }

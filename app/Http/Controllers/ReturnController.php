@@ -12,10 +12,14 @@ use App\Services\InventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ReturnController extends Controller
 {
+    /** A sale in one of these states cannot take a return: not found by "Find sale", refused by create()/store(). */
+    private const NOT_RETURNABLE = [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED];
+
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly CurrencyService $currency,
@@ -41,9 +45,10 @@ class ReturnController extends Controller
         $data = $request->validate(['query' => 'required|string|max:120']);
         $term = trim($data['query']);
 
-        $sale = Sale::where('receipt_number', $term)
-            ->orWhereHas('customer', fn ($w) => $w->where('phone', $term))
-            ->whereNotIn('status', [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD])
+        // The status filter must bind to BOTH ways of finding the sale, hence the closure around the OR.
+        $sale = Sale::whereNotIn('status', self::NOT_RETURNABLE)
+            ->where(fn ($q) => $q->where('receipt_number', $term)
+                ->orWhereHas('customer', fn ($w) => $w->where('phone', $term)))
             ->latest()
             ->first();
 
@@ -56,7 +61,7 @@ class ReturnController extends Controller
 
     public function create(Sale $sale): View
     {
-        if (in_array($sale->status, [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED], true)) {
+        if (in_array($sale->status, self::NOT_RETURNABLE, true)) {
             abort(403, __('messages.sale_cannot_return_abort'));
         }
         $sale->load('items.product:id,name,name_ar,sku,track_stock', 'customer');
@@ -65,7 +70,7 @@ class ReturnController extends Controller
 
     public function store(Request $request, Sale $sale): RedirectResponse
     {
-        if (in_array($sale->status, [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED], true)) {
+        if (in_array($sale->status, self::NOT_RETURNABLE, true)) {
             return redirect()->route('returns.index')->withErrors(['sale' => __('messages.sale_cannot_return')]);
         }
 
@@ -81,20 +86,27 @@ class ReturnController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $positiveItems = collect($data['items'])->filter(fn ($i) => (float) $i['qty_returned'] > 0);
+        // One entry per sale line: a line posted twice has its quantities summed (the last entry's
+        // restock/condition win), so the check below sees the real total and the refund is counted once.
+        // The key is the integer id the row is looked up by: the `integer` rule also lets "+5" through,
+        // which is the same line as "5" to the database but a different string to groupBy().
+        $positiveItems = collect($data['items'])
+            ->filter(fn ($i) => (float) $i['qty_returned'] > 0)
+            ->groupBy(fn ($i) => (int) $i['sale_item_id'])
+            ->map(fn ($rows, $id) => array_merge($rows->last(), ['sale_item_id' => $id, 'qty_returned' => $rows->sum(fn ($r) => (float) $r['qty_returned'])]));
         if ($positiveItems->isEmpty()) {
             return back()->withErrors(['items' => __('messages.select_return_item')]);
         }
 
         // Validate qty against remaining (sale_item.qty - returned_qty) and compute refund.
-        $refundAmount = 0.0;
         $perLine = [];
         foreach ($positiveItems as $i) {
             $saleItem = SaleItem::where('id', $i['sale_item_id'])->where('sale_id', $sale->id)->first();
             if (!$saleItem) {
                 return back()->withErrors(['items' => __('messages.invalid_line')]);
             }
-            $remaining = (float) $saleItem->qty - (float) $saleItem->returned_qty;
+            // Units already on another pending return are spoken for: returned_qty only moves on approval.
+            $remaining = $saleItem->returnableQty();
             $qty = (float) $i['qty_returned'];
             if ($qty > $remaining + 0.0001) {
                 return back()->withErrors([
@@ -103,7 +115,6 @@ class ReturnController extends Controller
             }
             $perUnit = (float) $saleItem->qty > 0 ? (float) $saleItem->line_total_usd / (float) $saleItem->qty : 0;
             $lineRefund = round($perUnit * $qty, 4);
-            $refundAmount += $lineRefund;
             // Default restock to true — matches the UI checkbox which is checked by default.
             // Caller must explicitly pass restock=0/false (e.g. damaged goods) to skip restocking.
             $restock = array_key_exists('restock', $i)
@@ -117,6 +128,10 @@ class ReturnController extends Controller
                 'condition' => $i['condition'] ?? 'good',
             ];
         }
+
+        // The header is the sum of the item rows, never a running total kept next to them: the shift's cash
+        // and the account credit both read the header, so it must not be able to differ from what is itemised.
+        $refundAmount = round(array_sum(array_column($perLine, 'refund')), 4);
 
         // Credit refund needs a customer.
         if ($data['refund_method'] === 'account' && !$sale->customer_id) {
@@ -184,19 +199,21 @@ class ReturnController extends Controller
         if (!$request->user()->isManagerial()) {
             abort(403);
         }
-        if ($return->status !== ReturnTransaction::STATUS_PENDING) {
-            return back()->withErrors(['status' => __('messages.return_not_pending')]);
-        }
 
-        DB::transaction(function () use ($return, $request) {
-            $return->update([
-                'status' => ReturnTransaction::STATUS_APPROVED,
-                'approved_by' => $request->user()->id,
-                'approved_at' => now(),
-            ]);
+        // Claim the pending return with one conditional UPDATE inside the transaction: of two overlapping
+        // approvals (double click, two managers) only the first changes a row, the other applies nothing.
+        $applied = DB::transaction(function () use ($return, $request) {
+            if (!$this->claimPending($return, ReturnTransaction::STATUS_APPROVED, $request->user()->id)) {
+                return false;
+            }
             $this->processApproval($return->fresh('items'));
             AuditLog::record($request->user()->id, 'return_approve', ReturnTransaction::class, $return->id);
+
+            return true;
         });
+        if (!$applied) {
+            return back()->withErrors(['status' => __('messages.return_not_pending')]);
+        }
 
         return back()->with('success', __('messages.return_approved', ['number' => $return->return_number]));
     }
@@ -206,17 +223,19 @@ class ReturnController extends Controller
         if (!$request->user()->isManagerial()) {
             abort(403);
         }
-        if ($return->status !== ReturnTransaction::STATUS_PENDING) {
+        if (!$this->claimPending($return, ReturnTransaction::STATUS_REJECTED, $request->user()->id)) {
             return back()->withErrors(['status' => __('messages.return_not_pending')]);
         }
-
-        $return->update([
-            'status' => ReturnTransaction::STATUS_REJECTED,
-            'approved_by' => $request->user()->id,
-            'approved_at' => now(),
-        ]);
         AuditLog::record($request->user()->id, 'return_reject', ReturnTransaction::class, $return->id);
         return back()->with('success', __('messages.return_rejected'));
+    }
+
+    /** Move a return out of `pending` only if it is still pending in the database (not just in memory). */
+    private function claimPending(ReturnTransaction $return, string $status, int $userId): bool
+    {
+        return ReturnTransaction::where('id', $return->id)
+            ->where('status', ReturnTransaction::STATUS_PENDING)
+            ->update(['status' => $status, 'approved_by' => $userId, 'approved_at' => now()]) === 1;
     }
 
     /**
@@ -226,10 +245,26 @@ class ReturnController extends Controller
     private function processApproval(ReturnTransaction $return): void
     {
         foreach ($return->items as $ri) {
-            if ($ri->restock && $ri->product) {
-                $this->inventory->restockFromReturn($ri->product, (float) $ri->qty_returned, $return->user_id, $return->id);
+            $qty = (float) $ri->qty_returned;
+
+            // Claim the units with one statement that both checks and moves returned_qty, so two
+            // returns on the same line can never take it past what was sold. A throw rolls back
+            // the whole approval (callers run this inside their transaction) and the return stays pending.
+            // (PDO binds the float as text, and SQLite sorts any text above any number, hence the CAST.)
+            $claimed = SaleItem::where('id', $ri->sale_item_id)
+                ->whereRaw('qty - returned_qty >= CAST(? AS REAL)', [$qty - 0.0001])
+                ->increment('returned_qty', $qty);
+            if (!$claimed) {
+                $line = SaleItem::find($ri->sale_item_id);
+                $left = max(0.0, (float) $line?->qty - (float) $line?->returned_qty);
+                throw ValidationException::withMessages([
+                    'items' => __('messages.qty_exceeds', ['product' => $line?->product_name, 'remaining' => rtrim(rtrim(number_format($left, 4, '.', ''), '0'), '.')]),
+                ]);
             }
-            SaleItem::where('id', $ri->sale_item_id)->increment('returned_qty', (float) $ri->qty_returned);
+
+            if ($ri->restock && $ri->product) {
+                $this->inventory->restockFromReturn($ri->product, $qty, $return->user_id, $return->id);
+            }
         }
 
         $sale = $return->sale->fresh('items');

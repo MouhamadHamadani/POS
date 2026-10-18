@@ -60,6 +60,7 @@ class TierEnforcementTest extends TestCase
         '/purchase-orders',
         '/customers',
         '/reports/inventory/stock-levels',
+        '/reports/inventory/by-date',
         '/reports/financial/pnl',
         '/reports/sales/by-product',
     ];

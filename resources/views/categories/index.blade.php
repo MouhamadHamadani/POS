@@ -57,6 +57,8 @@
                                 <td class="p-2 w-20"><input type="number" name="sort_order" dir="ltr" value="{{ $c->sort_order }}" class="w-full border-gray-200 rounded text-sm py-1 text-end"></td>
                                 <td class="p-2 text-end text-gray-700"><x-ltr>{{ $c->products_count }}</x-ltr></td>
                                 <td class="p-2 text-center">
+                                    {{-- An un-ticked checkbox sends nothing; the hidden 0 (overridden by the box when ticked) lets Save turn Active off. --}}
+                                    <input type="hidden" name="is_active" value="0">
                                     <input type="checkbox" name="is_active" value="1" @checked($c->is_active)>
                                 </td>
                                 <td class="p-2 text-end whitespace-nowrap">

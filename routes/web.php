@@ -4,6 +4,8 @@ use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DemoController;
+use App\Http\Controllers\ExpenseCategoryController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PosController;
@@ -18,6 +20,7 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\ShiftController;
+use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +53,9 @@ Route::middleware(['auth'])->group(function () {
     // Receipt reprint — accessible outside the shift gate so cashier can
     // print receipts for earlier sales after closing a shift.
     Route::get('/pos/receipts/{sale}/print', [ReceiptController::class, 'show'])->name('receipts.print');
+    // A4 invoice straight to the printer chosen in Settings (desktop app only; the sell screen
+    // falls back to the print dialog when this reports it did not print).
+    Route::post('/pos/receipts/{sale}/print-a4', [ReceiptController::class, 'printA4'])->name('receipts.print-a4');
 
     // Shifts
     Route::get('/shifts/open', [ShiftController::class, 'showOpen'])->name('shifts.open');
@@ -88,6 +94,11 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
         Route::post('/products/{product}/adjust-stock', [ProductController::class, 'adjustStock'])->name('products.adjust-stock');
         Route::get('/products/check-barcode', [ProductController::class, 'checkBarcode'])->name('products.check-barcode');
+
+        // Stock movements: the read side of inventory_adjustments.
+        Route::get('/products/movements', [StockMovementController::class, 'index'])->name('products.movements');
+        Route::get('/products/movements/export', [StockMovementController::class, 'export'])
+            ->middleware('demo:blocked')->name('products.movements.export');
 
         // Bulk upload. `can:` resolves User::canBulkUploadProducts(): eligible
         // role AND a super-admin having switched that role's toggle on. Declared
@@ -154,6 +165,17 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/customers/{customer}/payment', [CustomerController::class, 'recordPayment'])->name('customers.payment');
         });
 
+        // Expenses: fixed and running costs, optionally paid out of the open shift's drawer.
+        Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+        Route::get('/expenses/export', [ExpenseController::class, 'export'])->middleware('demo:blocked')->name('expenses.export');
+        Route::get('/expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
+        Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+        Route::get('/expenses/duplicate-fixed', [ExpenseController::class, 'duplicateForm'])->name('expenses.duplicate');
+        Route::post('/expenses/duplicate-fixed', [ExpenseController::class, 'duplicateStore'])->name('expenses.duplicate.store');
+        Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
+        Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+
         // The index and the daily summary ship on every tier; the three that
         // expose cost, valuation and margin are Standard+.
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
@@ -162,6 +184,11 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('feature:reports.sales_by_product')->name('reports.sales-by-product');
         Route::get('/reports/inventory/stock-levels', [ReportController::class, 'stockLevels'])
             ->middleware('feature:reports.stock_levels')->name('reports.stock-levels');
+        // Shows value at cost and retail like stock-levels does, so it ships with it.
+        Route::get('/reports/inventory/by-date', [ReportController::class, 'inventoryByDate'])
+            ->middleware('feature:reports.stock_levels')->name('reports.inventory-by-date');
+        // Expenses ship with the Expenses module on every tier; only the P&L that nets them off is Standard+.
+        Route::get('/reports/financial/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
         Route::get('/reports/financial/pnl', [ReportController::class, 'profitLoss'])
             ->middleware('feature:reports.profit_loss')->name('reports.pnl');
     });
@@ -179,6 +206,11 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
+        // Settings > Expenses: the category list.
+        Route::post('/settings/expense-categories', [ExpenseCategoryController::class, 'store'])->name('settings.expense-categories.store');
+        Route::put('/settings/expense-categories/{category}', [ExpenseCategoryController::class, 'update'])->name('settings.expense-categories.update');
+        Route::delete('/settings/expense-categories/{category}', [ExpenseCategoryController::class, 'destroy'])->name('settings.expense-categories.destroy');
+
         Route::post('/settings/receipt/test-print', [SettingController::class, 'testPrintReceipt'])->name('settings.receipt.test-print');
 
         // Premium's receipt differentiator. Starter/Standard keep the

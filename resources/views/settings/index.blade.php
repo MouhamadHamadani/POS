@@ -13,6 +13,7 @@
     if (! \App\Support\License::allows('loyalty')) {
         unset($tabs['loyalty']);
     }
+    $tabs['expenses'] = __('settings.tabs.expenses');
     if (\App\Support\License::allows('receipts.custom_templates')) {
         $tabs['receipt_template'] = __('settings.tabs.receipt_template');
     }
@@ -104,15 +105,24 @@
                         @csrf <input type="hidden" name="group" value="currency">
                         <div>
                             <label class="block text-xs text-gray-500">{{ __('settings.exchange_rate') }} *</label>
-                            <input type="number" step="0.01" min="0" name="settings[exchange_rate]" dir="ltr" value="{{ $get('exchange_rate') }}" required class="w-full border-gray-300 rounded text-sm" />
+                            <input type="number" step="0.01" min="0.01" name="settings[exchange_rate]" dir="ltr" value="{{ $get('exchange_rate') }}" required class="w-full border-gray-300 rounded text-sm" />
                             <div class="text-xs text-gray-500 mt-1">{{ __('settings.exchange_rate_help') }}</div>
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500">{{ __('settings.lbp_rounding') }}</label>
                             <select name="settings[lbp_rounding_step]" class="w-full border-gray-300 rounded text-sm">
-                                @foreach ([100, 500, 1000, 5000] as $step)
-                                    <option value="{{ $step }}" @selected((int) $get('lbp_rounding_step') === $step)>{{ __('settings.lbp_step', ['amount' => number_format($step)]) }}</option>
+                                @php
+                                    $steps = [100, 500, 1000, 5000];
+                                    $currentStep = (float) $get('lbp_rounding_step', 1000); // CurrencyService's own default
+                                @endphp
+                                @foreach ($steps as $step)
+                                    <option value="{{ $step }}" @selected($currentStep === (float) $step)>{{ __('settings.lbp_step', ['amount' => number_format($step)]) }}</option>
                                 @endforeach
+                                {{-- The server accepts any step >= 0 (0 = no rounding; a seed or client profile may store
+                                     others): keep an unlisted stored step as an extra option, or Save would submit 100. --}}
+                                @unless (in_array($currentStep, array_map('floatval', $steps), true))
+                                    <option value="{{ $currentStep }}" selected>{{ __('settings.lbp_step', ['amount' => number_format($currentStep)]) }}</option>
+                                @endunless
                             </select>
                         </div>
                         <div class="md:col-span-2 flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('common.save') }}</button></div>
@@ -134,7 +144,8 @@
                                     <td class="py-2 w-24"><input type="number" step="0.0001" min="0" max="1" name="rate" dir="ltr" value="{{ $t->rate }}" class="w-full text-end border-gray-200 rounded text-sm py-1"></td>
                                     <td class="py-2 text-center"><input type="checkbox" name="is_inclusive" value="1" @checked($t->is_inclusive)></td>
                                     <td class="py-2 text-center"><input type="checkbox" name="is_default" value="1" @checked($t->is_default)></td>
-                                    <td class="py-2 text-center"><input type="checkbox" name="is_active" value="1" @checked($t->is_active)></td>
+                                    {{-- An un-ticked checkbox sends nothing; the hidden 0 (sent first, overridden by the box when ticked) is what lets Save turn Active off. --}}
+                                    <td class="py-2 text-center"><input type="hidden" name="is_active" value="0"><input type="checkbox" name="is_active" value="1" @checked($t->is_active)></td>
                                     <td class="py-2 text-end"><button class="text-xs text-brand-600">{{ __('common.save') }}</button>
                                 </form>
                                     <form method="POST" action="{{ route('settings.tax.destroy', $t) }}" class="inline ms-2" onsubmit="return confirm({{ Js::from(__('settings.confirm_delete_tax', ['name' => $t->name])) }})">
@@ -221,6 +232,31 @@
                             </select>
                             <div class="text-xs text-gray-500 mt-1">{{ __('settings.receipt_language_help') }}</div>
                         </div>
+                        <div>
+                            <label class="block text-xs text-gray-500">{{ __('settings.receipt_format') }}</label>
+                            <select name="settings[receipt_format]" class="w-full border-gray-300 rounded text-sm">
+                                @foreach (\App\Services\ReceiptPrintService::FORMATS as $rf)
+                                    <option value="{{ $rf }}" @selected($get('receipt_format', 'thermal') === $rf)>{{ __("settings.receipt_format_options.$rf") }}</option>
+                                @endforeach
+                            </select>
+                            <div class="text-xs text-gray-500 mt-1">{{ __('settings.receipt_format_help') }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500">{{ __('settings.a4_printer') }}</label>
+                            @php $a4Printer = $get('a4_printer_name'); @endphp
+                            @if (count($printers))
+                                <select name="settings[a4_printer_name]" class="w-full border-gray-300 rounded text-sm">
+                                    <option value="">{{ __('settings.a4_printer_ask') }}</option>
+                                    @foreach ($printers + ($a4Printer !== '' && ! isset($printers[$a4Printer]) ? [$a4Printer => $a4Printer] : []) as $name => $display)
+                                        <option value="{{ $name }}" @selected($a4Printer === $name)>{{ $display }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="text-xs text-gray-500 mt-1">{{ __('settings.a4_printer_help') }}</div>
+                            @else
+                                <input type="text" name="settings[a4_printer_name]" dir="ltr" value="{{ $a4Printer }}" class="w-full border-gray-300 rounded text-sm" />
+                                <div class="text-xs text-gray-500 mt-1">{{ __('settings.a4_printer_text_help') }}</div>
+                            @endif
+                        </div>
                         <div class="md:col-span-2">
                             <label class="block text-xs text-gray-500">{{ __('settings.receipt_header') }}</label>
                             <textarea name="settings[receipt_header]" dir="auto" rows="2" class="w-full border-gray-300 rounded text-sm">{{ $get('receipt_header') }}</textarea>
@@ -274,6 +310,8 @@
                         <div class="md:col-span-2 flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('common.save') }}</button></div>
                     </form>
 
+                @elseif ($tab === 'expenses')
+                    @include('settings._expenses')
                 @elseif ($tab === 'permissions')
                     <form method="POST" action="{{ route('settings.permissions.update') }}" class="space-y-4 text-sm max-w-xl">
                         @csrf

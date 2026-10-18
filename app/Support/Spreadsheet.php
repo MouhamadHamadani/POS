@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -40,5 +42,17 @@ final class Spreadsheet
     public static function download(object $export, string $basename): BinaryFileResponse
     {
         return Excel::download($export, $basename . '.' . self::extension());
+    }
+
+    /** Download a table given as rows, heading row first. */
+    public static function downloadRows(array $rows, string $basename): BinaryFileResponse
+    {
+        $export = new class($rows) implements FromArray, WithHeadings {
+            public function __construct(private readonly array $rows) {}
+            public function array(): array { return array_slice($this->rows, 1); }
+            public function headings(): array { return $this->rows[0]; }
+        };
+
+        return self::download($export, $basename);
     }
 }

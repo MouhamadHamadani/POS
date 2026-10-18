@@ -38,12 +38,16 @@ class UserController extends Controller
      * Rule::in check so the refusal says "not in your plan" rather than the
      * generic invalid-selection message — and says it in the user's language.
      */
-    private function roleLicenceError(Request $request): ?string
+    private function roleLicenceError(Request $request, ?User $target = null): ?string
     {
         $role = (string) $request->input('role');
 
+        // Keeping the role a user already has is not an assignment: after the vendor lowers
+        // the plan, the owner's account must still be editable without being moved to
+        // another role (BUG-015). Only a role that CHANGES has to be in the plan.
         $blocked = array_key_exists($role, User::ROLES)
             && $role !== User::ROLE_SUPER_ADMIN
+            && $role !== $target?->role
             && ! in_array($role, License::allowedRoles(), true);
 
         return $blocked ? __('plan.role_locked') : null;
@@ -150,7 +154,7 @@ class UserController extends Controller
     {
         $this->guardPrivilegedTarget($request, $user);
 
-        if ($error = $this->roleLicenceError($request)) {
+        if ($error = $this->roleLicenceError($request, $user)) {
             return back()->withInput()->withErrors(['role' => $error]);
         }
 
@@ -158,7 +162,10 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'username' => ['required', 'string', 'max:60', Rule::unique('users', 'username')->ignore($user->id)],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'role' => ['required', Rule::in($this->assignableRoles($request))],
+            // The target's own current role stays valid (it is not being assigned); the editor's
+            // privilege still bounds every other value, and guardPrivilegedTarget() above
+            // already keeps a non-super_admin away from admin-tier targets.
+            'role' => ['required', Rule::in([...$this->assignableRoles($request), $user->role])],
             'language' => 'required|in:en,ar',
             'max_discount_pct' => 'nullable|numeric|min:0|max:100',
             'is_active' => 'nullable|boolean',
@@ -220,7 +227,9 @@ class UserController extends Controller
             && User::whereIn('role', $adminTier)->where('is_active', true)->count() <= 1) {
             return back()->withErrors(['active' => __('messages.need_one_admin')]);
         }
-        $user->update(['is_active' => !$user->is_active]);
+        $was = (bool) $user->is_active;
+        $user->update(['is_active' => !$was]);
+        AuditLog::record($request->user()->id, 'update', User::class, $user->id, ['is_active' => $was], ['is_active' => !$was]);
         return back()->with('success', $user->is_active ? __('messages.user_activated', ['username' => $user->username]) : __('messages.user_deactivated', ['username' => $user->username]));
     }
 }

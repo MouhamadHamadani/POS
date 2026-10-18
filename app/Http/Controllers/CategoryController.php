@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
@@ -26,7 +27,12 @@ class CategoryController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
         $data['is_active'] = $request->boolean('is_active', true);
-        Category::create($data);
+        // sort_order is NOT NULL DEFAULT 0: a blank input arrives as null, and blank means "first / 0".
+        if (array_key_exists('sort_order', $data)) {
+            $data['sort_order'] ??= 0;
+        }
+        $category = Category::create($data);
+        AuditLog::record($request->user()->id, 'create', Category::class, $category->id, null, $data);
         return back()->with('success', __('messages.category_created', ['name' => $data['name']]));
     }
 
@@ -40,17 +46,24 @@ class CategoryController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
         $data['is_active'] = $request->boolean('is_active', true);
+        // Blank means 0; a request that omits the field entirely keeps the stored order.
+        if (array_key_exists('sort_order', $data)) {
+            $data['sort_order'] ??= 0;
+        }
+        $old = $category->only(array_keys($data));
         $category->update($data);
+        AuditLog::record($request->user()->id, 'update', Category::class, $category->id, $old, $data);
         return back()->with('success', __('messages.category_updated', ['name' => $category->localName()]));
     }
 
-    public function destroy(Category $category): RedirectResponse
+    public function destroy(Request $request, Category $category): RedirectResponse
     {
         if (Product::where('category_id', $category->id)->exists()) {
             return back()->withErrors(['delete' => __('messages.category_has_products')]);
         }
         $name = $category->name;
         $category->delete();
+        AuditLog::record($request->user()->id, 'delete', Category::class, $category->id, $category->only(['name', 'name_ar', 'sort_order', 'is_active']), null);
         return back()->with('success', __('messages.category_deleted', ['name' => $name]));
     }
 }

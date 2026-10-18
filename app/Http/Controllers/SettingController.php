@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Middleware\DemoGate;
 use App\Models\AuditLog;
+use App\Models\ExpenseCategory;
 use App\Models\PrintTemplate;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -11,6 +12,7 @@ use App\Models\Setting;
 use App\Models\Tax;
 use App\Services\BackupService;
 use App\Services\CurrencyService;
+use App\Services\ReceiptPrintService;
 use App\Services\ReceiptRenderer;
 use App\Support\Activation;
 use App\Support\Demo;
@@ -34,6 +36,47 @@ class SettingController extends Controller
     public const DEMO_LOCKED_TABS = ['general', 'currency', 'tax'];
 
     private const DEMO_LOCKED_GROUPS = ['general', 'currency'];
+
+    /**
+     * The settings update() will write: key => cast, by the form (tab) that posts it. Only keys
+     * listed here are ever written. `language` is a field of the General tab, so it lives there.
+     */
+    private const SETTING_TYPES = [
+        'general' => [
+            'business_name' => 'string', 'business_name_ar' => 'string', 'address' => 'string',
+            'phone' => 'string', 'email' => 'string', 'tax_number' => 'string', 'language' => 'string',
+        ],
+        'currency' => [
+            'exchange_rate' => 'float', 'lbp_rounding_step' => 'float',
+            'base_currency' => 'string', 'secondary_currency' => 'string',
+        ],
+        'pos' => [
+            'auto_print' => 'bool', 'require_shift' => 'bool', 'pos_display_cost' => 'bool',
+            'cashier_can_change_price_tier' => 'bool',
+            'max_cashier_discount_pct' => 'float', 'idle_timeout_min' => 'int',
+        ],
+        'receipt' => [
+            'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
+            'receipt_header' => 'string', 'receipt_footer' => 'string',
+            'receipt_format' => 'string', 'a4_printer_name' => 'string',
+        ],
+        'numbering' => [
+            'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
+        ],
+        'loyalty' => [
+            'points_per_dollar' => 'float', 'redemption_rate' => 'int',
+            'expiry_days' => 'int', 'bronze_threshold' => 'int', 'silver_threshold' => 'int', 'gold_threshold' => 'int',
+        ],
+        'backup' => [
+            'backup_frequency' => 'string', 'retention_days' => 'int', 'cloud_enabled' => 'bool',
+        ],
+        'appearance' => [
+            'rtl' => 'bool', 'dark_mode' => 'bool',
+        ],
+    ];
+
+    /** What a tax-rate audit entry records (old / new values). */
+    private const TAX_AUDITED = ['name', 'name_ar', 'rate', 'is_inclusive', 'is_default', 'is_active'];
 
     public function __construct(private readonly BackupService $backups) {}
 
@@ -82,7 +125,14 @@ class SettingController extends Controller
             ? PrintTemplate::where('type', 'receipt')->orderByDesc('is_default')->first()
             : null;
 
-        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate'));
+        $expenseCategories = $tab === 'expenses'
+            ? ExpenseCategory::withCount(['expenses' => fn ($q) => $q->withTrashed()])->orderBy('kind')->orderBy('sort_order')->get()
+            : collect();
+
+        // The installed printers, for the A4 printer dropdown (empty outside the desktop app).
+        $printers = $tab === 'receipt' ? app(ReceiptPrintService::class)->printers() : [];
+
+        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate', 'expenseCategories', 'printers'));
     }
 
     public function update(Request $request): RedirectResponse
@@ -92,8 +142,25 @@ class SettingController extends Controller
             'group' => 'required|in:general,currency,pos,receipt,numbering,loyalty,backup,appearance',
             'settings' => 'required|array',
         ]);
+        // Separate call on purpose: rules for nested keys would make validated() drop every other setting.
+        $request->validate([
+            'settings.receipt_format' => ['nullable', \Illuminate\Validation\Rule::in(ReceiptPrintService::FORMATS)],
+            'settings.a4_printer_name' => 'nullable|string|max:255',
+        ] + $this->numericSettingRules(), [
+            // A rate of 0 prices everything at 0 LBP and counts every LBP note as $0 tendered.
+            'settings.exchange_rate.required' => __('messages.exchange_rate_invalid'),
+            'settings.exchange_rate.numeric' => __('messages.exchange_rate_invalid'),
+            'settings.exchange_rate.gt' => __('messages.exchange_rate_invalid'),
+        ], $this->numericSettingLabels());
 
-        if (Demo::enabled() && in_array($data['group'], self::DEMO_LOCKED_GROUPS, true)) {
+        // The same lock, by key: which keys get written is decided by name, not by the posted
+        // group, so `group=pos` carrying a key of a locked group must be refused too.
+        $demoLockedKeys = array_merge(...array_values(array_intersect_key(self::SETTING_TYPES, array_flip(self::DEMO_LOCKED_GROUPS))));
+
+        if (Demo::enabled() && (
+            in_array($data['group'], self::DEMO_LOCKED_GROUPS, true)
+            || array_intersect_key($data['settings'], $demoLockedKeys)
+        )) {
             return back()->withErrors(['demo' => DemoGate::refusal()]);
         }
 
@@ -102,30 +169,7 @@ class SettingController extends Controller
             return back()->withErrors(['plan' => __('plan.feature_locked')]);
         }
 
-        $typeMap = [
-            // general
-            'business_name' => 'string', 'business_name_ar' => 'string', 'address' => 'string',
-            'phone' => 'string', 'email' => 'string', 'tax_number' => 'string',
-            // currency
-            'exchange_rate' => 'float', 'lbp_rounding_step' => 'float',
-            'base_currency' => 'string', 'secondary_currency' => 'string',
-            // pos
-            'auto_print' => 'bool', 'require_shift' => 'bool', 'pos_display_cost' => 'bool',
-            'cashier_can_change_price_tier' => 'bool',
-            'max_cashier_discount_pct' => 'float', 'idle_timeout_min' => 'int',
-            // receipt
-            'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
-            'receipt_header' => 'string', 'receipt_footer' => 'string',
-            // numbering
-            'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
-            // loyalty
-            'points_per_dollar' => 'float', 'redemption_rate' => 'int',
-            'expiry_days' => 'int', 'bronze_threshold' => 'int', 'silver_threshold' => 'int', 'gold_threshold' => 'int',
-            // backup
-            'backup_frequency' => 'string', 'retention_days' => 'int', 'cloud_enabled' => 'bool',
-            // appearance
-            'language' => 'string', 'rtl' => 'bool', 'dark_mode' => 'bool',
-        ];
+        $typeMap = array_merge(...array_values(self::SETTING_TYPES));
 
         foreach ($data['settings'] as $key => $value) {
             // Only keys this form is known to carry. This route is open to the
@@ -157,6 +201,52 @@ class SettingController extends Controller
         Cache::flush();
 
         return redirect()->route('settings.index', ['tab' => $group])->with('success', __('messages.settings_saved'));
+    }
+
+    /**
+     * Server-side limits for the settings that hold a number or a document prefix: the ranges
+     * the form advertises, and an exchange rate that must be above zero. Every rule is
+     * `sometimes`: a tab only posts its own keys. [rules, label lang key]
+     */
+    private const NUMERIC_SETTINGS = [
+        'exchange_rate' => ['required|numeric|gt:0', 'settings.exchange_rate'],
+        'lbp_rounding_step' => ['required|numeric|min:0', 'settings.lbp_rounding'],
+        'max_cashier_discount_pct' => ['nullable|numeric|min:0|max:100', 'settings.max_cashier_discount'],
+        'idle_timeout_min' => ['nullable|integer|min:1|max:600', 'settings.idle_logout'],
+        'receipt_width' => ['required|in:58,80', 'settings.paper_width'],
+        'paper_width_char' => ['nullable|integer|min:20|max:80', 'settings.chars_per_line'],
+        'points_per_dollar' => ['nullable|numeric|min:0', 'settings.points_per_dollar'],
+        'redemption_rate' => ['required|integer|min:1', 'settings.redemption_rate'],
+        'silver_threshold' => ['nullable|integer|min:0', 'settings.silver_threshold'],
+        'gold_threshold' => ['nullable|integer|min:0', 'settings.gold_threshold'],
+        'expiry_days' => ['nullable|integer|min:0', 'settings.points_expire'],
+        'retention_days' => ['nullable|integer|min:0', 'settings.retention'],
+        'receipt_prefix' => ['nullable|string|max:20', 'settings.prefixes.receipt_prefix'],
+        'invoice_prefix' => ['nullable|string|max:20', 'settings.prefixes.invoice_prefix'],
+        'po_prefix' => ['nullable|string|max:20', 'settings.prefixes.po_prefix'],
+        'return_prefix' => ['nullable|string|max:20', 'settings.prefixes.return_prefix'],
+    ];
+
+    /** @return array<string,string> */
+    private function numericSettingRules(): array
+    {
+        $rules = [];
+        foreach (self::NUMERIC_SETTINGS as $key => [$rule]) {
+            $rules["settings.$key"] = "sometimes|$rule";
+        }
+
+        return $rules;
+    }
+
+    /** @return array<string,string> */
+    private function numericSettingLabels(): array
+    {
+        $labels = [];
+        foreach (self::NUMERIC_SETTINGS as $key => [, $label]) {
+            $labels["settings.$key"] = __($label);
+        }
+
+        return $labels;
     }
 
     /**
@@ -338,7 +428,7 @@ class SettingController extends Controller
             Tax::query()->update(['is_default' => false]);
         }
 
-        Tax::create([
+        $tax = Tax::create([
             'name' => $data['name'],
             'name_ar' => $data['name_ar'] ?? null,
             'rate' => $data['rate'],
@@ -346,6 +436,8 @@ class SettingController extends Controller
             'is_default' => $request->boolean('is_default'),
             'is_active' => true,
         ]);
+
+        AuditLog::record($request->user()->id, 'create', Tax::class, $tax->id, null, $tax->only(self::TAX_AUDITED));
 
         return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', __('messages.tax_added'));
     }
@@ -361,9 +453,17 @@ class SettingController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        // An inactive rate is not offered on the product form, so as the default it would make every
+        // new product tax-free. The owner picks another default first (or unticks Default here).
+        if ($request->boolean('is_default') && ! $request->boolean('is_active', true)) {
+            return back()->withErrors(['is_active' => __('messages.tax_default_inactive')]);
+        }
+
         if ($request->boolean('is_default')) {
             Tax::where('id', '!=', $tax->id)->update(['is_default' => false]);
         }
+
+        $old = $tax->only(self::TAX_AUDITED);
 
         $tax->update([
             'name' => $data['name'],
@@ -374,15 +474,19 @@ class SettingController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ]);
 
+        AuditLog::record($request->user()->id, 'update', Tax::class, $tax->id, $old, $tax->only(self::TAX_AUDITED));
+
         return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', __('messages.tax_updated'));
     }
 
-    public function destroyTax(Tax $tax): RedirectResponse
+    public function destroyTax(Request $request, Tax $tax): RedirectResponse
     {
         if (\App\Models\Product::where('tax_id', $tax->id)->exists()) {
             return back()->withErrors(['delete' => __('messages.tax_in_use')]);
         }
+        $old = $tax->only(self::TAX_AUDITED);
         $tax->delete();
+        AuditLog::record($request->user()->id, 'delete', Tax::class, $tax->id, $old, null);
         return redirect()->route('settings.index', ['tab' => 'tax'])->with('success', __('messages.tax_deleted'));
     }
 

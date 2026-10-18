@@ -59,17 +59,17 @@
                         <x-text-input id="opening_cash_usd" name="opening_cash_usd" type="number" step="0.01" min="0" dir="ltr"
                                       :value="old('opening_cash_usd', 0)" required class="block mt-1 w-full"
                                       x-bind:value="usdTotal() || {{ old('opening_cash_usd', 0) }}"
-                                      x-bind:readonly="hasAnyDenom()" />
-                        <p class="text-xs text-gray-500 mt-1" x-show="hasAnyDenom()">{{ __('shifts.auto_calc') }}</p>
+                                      x-bind:readonly="hasUsdDenom()" />
+                        <p class="text-xs text-gray-500 mt-1" x-show="hasUsdDenom()">{{ __('shifts.auto_calc') }}</p>
                         <x-input-error :messages="$errors->get('opening_cash_usd')" class="mt-2" />
                     </div>
 
                     <div>
                         <x-input-label for="opening_cash_lbp" :value="__('shifts.opening_cash_lbp')" />
-                        <x-text-input id="opening_cash_lbp" name="opening_cash_lbp" type="number" step="1000" min="0" dir="ltr"
+                        <x-text-input id="opening_cash_lbp" name="opening_cash_lbp" type="number" step="any" min="0" dir="ltr"
                                       :value="old('opening_cash_lbp', 0)" required class="block mt-1 w-full"
                                       x-bind:value="lbpTotal() || {{ old('opening_cash_lbp', 0) }}"
-                                      x-bind:readonly="hasAnyDenom()" />
+                                      x-bind:readonly="hasLbpDenom()" />
                         <x-input-error :messages="$errors->get('opening_cash_lbp')" class="mt-2" />
                     </div>
                 </div>
@@ -96,7 +96,9 @@
                 lbp: Object.fromEntries(cfg.lbp.map(d => [d, 0])),
                 usdTotal() { return Object.entries(this.usd).reduce((s, [d, c]) => s + (Number(c) || 0) * Number(d), 0); },
                 lbpTotal() { return Object.entries(this.lbp).reduce((s, [d, c]) => s + (Number(c) || 0) * Number(d), 0); },
-                hasAnyDenom() { return this.usdTotal() > 0 || this.lbpTotal() > 0; },
+                // Each total field locks only on its own currency's count; the server also treats currencies independently.
+                hasUsdDenom() { return this.usdTotal() > 0; },
+                hasLbpDenom() { return this.lbpTotal() > 0; },
             }
         }
     </script>

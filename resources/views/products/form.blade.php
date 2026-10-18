@@ -27,7 +27,19 @@
                     <button type="button" @click="tab='pricing'" :class="tab==='pricing' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_pricing') }}</button>
                     <button type="button" @click="tab='stock'" :class="tab==='stock' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_stock') }}</button>
                     <button type="button" @click="tab='tax'" :class="tab==='tax' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_tax') }}</button>
+                    @if ($isEdit)
+                        <button type="button" @click="tab='movements'" :class="tab==='movements' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_movements') }}</button>
+                    @endif
                 </div>
+
+                {{-- MOVEMENTS (edit only): latest rows of this product's stock history --}}
+                @if ($isEdit)
+                    <div x-show="tab==='movements'" x-cloak class="p-4 space-y-3">
+                        @include('products._movements-table', ['rows' => $movements, 'showProduct' => false])
+                        <a href="{{ route('products.movements', ['product_id' => $product->id, 'from' => '2000-01-01', 'to' => now()->format('Y-m-d')]) }}"
+                           class="inline-block text-sm text-brand-700 hover:underline">{{ __('stock.full_history') }}</a>
+                    </div>
+                @endif
 
                 {{-- BASIC --}}
                 <div x-show="tab==='basic'" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -149,12 +161,20 @@
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('products.lbp_price') }}</label>
-                        <input type="number" name="price_lbp" dir="ltr" step="1000" min="0"
-                               value="{{ old('price_lbp', $product->price_lbp) }}"
+                        {{-- The step is the store's LBP rounding step (0 = no rounding, any amount), not a fixed 1000. A price already stored (or typed) that is not a multiple of it (step raised later, bulk import) gets step="any": a browser refuses to submit a value off its step, which would lock the whole product form. --}}
+                        @php
+                            $lbpStep = app(\App\Services\CurrencyService::class)->getRoundingStep();
+                            $lbpShown = old('price_lbp', $product->price_lbp);
+                            $lbpAnyStep = $lbpStep <= 0 || (filled($lbpShown) && fmod((float) $lbpShown, $lbpStep) != 0);
+                        @endphp
+                        <input type="number" name="price_lbp" dir="ltr" step="{{ $lbpAnyStep ? 'any' : $lbpStep }}" min="0"
+                               value="{{ $lbpShown }}"
                                class="w-full border-gray-300 rounded text-sm" />
                     </div>
                     <div class="flex items-end">
                         <label class="text-sm flex items-center gap-2">
+                            {{-- Every checkbox on this form has a hidden 0 first: an un-ticked box sends nothing, so old() would be empty and the stored/default value would come back after a validation error. --}}
+                            <input type="hidden" name="force_lbp_price" value="0">
                             <input type="checkbox" name="force_lbp_price" value="1" @checked(old('force_lbp_price', $product->force_lbp_price))>
                             {{ __('products.force_lbp') }}
                         </label>
@@ -164,6 +184,7 @@
                 {{-- STOCK --}}
                 <div x-show="tab==='stock'" x-cloak class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="md:col-span-2 flex items-center gap-2">
+                        <input type="hidden" name="track_stock" value="0">
                         <input type="checkbox" name="track_stock" value="1" id="track_stock" @checked(old('track_stock', $product->track_stock))>
                         <label for="track_stock" class="text-sm">{{ __('products.track_stock') }}</label>
                     </div>
@@ -190,10 +211,19 @@
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('reports.cols.unit') }}</label>
+                        @php
+                            $units = ['pcs','kg','g','L','mL','box','pair','set','m'];
+                            $currentUnit = (string) old('unit', $product->unit);
+                        @endphp
                         <select name="unit" class="w-full border-gray-300 rounded text-sm">
-                            @foreach (['pcs','kg','g','L','mL','box','pair','set','m'] as $u)
-                                <option value="{{ $u }}" @selected(old('unit', $product->unit) === $u)>{{ __("enums.unit.$u") }}</option>
+                            @foreach ($units as $u)
+                                <option value="{{ $u }}" @selected($currentUnit === $u)>{{ __("enums.unit.$u") }}</option>
                             @endforeach
+                            {{-- `unit` is a free string (bulk import takes any value): keep a stored unit that is not
+                                 in the list as an extra option, or Save would submit the first one ("pcs"). --}}
+                            @if ($currentUnit !== '' && ! in_array($currentUnit, $units, true))
+                                <option value="{{ $currentUnit }}" selected>{{ $currentUnit }}</option>
+                            @endif
                         </select>
                     </div>
                     <div>
@@ -210,8 +240,9 @@
                         <select name="tax_id" class="w-full border-gray-300 rounded text-sm">
                             <option value="">{{ __('products.no_tax') }}</option>
                             @foreach ($taxes as $t)
-                                <option value="{{ $t->id }}" @selected(old('tax_id', $product->tax_id ?? $defaultTaxId) == $t->id)>
-                                    {{ app()->getLocale() === 'ar' && $t->name_ar ? $t->name_ar : $t->name }} ({{ number_format((float) $t->rate * 100, 2) }}%)
+                                {{-- The default tax is only a suggestion for a NEW product. A saved product with no tax stays "No tax". --}}
+                                <option value="{{ $t->id }}" @selected(old('tax_id', $product->exists ? $product->tax_id : $defaultTaxId) == $t->id)>
+                                    {{ app()->getLocale() === 'ar' && $t->name_ar ? $t->name_ar : $t->name }} ({{ number_format((float) $t->rate * 100, 2) }}%)@unless ($t->is_active) ({{ __('common.inactive') }})@endunless
                                 </option>
                             @endforeach
                         </select>
@@ -219,6 +250,7 @@
 
                     <div class="flex items-end">
                         <label class="text-sm flex items-center gap-2">
+                            <input type="hidden" name="is_taxable" value="0">
                             <input type="checkbox" name="is_taxable" value="1" @checked(old('is_taxable', $product->is_taxable))>
                             {{ __('products.taxable') }}
                         </label>
@@ -226,12 +258,14 @@
 
                     <div class="flex items-center">
                         <label class="text-sm flex items-center gap-2">
+                            <input type="hidden" name="allow_discount" value="0">
                             <input type="checkbox" name="allow_discount" value="1" @checked(old('allow_discount', $product->allow_discount))>
                             {{ __('products.allow_discount') }}
                         </label>
                     </div>
                     <div class="flex items-center">
                         <label class="text-sm flex items-center gap-2">
+                            <input type="hidden" name="is_active" value="0">
                             <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $product->is_active))>
                             {{ __('products.active_sellable') }}
                         </label>

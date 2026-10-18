@@ -11,8 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 use App\Support\Spreadsheet;
-use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class ReportController extends Controller
 {
@@ -71,6 +69,56 @@ class ReportController extends Controller
         });
     }
 
+    /** Two modes on one screen: stock on a date, or movement between two dates. */
+    public function inventoryByDate(Request $request): View|Response
+    {
+        $in = $request->validate([
+            'mode' => 'nullable|in:on_date,movement',
+            'date' => 'nullable|date',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date|after_or_equal:from',
+            'category_id' => 'nullable|integer',
+            'only_moved' => 'nullable|boolean',
+        ]);
+
+        $mode = $in['mode'] ?? 'on_date';
+        $categoryId = ! empty($in['category_id']) ? (int) $in['category_id'] : null;
+        $date = ! empty($in['date']) ? Carbon::parse($in['date'])->startOfDay() : now()->startOfDay();
+        $from = ! empty($in['from']) ? Carbon::parse($in['from'])->startOfDay() : now()->startOfMonth();
+        $to = ! empty($in['to']) ? Carbon::parse($in['to'])->endOfDay() : now()->endOfDay();
+        $onlyMoved = $mode === 'movement' && $request->boolean('only_moved');
+
+        $data = $mode === 'movement'
+            ? $this->reports->inventoryMovement($from, $to, $categoryId, $onlyMoved)
+            : $this->reports->stockOnDate($date, $categoryId);
+
+        $payload = $data + [
+            'mode' => $mode, 'date' => $date, 'from' => $from, 'to' => $to,
+            'category_id' => $categoryId, 'only_moved' => $onlyMoved,
+            'categories' => \App\Models\Category::orderBy('sort_order')->get(['id', 'name', 'name_ar']),
+        ];
+
+        return $this->respond($request, 'reports.inventory-by-date', $payload, 'inventory_by_date', function () use ($data, $mode) {
+            if ($mode === 'movement') {
+                $rows = [$this->headings('product', 'sku', 'unit', 'opening_qty', 'total_in', 'total_out', 'closing_qty')];
+                foreach ($data['rows'] as $r) {
+                    $rows[] = [$r['local_name'], $r['sku'], $r['unit'], $r['opening'], $r['qty_in'], $r['qty_out'], $r['closing']];
+                }
+                $rows[] = [__('reports.cols.totals'), '', '', $data['totals']['opening'], $data['totals']['qty_in'], $data['totals']['qty_out'], $data['totals']['closing']];
+
+                return $rows;
+            }
+
+            $rows = [$this->headings('product', 'sku', 'unit', 'qty_on_date', 'cost', 'retail', 'cost_value', 'retail_value')];
+            foreach ($data['rows'] as $r) {
+                $rows[] = [$r['local_name'], $r['sku'], $r['unit'], $r['qty'], $r['cost_usd'], $r['price_usd'], $r['value_cost'], $r['value_retail']];
+            }
+            $rows[] = [__('reports.cols.totals'), '', '', '', '', '', $data['totals']['value_cost'], $data['totals']['value_retail']];
+
+            return $rows;
+        });
+    }
+
     public function profitLoss(Request $request): View|Response
     {
         [$from, $to] = $this->range($request);
@@ -88,14 +136,44 @@ class ReportController extends Controller
                 [__('reports.pnl.cogs'), -$data['cogs']],
                 [__('reports.pnl.gross_profit'), $data['gross_profit']],
                 [__('reports.cols.margin_pct'), $data['margin_pct']],
+                [__('reports.pnl.fixed_expenses'), -$data['fixed_expenses']],
+                [__('reports.pnl.running_expenses'), -$data['running_expenses']],
+                [__('reports.pnl.net_profit'), $data['net_profit']],
+                [__('reports.pnl.net_margin'), $data['net_margin_pct']],
                 [__('reports.cols.transactions'), $data['txn_count']],
             ];
         });
     }
 
-    private function range(Request $request): array
+    /** Expenses by category: fixed / running subtotals, share of total, and a month-by-month table. */
+    public function expenses(Request $request): View|Response
     {
-        $from = $request->query('from') ? Carbon::parse($request->query('from'))->startOfDay() : now()->subDays(30)->startOfDay();
+        $request->validate(['from' => 'nullable|date', 'to' => 'nullable|date|after_or_equal:from']);
+        [$from, $to] = $this->range($request, now()->startOfMonth());
+        $data = $this->reports->expensesByCategory($from, $to);
+        $payload = array_merge($data, ['from' => $from, 'to' => $to]);
+
+        return $this->respond($request, 'reports.expenses', $payload, 'expenses', function () use ($data) {
+            $head = [__('reports.cols.category'), __('expenses.cols.kind'), __('reports.cols.amount_usd'), __('reports.cols.share_pct'), ...$data['months']];
+            $rows = [$head];
+            foreach ($data['categories'] as $c) {
+                $rows[] = [
+                    $c['local_name'], \App\Support\EnumLabel::get('expense_kind', $c['kind']), $c['total'], $c['pct'],
+                    ...array_map(fn ($m) => $data['monthly'][$c['id']][$m] ?? 0, $data['months']),
+                ];
+            }
+            $blank = array_fill(0, count($data['months']), '');
+            $rows[] = [\App\Support\EnumLabel::get('expense_kind', 'fixed'), '', $data['fixed'], '', ...$blank];
+            $rows[] = [\App\Support\EnumLabel::get('expense_kind', 'running'), '', $data['running'], '', ...$blank];
+            $rows[] = [__('reports.cols.totals'), '', $data['total'], '', ...array_values($data['month_totals'])];
+
+            return $rows;
+        });
+    }
+
+    private function range(Request $request, ?Carbon $default = null): array
+    {
+        $from = $request->query('from') ? Carbon::parse($request->query('from'))->startOfDay() : ($default ?? now()->subDays(30))->copy()->startOfDay();
         $to = $request->query('to') ? Carbon::parse($request->query('to'))->endOfDay() : now()->endOfDay();
         return [$from, $to];
     }
@@ -129,15 +207,9 @@ class ReportController extends Controller
         }
 
         if ($format === 'xlsx') {
-            $rows = $exportRows();
-            $export = new class($rows) implements FromArray, WithHeadings {
-                public function __construct(private readonly array $rows) {}
-                public function array(): array { return array_slice($this->rows, 1); }
-                public function headings(): array { return $this->rows[0]; }
-            };
             // Extension is picked by what this runtime can write — the packaged
             // app has no ext-xmlwriter and cannot produce .xlsx at all.
-            return Spreadsheet::download($export, $filename . '-' . now()->format('Ymd-His'));
+            return Spreadsheet::downloadRows($exportRows(), $filename . '-' . now()->format('Ymd-His'));
         }
 
         return view($view, $payload + ['title' => $title]);

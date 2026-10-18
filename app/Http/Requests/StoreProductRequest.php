@@ -70,8 +70,10 @@ class StoreProductRequest extends FormRequest
         // submits empty inputs as "" → ConvertEmptyStringsToNull makes them null
         // → Eloquent INSERTs NULL → NOT NULL constraint violation on columns
         // like cost_usd, stock_qty, min_stock that have `->default(0)`.
-        foreach (['cost_usd', 'stock_qty', 'min_stock', 'max_stock',
-                  'wholesale_price_usd', 'vip_price_usd', 'price_lbp'] as $numeric) {
+        // Only the NOT NULL columns: wholesale_price_usd, vip_price_usd, price_lbp and
+        // max_stock are nullable (null tier price = retail), so a blank must reach the
+        // update as NULL or an admin could never clear them.
+        foreach (['cost_usd', 'stock_qty', 'min_stock'] as $numeric) {
             if ($this->input($numeric) === null && $this->has($numeric)) {
                 // Field was sent blank — clear it so it's not in validated().
                 $this->offsetUnset($numeric);
