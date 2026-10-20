@@ -195,3 +195,27 @@ Example you gave, in real keys: Starter + override `reports.stock_levels = true`
 - Plan change → next window navigation shows or hides sidebar items without a restart.
 - Settings → Plan & Features in RTL on the packaged app (Cairo font, toggles aligned).
 - A packaged upgrade on a machine that already has `tier` set: toggles show the stored plan, no feature lost.
+
+## 8. As built (differences from the plan above)
+
+All eight decisions went with the recommendations, plus: demo builds have every feature on;
+the Plan & Features tab and its endpoints are never gated by a feature.
+
+- **Labels live in lang files**, not in `config/features.php`: `features.labels.<key, dots as
+  underscores>` and `features.groups.<group>` in `lang/{en,ar}/features.php`, so `LangParityTest`
+  covers them like every other string (`CLAUDE.md` i18n rules).
+- **Locked installs.** Section 4 said the features section would be hidden while the install is
+  locked. As built the tab and both feature routes stay reachable on a locked install, like the
+  tier route: the vendor can change a plan but not its features would be an odd split.
+- **Per-product Movements tab.** The product edit page's movements tab and its "full history" link
+  are the stock-movements history, so they go with `stock_movements`.
+- **Customer inputs on the sale endpoint.** With `loyalty` off, `POST /pos/api/sales` refuses
+  `customer_id`, `payment.amount_credit` and `payment.loyalty_points_redeemed` (403), and holds are
+  stored and recalled as walk-in carts. The sale itself is untouched.
+- **No new default migration.** `2026_10_18_000001_backfill_license_settings` already pins `tier`
+  on installs that predate plans, and an unset tier reads as `premium`; unset `feature_overrides`
+  means none. `FeatureUpgradeAndCatalogueTest` covers it.
+- **Overrides are sparse.** A state equal to the plan's is stored as "no override"; stale or core
+  keys are ignored when read and dropped on the next write.
+- **Memo.** The resolved map is memoised per request and flushed by `Setting`'s saved / deleted
+  hook for `tier` and `feature_overrides`, so even a plain `Setting::set()` is seen at once.
