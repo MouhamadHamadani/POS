@@ -29,6 +29,8 @@ return [
     'settings_saved' => 'تم حفظ الإعدادات.',
     'exchange_rate_invalid' => 'يجب أن يكون سعر الصرف رقماً أكبر من صفر. تم الإبقاء على السعر السابق.',
     'plan_updated' => 'تم تحديث الخطة إلى :plan.',
+    'features_saved' => 'تم حفظ الميزات.',
+    'features_reset' => 'تمت إعادة الميزات إلى خطة :plan.',
     'receipt_template_saved' => 'تم حفظ قالب الإيصال.',
     'permissions_saved' => 'تم حفظ الصلاحيات.',
     'tax_added' => 'تمت إضافة الضريبة.',

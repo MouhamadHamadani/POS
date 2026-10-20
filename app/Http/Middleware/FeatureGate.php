@@ -2,13 +2,14 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\License;
+use App\Facades\Feature;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Refuse a route the install's tier does not include: `feature:returns`.
+ * Refuse a route the install does not have the feature for: `feature:returns`.
+ * What "has" means (plan, per-install override, dependencies) is FeatureService's.
  *
  * Hiding a nav link is cosmetic; this is the part that actually holds, so a
  * Starter till typing /suppliers into the address bar gets turned away rather
@@ -19,7 +20,7 @@ class FeatureGate
 {
     public function handle(Request $request, Closure $next, string $feature): Response
     {
-        if (License::allows($feature)) {
+        if (Feature::enabled($feature)) {
             return $next($request);
         }
 

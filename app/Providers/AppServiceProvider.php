@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Facades\Feature;
 use App\Models\User;
+use App\Services\FeatureService;
 use App\Support\Activation;
 use App\Support\Demo;
 use App\Support\ReleaseEnv;
@@ -19,7 +21,12 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // One resolver per request; Setting's saved hook flushes it when the plan or an override changes.
+        $this->app->singleton(FeatureService::class);
+
+        // Loaded here, not through composer's "files": a stale vendor/autoload.php on a build
+        // machine must not be able to take the helper (and every page that calls it) away.
+        require_once app_path('Support/helpers.php');
     }
 
     public function boot(): void
@@ -29,6 +36,9 @@ class AppServiceProvider extends ServiceProvider
         // (Settings -> Permissions). Defined here so routes can use the built-in
         // `can:` middleware instead of a bespoke one.
         Gate::define('bulk-upload-products', fn (User $user) => $user->canBulkUploadProducts());
+
+        // @feature('key') ... @elsefeature('other') ... @endfeature — same answer as `feature:key` on a route.
+        Blade::if('feature', fn (string $key) => Feature::enabled($key));
 
         // @pdf($text): escaped text, Arabic shaped for dompdf (see App\Support\PdfText).
         Blade::directive('pdf', fn (string $expression) => "<?php echo e(\\App\\Support\\PdfText::shape({$expression})); ?>");

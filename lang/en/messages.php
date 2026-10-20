@@ -30,6 +30,8 @@ return [
     'exchange_rate_invalid' => 'The exchange rate must be a number greater than 0. The previous rate was kept.',
     'permissions_saved' => 'Permissions saved.',
     'plan_updated' => 'Plan updated to :plan.',
+    'features_saved' => 'Features saved.',
+    'features_reset' => 'Features reset to the :plan plan.',
     'receipt_template_saved' => 'Receipt template saved.',
     'tax_added' => 'Tax added.',
     'tax_updated' => 'Tax updated.',
