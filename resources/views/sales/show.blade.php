@@ -174,11 +174,11 @@
                     @foreach ($sale->returns as $r)
                         <tr>
                             <td class="p-3 font-mono text-xs">
-                                @if (\App\Support\License::allows('returns'))
+                                @feature('returns')
                                     <a href="{{ route('returns.show', $r->id) }}" class="text-brand-700 hover:underline"><x-ltr>{{ $r->return_number }}</x-ltr></a>
                                 @else
                                     <x-ltr>{{ $r->return_number }}</x-ltr>
-                                @endif
+                                @endfeature
                             </td>
                             <td class="p-3 text-xs text-gray-600"><x-ltr>{{ $r->created_at->format('Y-m-d H:i') }}</x-ltr></td>
                             <td class="p-3 text-end font-medium"><x-ltr>{{ $money($r->refund_amount_usd) }}</x-ltr></td>

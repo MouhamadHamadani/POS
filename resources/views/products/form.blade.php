@@ -27,13 +27,14 @@
                     <button type="button" @click="tab='pricing'" :class="tab==='pricing' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_pricing') }}</button>
                     <button type="button" @click="tab='stock'" :class="tab==='stock' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_stock') }}</button>
                     <button type="button" @click="tab='tax'" :class="tab==='tax' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_tax') }}</button>
-                    @if ($isEdit)
+                    @if ($isEdit && feature('stock_movements'))
                         <button type="button" @click="tab='movements'" :class="tab==='movements' ? 'border-b-2 border-brand-600 text-brand-700' : 'text-gray-600'" class="px-4 py-3">{{ __('products.tab_movements') }}</button>
                     @endif
                 </div>
 
-                {{-- MOVEMENTS (edit only): latest rows of this product's stock history --}}
-                @if ($isEdit)
+                {{-- MOVEMENTS (edit only): latest rows of this product's stock history.
+                     The history is the stock_movements feature; the rows behind it are still written. --}}
+                @if ($isEdit && feature('stock_movements'))
                     <div x-show="tab==='movements'" x-cloak class="p-4 space-y-3">
                         @include('products._movements-table', ['rows' => $movements, 'showProduct' => false])
                         <a href="{{ route('products.movements', ['product_id' => $product->id, 'from' => '2000-01-01', 'to' => now()->format('Y-m-d')]) }}"

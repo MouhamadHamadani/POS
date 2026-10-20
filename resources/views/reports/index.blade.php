@@ -12,8 +12,8 @@
         </p>
 
         @php
-            // The fourth column is the tier feature each report needs; null ships
-            // on every tier. Hiding a card is cosmetic — the routes are gated by
+            // The fourth column is the feature each report needs; null ships in
+            // every plan. Hiding a card is cosmetic — the routes are gated by
             // `feature:` middleware regardless.
             $reports = array_filter([
                 ['daily_sales', 'reports.daily-sales', '📈', null],
@@ -21,8 +21,8 @@
                 ['stock_levels', 'reports.stock-levels', '📦', 'reports.stock_levels'],
                 ['inventory_by_date', 'reports.inventory-by-date', '🗓️', 'reports.stock_levels'],
                 ['pnl', 'reports.pnl', '💵', 'reports.profit_loss'],
-                ['expenses', 'reports.expenses', '🧾', null],
-            ], fn ($r) => $r[3] === null || \App\Support\License::allows($r[3]));
+                ['expenses', 'reports.expenses', '🧾', 'expenses'],
+            ], fn ($r) => $r[3] === null || feature($r[3]));
         @endphp
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

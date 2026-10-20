@@ -9,12 +9,14 @@
         'loyalty' => __('settings.tabs.loyalty'),
     ];
 
-    // Feature areas this install's tier doesn't include have no settings to show.
-    if (! \App\Support\License::allows('loyalty')) {
+    // Features this install doesn't have have no settings to show.
+    if (! feature('loyalty')) {
         unset($tabs['loyalty']);
     }
-    $tabs['expenses'] = __('settings.tabs.expenses');
-    if (\App\Support\License::allows('receipts.custom_templates')) {
+    if (feature('expenses')) {
+        $tabs['expenses'] = __('settings.tabs.expenses');
+    }
+    if (feature('receipts.custom_templates')) {
         $tabs['receipt_template'] = __('settings.tabs.receipt_template');
     }
 

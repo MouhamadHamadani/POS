@@ -44,6 +44,18 @@ class SaleController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
+        // Attaching a customer, paying on account and redeeming points are the loyalty
+        // feature's. The sale itself is core and goes through without them; only the
+        // customer-bound parts of the request are refused, so a till that has loyalty
+        // switched off under it says so instead of quietly pricing the sale differently.
+        if (! feature('loyalty') && (
+            ($data['customer_id'] ?? null) !== null
+            || (float) ($data['payment']['amount_credit'] ?? 0) > 0
+            || (int) ($data['payment']['loyalty_points_redeemed'] ?? 0) > 0
+        )) {
+            return response()->json(['error' => __('plan.feature_locked')], 403);
+        }
+
         $shift = Shift::where('user_id', $request->user()->id)
             ->where('status', Shift::STATUS_OPEN)
             ->latest('opened_at')
