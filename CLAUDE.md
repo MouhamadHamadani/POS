@@ -55,6 +55,22 @@ about this repo being read-only; they no longer apply.)
   the install is not provisioned). The hash is written with `setRawAttributes()` to
   bypass the `hashed` cast. It also writes `tier = starter` when none is set, because
   an unset tier reads as `pos.default_tier` (`premium`, for pre-tier installs).
+- Plans and features: `config/features.php` is the only place a feature key, its
+  group, `requires`, `core` flag, the plan presets and the plan limits (seats, roles) are
+  declared. A plan (`starter` / `standard` / `premium`, stored in the `tier` setting) is a
+  named preset of keys; a super_admin can also switch single keys per install
+  (`feature_overrides` setting, Settings -> Plan & Features). Ask `Feature::enabled($key)` /
+  `feature($key)` / `@feature('key')` / the `feature:key` route middleware, never a plan
+  name; `License::allows()` is the same call under its old name. Order: demo build (all on) >
+  core > override > plan > `requires`. Only `App\Services\FeatureService` writes `tier` and
+  `feature_overrides` (it audits and enforces dependencies in both directions). Gate a
+  module, not a button inside it: the route group, the sidebar / tab / card that leads to
+  it, and any endpoint behind it. Switching a feature off never stops core flows from
+  writing data (sales still write stock movements). A new key needs: the config entry,
+  presets, `features.labels.*` and `features.groups.*` in both languages, the middleware,
+  and a row in `claude/feature-matrix.md` (`FeatureUpgradeAndCatalogueTest` fails if the
+  matrix and the config drift). The Plan & Features routes carry no `feature:` key on
+  purpose: the vendor is never locked out of them.
 - Four roles: `admin`, `manager`, `cashier`, `stock`, enforced via the
   `role:` route middleware (`App\Http\Middleware\RoleMiddleware`).
 - VAT and other tax rates are stored as `0..1` decimals, not percentages.

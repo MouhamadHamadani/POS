@@ -13,7 +13,7 @@ return [
         'expenses' => 'Expenses',
         'permissions' => 'Permissions',
         'backup' => 'Backup',
-        'plan' => 'Plan',
+        'plan' => 'Plan & Features',
         'receipt_template' => 'Receipt Template',
     ],
     'receipt_template' => [

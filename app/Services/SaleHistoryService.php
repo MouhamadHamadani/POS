@@ -6,7 +6,6 @@ use App\Http\Controllers\ReturnController;
 use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\User;
-use App\Support\License;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -150,6 +149,6 @@ class SaleHistoryService
     /** Same refusal the Returns screens apply, plus the Returns feature being on for this tier. */
     public function canReturn(Sale $sale): bool
     {
-        return License::allows('returns') && ! in_array($sale->status, ReturnController::NOT_RETURNABLE, true);
+        return feature('returns') && ! in_array($sale->status, ReturnController::NOT_RETURNABLE, true);
     }
 }

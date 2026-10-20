@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\FeatureService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +18,19 @@ class Setting extends Model
     protected $casts = [
         'is_public' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        // The plan and the per-install overrides feed the request-scoped feature map; whoever
+        // wrote them, the next read must see the new values.
+        $flush = function (Setting $setting) {
+            if (in_array($setting->key, [FeatureService::SETTING_PLAN, FeatureService::SETTING_OVERRIDES], true)) {
+                app(FeatureService::class)->flush();
+            }
+        };
+        static::saved($flush);
+        static::deleted($flush);
+    }
 
     public static function get(string $key, mixed $default = null): mixed
     {

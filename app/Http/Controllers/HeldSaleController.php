@@ -33,7 +33,7 @@ class HeldSaleController extends Controller
             $holds->map(fn (HeldSale $h) => [
                 'id' => $h->id,
                 'label' => $h->label,
-                'customer' => $h->customer?->only(['id', 'name']),
+                'customer' => feature('loyalty') ? $h->customer?->only(['id', 'name']) : null,
                 'item_count' => is_array($h->cart) ? count($h->cart) : 0,
                 'subtotal' => $this->subtotal($h, $products),
                 'notes' => $h->notes,
@@ -65,7 +65,8 @@ class HeldSaleController extends Controller
 
         $held = HeldSale::create([
             'user_id' => $request->user()->id,
-            'customer_id' => $data['customer_id'] ?? null,
+            // Customers are the loyalty feature's; a hold made without it is a walk-in hold.
+            'customer_id' => feature('loyalty') ? ($data['customer_id'] ?? null) : null,
             'label' => $data['label'] ?? null,
             'cart' => $data['cart'],
             'price_tier' => $data['price_tier'] ?? Customer::GROUP_RETAIL,
@@ -89,10 +90,14 @@ class HeldSaleController extends Controller
         // restore the customer chip without a second round trip.
         $heldSale->loadMissing('customer');
 
+        // A hold made while loyalty was on comes back as a walk-in cart once it is off: the
+        // till has no customer chip to show or remove, and the sale endpoint would refuse it.
+        $withCustomer = feature('loyalty');
+
         $payload = [
             'cart' => $heldSale->cart,
-            'customer_id' => $heldSale->customer_id,
-            'customer' => $heldSale->customer?->posSummary(),
+            'customer_id' => $withCustomer ? $heldSale->customer_id : null,
+            'customer' => $withCustomer ? $heldSale->customer?->posSummary() : null,
             'price_tier' => $heldSale->price_tier,
             'cart_discount' => $heldSale->cart_discount,
             'notes' => $heldSale->notes,

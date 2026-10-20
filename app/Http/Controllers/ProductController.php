@@ -97,7 +97,7 @@ class ProductController extends Controller
     {
         return view('products.form', [
             'product' => $product,
-            'movements' => $movements->recent($product),
+            'movements' => feature('stock_movements') ? $movements->recent($product) : collect(),
             'categories' => Category::orderBy('sort_order')->get(),
             // The product's own tax stays selectable even once the rate is deactivated; otherwise
             // the select would show "No tax" and Save would silently strip it.

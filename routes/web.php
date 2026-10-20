@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DemoController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PosController;
@@ -101,10 +102,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/products/{product}/adjust-stock', [ProductController::class, 'adjustStock'])->name('products.adjust-stock');
         Route::get('/products/check-barcode', [ProductController::class, 'checkBarcode'])->name('products.check-barcode');
 
-        // Stock movements: the read side of inventory_adjustments.
-        Route::get('/products/movements', [StockMovementController::class, 'index'])->name('products.movements');
-        Route::get('/products/movements/export', [StockMovementController::class, 'export'])
-            ->middleware('demo:blocked')->name('products.movements.export');
+        // Stock movements: the read side of inventory_adjustments. Switching the feature off
+        // hides this history only; sales, returns, receiving and adjustments keep writing it.
+        Route::middleware('feature:stock_movements')->group(function () {
+            Route::get('/products/movements', [StockMovementController::class, 'index'])->name('products.movements');
+            Route::get('/products/movements/export', [StockMovementController::class, 'export'])
+                ->middleware('demo:blocked')->name('products.movements.export');
+        });
 
         // Bulk upload. `can:` resolves User::canBulkUploadProducts(): eligible
         // role AND a super-admin having switched that role's toggle on. Declared
@@ -172,15 +176,19 @@ Route::middleware(['auth'])->group(function () {
         });
 
         // Expenses: fixed and running costs, optionally paid out of the open shift's drawer.
-        Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
-        Route::get('/expenses/export', [ExpenseController::class, 'export'])->middleware('demo:blocked')->name('expenses.export');
-        Route::get('/expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
-        Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
-        Route::get('/expenses/duplicate-fixed', [ExpenseController::class, 'duplicateForm'])->name('expenses.duplicate');
-        Route::post('/expenses/duplicate-fixed', [ExpenseController::class, 'duplicateStore'])->name('expenses.duplicate.store');
-        Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
-        Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
-        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+        // Off hides the module only: the shift close screen still lists the drawer expenses
+        // already paid out, because the drawer count has to add up.
+        Route::middleware('feature:expenses')->group(function () {
+            Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+            Route::get('/expenses/export', [ExpenseController::class, 'export'])->middleware('demo:blocked')->name('expenses.export');
+            Route::get('/expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
+            Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+            Route::get('/expenses/duplicate-fixed', [ExpenseController::class, 'duplicateForm'])->name('expenses.duplicate');
+            Route::post('/expenses/duplicate-fixed', [ExpenseController::class, 'duplicateStore'])->name('expenses.duplicate.store');
+            Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
+            Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+            Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+        });
 
         // The index and the daily summary ship on every tier; the three that
         // expose cost, valuation and margin are Standard+.
@@ -193,8 +201,10 @@ Route::middleware(['auth'])->group(function () {
         // Shows value at cost and retail like stock-levels does, so it ships with it.
         Route::get('/reports/inventory/by-date', [ReportController::class, 'inventoryByDate'])
             ->middleware('feature:reports.stock_levels')->name('reports.inventory-by-date');
-        // Expenses ship with the Expenses module on every tier; only the P&L that nets them off is Standard+.
-        Route::get('/reports/financial/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
+        // The expenses report is part of the Expenses module and goes with it; the P&L that
+        // nets them off is Standard+ and requires the module as well.
+        Route::get('/reports/financial/expenses', [ReportController::class, 'expenses'])
+            ->middleware('feature:expenses')->name('reports.expenses');
         Route::get('/reports/financial/pnl', [ReportController::class, 'profitLoss'])
             ->middleware('feature:reports.profit_loss')->name('reports.pnl');
     });
@@ -213,9 +223,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
         // Settings > Expenses: the category list.
-        Route::post('/settings/expense-categories', [ExpenseCategoryController::class, 'store'])->name('settings.expense-categories.store');
-        Route::put('/settings/expense-categories/{category}', [ExpenseCategoryController::class, 'update'])->name('settings.expense-categories.update');
-        Route::delete('/settings/expense-categories/{category}', [ExpenseCategoryController::class, 'destroy'])->name('settings.expense-categories.destroy');
+        Route::middleware('feature:expenses')->group(function () {
+            Route::post('/settings/expense-categories', [ExpenseCategoryController::class, 'store'])->name('settings.expense-categories.store');
+            Route::put('/settings/expense-categories/{category}', [ExpenseCategoryController::class, 'update'])->name('settings.expense-categories.update');
+            Route::delete('/settings/expense-categories/{category}', [ExpenseCategoryController::class, 'destroy'])->name('settings.expense-categories.destroy');
+        });
 
         Route::post('/settings/receipt/test-print', [SettingController::class, 'testPrintReceipt'])->name('settings.receipt.test-print');
 
@@ -260,6 +272,11 @@ Route::middleware(['auth'])->group(function () {
         // Neither control touches the other's setting. Both sit in this group's
         // demo:blocked, so a demo build refuses them server-side.
         Route::post('/settings/plan', [SettingController::class, 'updatePlan'])->name('settings.plan.update');
+        // Per-install feature overrides on top of the plan, and "back to the plan's defaults".
+        // No `feature:` key on these, ever: nothing a plan or override says may lock the
+        // vendor out of the screen that edits them.
+        Route::post('/settings/features', [FeatureController::class, 'update'])->name('settings.features.update');
+        Route::post('/settings/features/reset', [FeatureController::class, 'reset'])->name('settings.features.reset');
         Route::post('/settings/activation', [ActivationController::class, 'activate'])->name('settings.activation.activate');
         Route::post('/settings/activation/deactivate', [ActivationController::class, 'deactivate'])->name('settings.activation.deactivate');
 

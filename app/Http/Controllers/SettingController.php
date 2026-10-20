@@ -92,15 +92,16 @@ class SettingController extends Controller
             $tab = 'general';
         }
 
-        // Tabs the install's tier does not include. The routes behind them are
+        // Tabs of features this install doesn't have. The routes behind them are
         // gated too (feature: middleware); this only stops a hand-typed ?tab=
         // rendering a form that cannot save.
-        $tierLockedTabs = [
+        $featureTabs = [
             'loyalty' => 'loyalty',
+            'expenses' => 'expenses',
             'receipt_template' => 'receipts.custom_templates',
         ];
-        foreach ($tierLockedTabs as $lockedTab => $feature) {
-            if ($tab === $lockedTab && ! License::allows($feature)) {
+        foreach ($featureTabs as $featureTab => $feature) {
+            if ($tab === $featureTab && ! feature($feature)) {
                 $tab = 'general';
             }
         }
@@ -121,7 +122,7 @@ class SettingController extends Controller
 
         $all = Setting::all()->keyBy('key')->map(fn ($s) => $s->value)->toArray();
 
-        $receiptTemplate = License::allows('receipts.custom_templates')
+        $receiptTemplate = feature('receipts.custom_templates')
             ? PrintTemplate::where('type', 'receipt')->orderByDesc('is_default')->first()
             : null;
 
@@ -165,7 +166,7 @@ class SettingController extends Controller
         }
 
         // Loyalty settings are only meaningful on a tier that has loyalty.
-        if ($data['group'] === 'loyalty' && ! License::allows('loyalty')) {
+        if ($data['group'] === 'loyalty' && ! feature('loyalty')) {
             return back()->withErrors(['plan' => __('plan.feature_locked')]);
         }
 

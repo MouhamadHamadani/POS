@@ -170,8 +170,8 @@ class StockMovementService
             $id = $r->reference_id;
             [$r->ref_label, $r->ref_url] = match ($r->reference_type) {
                 'sale' => [$sales[$id] ?? "#{$id}", isset($sales[$id]) && $salesHistory ? route('sales.show', $id) : null],
-                'purchase_order' => [$orders[$id] ?? "#{$id}", isset($orders[$id]) && \App\Support\License::allows('suppliers') ? route('purchases.show', $id) : null],
-                'return' => [$returns[$id] ?? "#{$id}", isset($returns[$id]) && \App\Support\License::allows('returns') ? route('returns.show', $id) : null],
+                'purchase_order' => [$orders[$id] ?? "#{$id}", isset($orders[$id]) && feature('suppliers') ? route('purchases.show', $id) : null],
+                'return' => [$returns[$id] ?? "#{$id}", isset($returns[$id]) && feature('returns') ? route('returns.show', $id) : null],
                 default => [$r->type === InventoryAdjustment::TYPE_OPENING ? '—' : __('stock.manual'), null],
             };
         }
