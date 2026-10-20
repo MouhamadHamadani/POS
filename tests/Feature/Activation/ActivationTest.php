@@ -153,7 +153,7 @@ class ActivationTest extends TestCase
     public function test_the_lock_screen_is_reachable_signed_out_and_is_bilingual(): void
     {
         $this->lockedInstall();
-        User::factory()->admin()->create(); // an account must exist, or RequiresSetup answers first
+        User::factory()->admin()->create(); // a provisioned machine
 
         $this->get('/locked')->assertOk()
             ->assertSee('Your 14-day trial has ended')

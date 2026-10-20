@@ -11,6 +11,7 @@
         ['customers',       '/customers',        'manager,admin',               '👥'],
         ['suppliers',       '/suppliers',        'manager,admin',               '🚚'],
         ['purchases',       '/purchase-orders',  'manager,admin',               '📑'],
+        ['sales',           '/sales',            implode(',', \App\Models\User::SALES_HISTORY_ROLES), '🧾'],
         ['returns',         '/returns',          'cashier,manager,admin',       '↩️'],
         ['expenses',        '/expenses',         'manager,admin',               '💸'],
         ['reports',         '/reports',          'manager,admin',               '📈'],

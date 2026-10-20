@@ -27,8 +27,7 @@ class AboutPageTest extends TestCase
 
     public function test_about_is_behind_auth(): void
     {
-        // A provisioned machine — otherwise RequiresSetup wins and sends
-        // every route to /setup, which is its own tested behaviour.
+        // A provisioned machine, as in production.
         User::factory()->create();
 
         $this->get('/about')->assertRedirect('/login');

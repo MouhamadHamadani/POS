@@ -94,10 +94,7 @@ class SaleController extends Controller
 
     public function show(Request $request, Sale $sale): JsonResponse
     {
-        $user = $request->user();
-        $isOwner = $sale->user_id === $user->id;
-        $isManagerial = $user->isManagerial();
-        abort_unless($isOwner || $isManagerial, 403);
+        abort_unless($sale->canBeSeenBy($request->user()), 403);
 
         return response()->json($sale->load('items', 'customer', 'user:id,name'));
     }

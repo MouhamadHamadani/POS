@@ -1,6 +1,13 @@
 <x-guest-layout>
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
+    {{-- No account exists, so no form on this page can succeed. See SuperAdmin::unprovisioned(). --}}
+    @if (\App\Support\SuperAdmin::unprovisioned())
+        <div role="alert" class="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            {{ __('auth.not_provisioned') }}
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('login') }}">
         @csrf
 

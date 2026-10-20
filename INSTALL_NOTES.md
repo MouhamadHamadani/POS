@@ -1,8 +1,8 @@
 # LebaSouk — Windows Install Notes
 
 Applies to the **unsigned Windows x64 build** produced from this repository.
-Read the whole page before touching the client's machine — the first-login step
-matters, and there is no way to redo it quietly afterwards.
+Read the whole page before touching the client's machine — the first sign-in in
+§4 starts the trial clock, and there is no way to redo that quietly afterwards.
 
 ---
 
@@ -17,7 +17,7 @@ matters, and there is no way to redo it quietly afterwards.
 | Installer | `LebaSouk-1.0.0-setup.exe` (NSIS), in `dist/` |
 | Code signing | **None.** See §3. |
 | Auto-update | **Disabled.** See §6. |
-| Accounts | **None.** No credential ships in the build; the owner account is created on the machine at first run (§4) |
+| Accounts | **One:** the provider `super_admin`, built in and created on first launch (§4). No client account ships; the password is a hash in the installer's `.env`, never plain text |
 | Build mode | `APP_ENV=production`, `APP_DEBUG=false` |
 | Time zone | `Asia/Beirut` — receipts and report day boundaries are local, not UTC |
 | Sample data | **None.** Config only — VAT, exchange rate, currencies, receipt settings |
@@ -41,7 +41,7 @@ matters, and there is no way to redo it quietly afterwards.
    **LebaSouk**.
 5. Launch it. The first start runs migrations and lays down config defaults, so
    it takes a few seconds longer than later starts (about 20–30 seconds on a
-   cold start). You land on the **setup screen**, not the login page — see §4.
+   cold start). You land on the normal **login page** — see §4.
 
 ---
 
@@ -74,32 +74,48 @@ warning permanently. That is the fix; everything above is a workaround.
 
 ---
 
-## 4. First run — setting up the machine
+## 4. First run — the built-in provider account
 
-**The build contains no accounts and no password.** Nothing is seeded, so there
-is no shared credential to extract from the installer and no two machines start
-out the same. The first launch opens a one-time **setup screen** instead of the
-login page — every route redirects there until an account exists.
+**There is no setup screen.** The build carries one account, the provider
+`super_admin`, created automatically on the first launch (and again on any later
+launch that finds none). Its username and display name come from
+`POS_SUPER_ADMIN_USERNAME` (default `buildsyntax`) and `POS_SUPER_ADMIN_NAME`;
+its password was agreed in advance and ships only as a **bcrypt hash** in
+`POS_SUPER_ADMIN_PASSWORD_HASH`. The plain password is in neither the repository,
+the `.env` nor the installer. The first launch opens on the normal login page.
+
+Generate the hash once, on your own machine, and put it in the `.env` the
+installer is built from (single-quoted — it contains `$`):
+
+```bash
+php artisan tinker --execute="echo bcrypt('the-password');"
+```
+
+`native:build` refuses to package a non-demo build whose `.env` has no valid hash.
+The hash does travel inside the installer, so the password behind it must be long
+and unique — a weak one can be guessed offline from the hash.
+
+If a machine ever opens on **"This installation is not provisioned"**, the hash
+was missing or the username belongs to another account; the reason is in the log
+(§5). Fix the `.env`, then run `php artisan pos:ensure-super-admin` or relaunch.
 
 Do this with the machine in front of you, before the client sits down:
 
-1. Launch the app. You land on **Set up this machine**.
-2. Create the **provider account** and pick the **Plan** the machine was sold
-   (Starter, Standard or Premium — Starter is pre-selected). The account is the
-   `super_admin` — yours, not the store's: the one that can take, download,
-   restore and delete database backups, set the plan and activate the install
-   (§4a), and the only one that can create or edit other admin-tier accounts.
-   Choose the password yourself; nothing is pre-filled.
-3. The setup screen closes permanently the moment that account is created. It
-   returns 404 from then on, so it can never be used to mint a second
-   `super_admin`. **The 14-day trial starts at this moment** (§4a). Further
-   accounts come from **Users → New User**.
-4. Go to **Users → New User** and create the client's own account with role
+1. Launch the app and sign in with the agreed provider username and password.
+   This is the `super_admin` — yours, not the store's: the one that can take,
+   download, restore and delete database backups, set the plan and activate the
+   install (§4a), and the only one that can create or edit other admin-tier
+   accounts.
+2. **The 14-day trial starts at this first sign-in** (§4a), not when the
+   installer was staged. A fresh install is on the **Starter** plan; set the plan
+   the machine was sold under **Settings → Plan**. If you change the password
+   inside the app, later launches never reset it.
+3. Go to **Users → New User** and create the client's own account with role
    **Admin**. This is the store-owner account they use day to day. Let the
    client choose its password.
-5. Have the client log in as their new `admin` account and confirm they can
+4. Have the client log in as their new `admin` account and confirm they can
    reach Products, Settings, Reports, Customers, Suppliers and Purchase Orders.
-6. Create their staff accounts (`manager` / `cashier` / `stock`) — the client's
+5. Create their staff accounts (`manager` / `cashier` / `stock`) — the client's
    `admin` can do this themselves from the same screen.
 
 What the client's `admin` account **cannot** do, by design:
@@ -117,7 +133,7 @@ active admin-tier user.
 ### 4a. The 14-day trial and activation
 
 This is a paid, perpetual-licence build. A **fresh** install runs normally for
-14 days from the end of setup. Unless you have activated it by then, it **locks**:
+14 days from the provider's first sign-in. Unless you have activated it by then, it **locks**:
 every screen is replaced by "Your 14-day trial has ended — please contact your
 provider" (English and Arabic). Nothing is deleted or hidden at the data level —
 the database is untouched and everything is back the instant you activate.
@@ -144,22 +160,23 @@ the database is untouched and everything is back the instant you activate.
 - **Existing installs do not lock.** An install with no activation record — every
   machine already in the field — is treated as activated, and the next update
   writes that down (`activation_status`, `installed_at` and `tier` rows, only
-  where missing). Only an install that went through setup on this version starts
-  a trial.
+  where missing). Only a fresh install, whose provider account signs in for the
+  first time on this version, starts a trial.
 - **Date problems.** If the system date is more than a day earlier than the last
   time the app ran, a *trial* install shows the lock screen with a "check the
   date" message until the date is corrected (it is not a permanent lock). If a
-  client's clock was ever far wrong at setup, activate, or the trial will read
-  as locked until real time catches up.
+  client's clock was ever far wrong at your first sign-in, activate, or the trial
+  will read as locked until real time catches up.
 - **What it is not.** The status is a setting in the local SQLite file, so anyone
   who opens that file can set it to `activated`. It stops a non-technical client,
   not a determined one. A vendor-signed activation code is the upgrade if that
   ever matters (see the note on `Activation::activate()`).
 
-> **If you delete every account**, the machine becomes unprovisioned again and
-> the setup screen comes back. That is the recovery path if the owner password
-> is ever lost, but it is also why the app will not let you remove the last
-> admin-tier user from inside the UI.
+> **If you delete every account**, the next launch recreates the built-in
+> `super_admin` from the `.env` hash, so the provider can always get back in. It
+> only does so while no `super_admin` exists; a password you changed inside the
+> app is never reset. The app still will not let you remove the last admin-tier
+> user from inside the UI.
 
 ### The till starts empty
 
@@ -176,14 +193,16 @@ php artisan pos:reset-data
 
 It clears the catalogue, all transactional history and every account, keeps
 settings/taxes/currencies, and prints what it is about to delete before asking
-to confirm. `--keep-users` spares the accounts; `--force` skips the prompt.
+to confirm. `--keep-users` spares the accounts; `--force` skips the prompt. The
+built-in `super_admin` is recreated on the next launch (§4).
 
 ### If the machine has run an older build before
 
-Setup only appears when the users table is empty. A machine that already ran an
-earlier build keeps its existing accounts and goes straight to the login screen —
-including, if it ran a build from before this change, the old seeded `admin`
-account whose password was published in this file.
+The built-in account is only created while no `super_admin` exists. A machine
+that already ran an earlier build keeps its existing accounts, passwords and plan
+untouched and goes straight to the login screen — including, if it ran a build
+from before the admin/super-admin split, the old seeded `admin` account whose
+password was published in this file.
 
 **On any machine that ever ran one of those builds, change that account's
 password (or delete the account) before handing it over.** Check with the
@@ -193,7 +212,7 @@ reach backups. Either:
 
 - wipe `%APPDATA%\lebasouk\database\database.sqlite` to start clean — this
   destroys all sales history on that machine, so take a copy first, and the app
-  will open the setup screen on next launch; or
+  will recreate the built-in `super_admin` on next launch; or
 - promote the account by hand, once, against that same file:
   `UPDATE users SET role = 'super_admin' WHERE username = 'admin';`
 

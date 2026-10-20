@@ -11,7 +11,9 @@ use App\Models\Setting;
 use App\Models\Shift;
 use App\Models\User;
 use App\Support\License;
+use App\Support\SuperAdmin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
@@ -330,24 +332,14 @@ class TierEnforcementTest extends TestCase
         $this->assertSame('starter', License::tier());
     }
 
-    public function test_setup_records_the_tier_picked_on_the_first_run_screen(): void
+    public function test_a_freshly_provisioned_install_lands_on_starter(): void
     {
-        $this->post('/setup', [
-            'name' => 'Owner', 'username' => 'owner',
-            'password' => 'a-real-password', 'password_confirmation' => 'a-real-password',
-            'language' => 'en', 'tier' => 'standard',
-        ])->assertRedirect(route('dashboard'));
+        config([
+            'pos.demo_mode' => false,
+            'pos.super_admin.password_hash' => Hash::make('a-real-password'),
+        ]);
 
-        $this->assertSame('standard', License::tier());
-    }
-
-    public function test_a_setup_that_skips_the_picker_lands_on_starter(): void
-    {
-        $this->post('/setup', [
-            'name' => 'Owner', 'username' => 'owner',
-            'password' => 'a-real-password', 'password_confirmation' => 'a-real-password',
-            'language' => 'en',
-        ])->assertRedirect(route('dashboard'));
+        SuperAdmin::ensure();
 
         $this->assertSame('starter', License::tier());
     }

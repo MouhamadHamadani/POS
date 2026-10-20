@@ -124,6 +124,18 @@ class User extends Authenticatable
         return $this->isManagerial() || (bool) Setting::get('cashier_can_change_price_tier', true);
     }
 
+    /**
+     * Roles that get the Sales History screens (route middleware, sidebar and the
+     * receipt-number links all read this list). `stock` is left out: it has no
+     * sales screens elsewhere either. Which sales a role may open is Sale::canBeSeenBy.
+     */
+    public const SALES_HISTORY_ROLES = [self::ROLE_ADMIN, self::ROLE_MANAGER, self::ROLE_CASHIER];
+
+    public function canViewSalesHistory(): bool
+    {
+        return $this->isSuperAdmin() || $this->hasRole(...self::SALES_HISTORY_ROLES);
+    }
+
     /** Roles that may only be created or edited by a super-admin. */
     public function isPrivileged(): bool
     {

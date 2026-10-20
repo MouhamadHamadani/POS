@@ -28,6 +28,8 @@ return [
     'not_valid' => 'NOT A VALID RECEIPT',
     'test_ar' => 'طباعة تجريبية — ليست فاتورة',
     'demo_ar' => 'إيصال تجريبي — غير صالح',
+    'copy' => 'COPY',
+    'copy_note' => 'Reprint — not the original',
     'print' => 'Print',
     'close' => 'Close',
 ];

@@ -19,7 +19,7 @@ class LocaleSwitchTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // RequiresSetup funnels everything to /setup until an account exists.
+        // A provisioned machine; the tests that want none delete it.
         User::factory()->create(['language' => 'en']);
     }
 
@@ -105,23 +105,11 @@ class LocaleSwitchTest extends TestCase
             ->assertSee('<option value="ar" selected>', false);
     }
 
-    public function test_first_run_setup_seeds_the_store_language(): void
-    {
-        User::query()->delete();
-
-        $this->post('/setup', [
-            'name' => 'Owner', 'username' => 'owner', 'password' => 'a-real-password',
-            'password_confirmation' => 'a-real-password', 'language' => 'ar',
-        ])->assertRedirect(route('dashboard'));
-
-        $this->assertSame('ar', Setting::get('language'));
-    }
-
-    public function test_the_setup_screen_can_switch_language_before_any_account_exists(): void
+    public function test_the_login_screen_can_switch_language_before_any_account_exists(): void
     {
         User::query()->delete();
 
         $this->get('/locale/ar')->assertRedirect()->assertSessionHas('locale', 'ar');
-        $this->withSession(['locale' => 'ar'])->get('/setup')->assertOk()->assertSee('dir="rtl"', false);
+        $this->withSession(['locale' => 'ar'])->get('/login')->assertOk()->assertSee('dir="rtl"', false);
     }
 }

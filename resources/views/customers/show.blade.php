@@ -102,7 +102,7 @@
                 <tbody class="divide-y">
                 @forelse ($sales as $s)
                     <tr>
-                        <td class="py-2 font-mono text-xs"><x-ltr>{{ $s->receipt_number }}</x-ltr></td>
+                        <td class="py-2 font-mono text-xs"><x-receipt-link :sale="$s" /></td>
                         <td class="text-xs">{{ $s->paymentMethodLabel() }}</td>
                         <td class="text-end font-medium"><x-ltr>${{ number_format((float) $s->total_usd, 2) }}</x-ltr></td>
                         <td class="text-end text-xs">{{ $s->statusLabel() }}</td>

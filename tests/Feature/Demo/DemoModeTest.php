@@ -73,7 +73,7 @@ class DemoModeTest extends TestCase
     public function test_the_banner_is_on_the_login_screen(): void
     {
         $this->demo();
-        User::factory()->admin()->create(); // otherwise every route funnels to /setup
+        User::factory()->admin()->create(); // a provisioned machine
 
         $this->get('/login')
             ->assertOk()

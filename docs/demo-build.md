@@ -10,8 +10,8 @@ as it does for a paying client, because demonstrating that is the point.
 | Area | Production | Demo (`POS_DEMO_MODE=true`) |
 |---|---|---|
 | Database | `%APPDATA%\lebasouk\database\database.sqlite`, persistent | `%APPDATA%\lebasouk-demo\database\database.sqlite`, **replaced from `resources/demo/demo-template.sqlite` on every launch** |
-| Accounts | none shipped; owner created once at `/setup` | `demo_admin` / `demo_manager` / `demo_cashier` / `demo_stock`, shared password, listed on the login screen |
-| `super_admin` | created by `/setup` | never created — `/setup` is closed because accounts already exist |
+| Accounts | the built-in provider `super_admin` only, created on launch from `POS_SUPER_ADMIN_*` | `demo_admin` / `demo_manager` / `demo_cashier` / `demo_stock`, shared password, listed on the login screen |
+| `super_admin` | built in (`App\Support\SuperAdmin::ensure()`) | never created — `ensure()` returns early when `POS_DEMO_MODE` is on |
 | Banner | none | amber "DEMO MODE" strip, bilingual, on every screen |
 | Window / app title | `LebaSouk` | `LebaSouk (Demo)`, installed as `LebaSouk Demo` |
 | Receipts | normal | printable, with a bilingual `DEMO RECEIPT — NOT A VALID RECEIPT` block top and bottom |

@@ -162,10 +162,14 @@ class StockMovementService
         $orders = $this->numbers($rows, 'purchase_order', PurchaseOrder::class, 'po_number');
         $returns = $this->numbers($rows, 'return', ReturnTransaction::class, 'return_number');
 
+        // Stock Movements is for admin/manager/stock; of those only the first two have Sales History,
+        // and both see every sale, so no per-sale ownership check is needed here.
+        $salesHistory = auth()->user()?->canViewSalesHistory() ?? false;
+
         foreach ($rows as $r) {
             $id = $r->reference_id;
             [$r->ref_label, $r->ref_url] = match ($r->reference_type) {
-                'sale' => [$sales[$id] ?? "#{$id}", isset($sales[$id]) ? route('receipts.print', ['sale' => $id, 'auto' => 0]) : null],
+                'sale' => [$sales[$id] ?? "#{$id}", isset($sales[$id]) && $salesHistory ? route('sales.show', $id) : null],
                 'purchase_order' => [$orders[$id] ?? "#{$id}", isset($orders[$id]) && \App\Support\License::allows('suppliers') ? route('purchases.show', $id) : null],
                 'return' => [$returns[$id] ?? "#{$id}", isset($returns[$id]) && \App\Support\License::allows('returns') ? route('returns.show', $id) : null],
                 default => [$r->type === InventoryAdjustment::TYPE_OPENING ? '—' : __('stock.manual'), null],

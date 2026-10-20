@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Support\Activation;
 use App\Support\Demo;
 use App\Support\ReleaseEnv;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->guardReleaseBuilds();
         $this->repatchNativePhpBeforeBuild();
+        $this->startTrialOnFirstVendorLogin();
 
         // Runs after NativePHP has rewritten the connection to the packaged
         // app's data directory (package providers boot before app providers),
@@ -70,6 +73,22 @@ class AppServiceProvider extends ServiceProvider
 
         DB::statement('PRAGMA foreign_keys=ON;');
         DB::statement('PRAGMA busy_timeout=5000;');
+    }
+
+    /**
+     * The 14-day trial clock starts the first time the vendor's super_admin signs
+     * in — when the machine is actually being set up, not when the installer was
+     * staged days earlier. Until then the client has no account to use anyway.
+     * Activation::startTrial() is idempotent, so every later sign-in is a no-op,
+     * and an install that already has a status or a start date keeps both.
+     */
+    private function startTrialOnFirstVendorLogin(): void
+    {
+        Event::listen(function (Login $event) {
+            if ($event->user instanceof User && $event->user->isSuperAdmin()) {
+                Activation::startTrial();
+            }
+        });
     }
 
     /**

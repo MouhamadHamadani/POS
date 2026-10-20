@@ -18,7 +18,7 @@ use Illuminate\View\View;
 class ReturnController extends Controller
 {
     /** A sale in one of these states cannot take a return: not found by "Find sale", refused by create()/store(). */
-    private const NOT_RETURNABLE = [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED];
+    public const NOT_RETURNABLE = [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED];
 
     public function __construct(
         private readonly InventoryService $inventory,
@@ -27,7 +27,7 @@ class ReturnController extends Controller
 
     public function index(Request $request): View
     {
-        $q = ReturnTransaction::with('sale:id,receipt_number', 'user:id,name', 'approver:id,name');
+        $q = ReturnTransaction::with('sale:id,receipt_number,user_id', 'user:id,name', 'approver:id,name');
         if ($status = $request->query('status')) {
             $q->where('status', $status);
         }

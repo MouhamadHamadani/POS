@@ -67,6 +67,18 @@ return [
     'demo_password' => env('POS_DEMO_PASSWORD', 'demo1234'),
 
     /**
+     * The vendor's built-in super_admin, created on launch by
+     * App\Support\SuperAdmin::ensure(). The password is a bcrypt HASH — never
+     * the plain password — and has no default: with none, no account is made
+     * and the login page says the install is not provisioned.
+     */
+    'super_admin' => [
+        'username' => env('POS_SUPER_ADMIN_USERNAME', 'buildsyntax'),
+        'name' => env('POS_SUPER_ADMIN_NAME', 'Build Syntax Support'),
+        'password_hash' => env('POS_SUPER_ADMIN_PASSWORD_HASH'),
+    ],
+
+    /**
      * Pricing tiers, as published on the marketing site. One perpetual licence
      * per install: no key, no activation, no expiry — a super_admin picks the
      * tier on the Plan tab (Settings) and App\Support\License reads it back.
@@ -110,8 +122,8 @@ return [
     /**
      * What License::tier() resolves to when the `tier` setting has never been
      * written — i.e. every install shipped before tiers existed. Premium keeps
-     * those machines fully unlocked until someone sets their real tier. New
-     * installs get an explicit pick in the setup wizard instead.
+     * those machines fully unlocked until someone sets their real tier. A new
+     * install does not rely on this: SuperAdmin::ensure() writes `starter`.
      */
     'default_tier' => 'premium',
 

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Setting;
 use App\Support\Demo;
+use App\Support\SuperAdmin;
 use Illuminate\Support\Facades\Artisan;
 use Native\Laravel\Contracts\ProvidesPhpIni;
 use Native\Laravel\Facades\Menu;
@@ -119,10 +120,10 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      * %APPDATA%/<app>/database/database.sqlite is empty. Bring the schema up to
      * date and lay down config defaults.
      *
-     * Deliberately seeds no user and no sample catalogue: a shipped build must
-     * not carry a known credential, and a client's till must not open on
-     * somebody's demo products. The owner account is created on the machine
-     * through /setup.
+     * Seeds no sample catalogue (a client's till must not open on somebody's
+     * demo products) and no client account. The one account it creates is the
+     * vendor's built-in super_admin, from a bcrypt hash in POS_SUPER_ADMIN_*
+     * (see App\Support\SuperAdmin) — so a fresh install opens on the login page.
      *
      * A demo build instead restores the seeded template over the runtime DB
      * first, so every launch starts from the same catalogue no matter what the
@@ -157,6 +158,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             if (Setting::query()->doesntExist()) {
                 Artisan::call('db:seed', ['--force' => true]);
             }
+
+            // Outside that condition on purpose: `pos:reset-data` wipes the users
+            // but keeps the settings, so this is what brings the account back. A
+            // no-op whenever a super_admin already exists, and in demo builds.
+            SuperAdmin::ensure();
         } catch (\Throwable $e) {
             // Swallow — we don't want a seed failure to prevent the window from opening.
             // The user can run `php artisan native:migrate` and `php artisan db:seed` manually.

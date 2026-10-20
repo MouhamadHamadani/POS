@@ -9,9 +9,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Once the 14-day trial has lapsed, or the vendor has locked the install by hand
- * (see App\Support\Activation), every route funnels to the lock screen. Runs in the `web` group for the same reason
- * RequiresSetup does: a deep link, a restored Electron window or a bookmark
- * must not slip past by naming a route nobody thought to guard.
+ * (see App\Support\Activation), every route funnels to the lock screen. Runs in
+ * the `web` group rather than on named routes: a deep link, a restored Electron
+ * window or a bookmark must not slip past by naming a route nobody thought to guard.
  *
  * Only a super_admin can still do anything: the Plan tab and its activate
  * action. Nothing is deleted or hidden at the data level — the block is purely

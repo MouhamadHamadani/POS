@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Sale;
 use App\Models\Setting;
 use App\Services\ReceiptPrintService;
@@ -20,12 +21,17 @@ class ReceiptController extends Controller
      * when `?format=a4` (or, with no format given, when the receipt_format setting
      * says so). Cashiers may only print receipts for sales they processed;
      * managers/admins can reprint anyone's.
+     *
+     * `?copy=1` marks the print as a reprint: the page carries the COPY notice and the
+     * reprint is audited. The sell screen's first print after a sale never sends it.
      */
     public function show(Request $request, Sale $sale): View|Response
     {
         $data = $this->data($request, $sale);
+        $format = $this->prints->resolveFormat($request->query('format'));
+        $this->auditReprint($request, $sale, $format);
 
-        if ($this->prints->resolveFormat($request->query('format')) === ReceiptPrintService::FORMAT_A4) {
+        if ($format === ReceiptPrintService::FORMAT_A4) {
             return view('receipts.a4', $data + ['inv' => $this->prints->invoice($sale), 'embedded' => false]);
         }
 
@@ -52,14 +58,36 @@ class ReceiptController extends Controller
             view('receipts.a4', $data + ['inv' => $this->prints->invoice($sale), 'embedded' => true, 'autoPrint' => false])->render()
         );
 
+        // Only a print that actually went out is a reprint; when it did not, the sell screen
+        // falls back to show() with the same flag, which logs it instead.
+        if ($printed) {
+            $this->auditReprint($request, $sale, ReceiptPrintService::FORMAT_A4);
+        }
+
         return response()->json(['printed' => $printed]);
+    }
+
+    /** A copy is a reprint, and every reprint is logged: who, which receipt, which format, from which screen. */
+    private function auditReprint(Request $request, Sale $sale, string $format): void
+    {
+        if (! $request->boolean('copy')) {
+            return;
+        }
+
+        $source = $request->input('src');
+
+        AuditLog::record($request->user()->id, 'receipt_reprint', Sale::class, $sale->id, null, [
+            'receipt' => $sale->receipt_number,
+            'format' => $format,
+            'source' => in_array($source, ['history', 'detail'], true) ? $source : 'direct',
+        ]);
     }
 
     /** The checks and data both formats share: one ownership rule, one set of queries. */
     private function data(Request $request, Sale $sale): array
     {
         $user = $request->user();
-        abort_unless($sale->user_id === $user->id || $user->isManagerial(), 403);
+        abort_unless($sale->canBeSeenBy($user), 403);
 
         $sale->load('items.product:id,name,name_ar,sku,barcode,unit', 'customer', 'user:id,name');
 
@@ -77,6 +105,7 @@ class ReceiptController extends Controller
             'footer' => (string) Setting::get('receipt_footer', ''),
             'receiptLang' => (string) Setting::get('receipt_language', 'bilingual'),
             'autoPrint' => $request->boolean('auto', true),
+            'isCopy' => $request->boolean('copy'),
         ];
     }
 }

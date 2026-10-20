@@ -229,10 +229,10 @@ class RolePrivilegeTest extends TestCase
     }
 
     /**
-     * The first-run account is no longer seeded — a shipped build carries no
-     * credential at all, and the owner provisions the machine through /setup.
-     * That flow is covered by Tests\Feature\Setup\FirstRunSetupTest; what
-     * matters here is that the seeders leave no account behind.
+     * No credential is seeded without a configured hash: the vendor's super_admin
+     * comes from POS_SUPER_ADMIN_PASSWORD_HASH (covered by
+     * Tests\Feature\Setup\BuiltInSuperAdminTest), and with none set the seeders
+     * must leave no account behind — no guessable fallback password.
      */
     public function test_the_seeders_create_no_account_at_all(): void
     {

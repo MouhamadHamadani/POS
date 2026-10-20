@@ -5,6 +5,7 @@
     $langs = $receiptLang === 'bilingual' ? ['en', 'ar'] : [$receiptLang];
     $isDemo = \App\Support\Demo::enabled();
     $isTest = $isTest ?? false; // Settings → Receipt test print; real sales never pass it
+    $isCopy = $isCopy ?? false; // ?copy=1: a reprint from Sales History — see ReceiptController
 
     // A label (or value) in the receipt language(s). Bilingual prints "English / العربية";
     // the Arabic half is its own inline-block, so on 58 mm paper it wraps as a unit onto a second line.
@@ -69,17 +70,19 @@
 <body>
     @php
         // Wording shared with App\Services\ReceiptRenderer, which stamps the same
-        // notice onto a Premium custom template. Only the markup differs.
-        $notice = \App\Services\ReceiptRenderer::noticeLines($isTest, $isDemo);
+        // banners onto a Premium custom template. Only the markup differs.
+        $banners = \App\Services\ReceiptRenderer::banners($isTest, $isDemo, $isCopy);
     @endphp
 
-    {{-- A demo/test printout must never be able to pass as a transaction record.
+    {{-- A demo/test printout, or a reprint, must never be able to pass as the original.
          Both languages, always — whatever receipt language is set. Short lines so it
          still fits 58mm (32 char) paper, not just 80mm. --}}
-    @if ($notice)
-        <div class="center bold">*** {{ $notice['label'] }} ***</div>
-        <div class="center bold">{{ $notice['en'] }}</div>
-        <div class="center bold" dir="rtl">{{ $notice['ar'] }}</div>
+    @if ($banners)
+        @foreach ($banners as $b)
+            <div class="center bold">*** {{ $b['label'] }} ***</div>
+            <div class="center bold">{{ $b['en'] }}</div>
+            <div class="center bold" dir="rtl">{{ $b['ar'] }}</div>
+        @endforeach
         <hr>
     @endif
 
@@ -184,16 +187,18 @@
 
     <div class="center small" style="margin-top: 6mm;">{!! $L('receipt_no') !!} <bdi dir="ltr">{{ $sale->receipt_number }}</bdi></div>
 
-    @if ($notice)
+    @if ($banners)
         <hr>
-        <div class="center bold">*** {{ $notice['label'] }} ***</div>
-        <div class="center bold">{{ $notice['en'] }}</div>
-        <div class="center bold" dir="rtl">{{ $notice['ar'] }}</div>
+        @foreach ($banners as $b)
+            <div class="center bold">*** {{ $b['label'] }} ***</div>
+            <div class="center bold">{{ $b['en'] }}</div>
+            <div class="center bold" dir="rtl">{{ $b['ar'] }}</div>
+        @endforeach
     @endif
 
     <div class="actions">
         <button type="button" onclick="window.print()">{{ __('receipt.print') }}</button>
-        <button type="button" onclick="window.close()">{{ __('receipt.close') }}</button>
+        <button type="button" onclick="if(window.opener||history.length<2){window.close()}else{history.back()}">{{ __('receipt.close') }}</button>
     </div>
 
     @if ($autoPrint)
@@ -201,7 +206,7 @@
             window.addEventListener('load', () => {
                 setTimeout(() => {
                     window.print();
-                    setTimeout(() => window.close(), 500);
+                    setTimeout(() => { if (window.opener) window.close(); }, 500);
                 }, 250);
             });
         </script>

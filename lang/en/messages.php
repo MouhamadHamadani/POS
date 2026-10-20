@@ -26,7 +26,6 @@ return [
     'need_one_admin' => 'There must be at least one active admin.',
     'user_activated' => 'Activated \':username\'.',
     'user_deactivated' => 'Deactivated \':username\'.',
-    'setup_done' => 'Provider account \':username\' created. The 14-day trial has started and this setup screen is now closed.',
     'settings_saved' => 'Settings saved.',
     'exchange_rate_invalid' => 'The exchange rate must be a number greater than 0. The previous rate was kept.',
     'permissions_saved' => 'Permissions saved.',

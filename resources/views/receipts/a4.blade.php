@@ -11,7 +11,7 @@
     $embedded = $embedded ?? false;
     $rtl = app()->getLocale() === 'ar';
     $isDemo = \App\Support\Demo::enabled();
-    $notice = \App\Services\ReceiptRenderer::noticeLines(false, $isDemo);
+    $banners = \App\Services\ReceiptRenderer::banners(false, $isDemo, $isCopy ?? false);
 
     // "English / العربية" — the Arabic half is its own inline-block so it wraps as a unit.
     $L = function (string $key, array $replace = [], string $group = 'invoice') {
@@ -105,15 +105,15 @@
 @unless ($embedded)
     <div class="actions">
         <button type="button" onclick="window.print()">{{ __('receipt.print') }}</button>
-        <button type="button" onclick="window.close()">{{ __('receipt.close') }}</button>
+        <button type="button" onclick="if(window.opener||history.length<2){window.close()}else{history.back()}">{{ __('receipt.close') }}</button>
     </div>
 @endunless
 
 <main id="invoice">
     <div data-part="top">
-        @if ($notice)
-            <div class="notice">*** {{ $notice['label'] }} *** {{ $notice['en'] }}<br><span dir="rtl">{{ $notice['ar'] }}</span></div>
-        @endif
+        @foreach ($banners as $b)
+            <div class="notice">*** {{ $b['label'] }} *** {{ $b['en'] }}<br><span dir="rtl">{{ $b['ar'] }}</span></div>
+        @endforeach
 
         <div class="top">
             <div class="biz">
@@ -219,7 +219,7 @@
         <div class="foot">
             @if ($footerText){{ $footerText }}@else{!! $L('default_footer', [], 'receipt') !!}@endif
             @if ($sale->loyalty_points_earned > 0)<div>{!! $L('loyalty_earned', ['count' => $sale->loyalty_points_earned], 'receipt') !!}</div>@endif
-            @if ($notice)<div class="bold" style="margin-top: 3mm">*** {{ $notice['label'] }} *** {{ $notice['en'] }} / <span dir="rtl">{{ $notice['ar'] }}</span></div>@endif
+            @foreach ($banners as $b)<div class="bold" style="margin-top: 3mm">*** {{ $b['label'] }} *** {{ $b['en'] }} / <span dir="rtl">{{ $b['ar'] }}</span></div>@endforeach
         </div>
     </div>
 </main>
@@ -304,7 +304,7 @@
             (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => {
                 setTimeout(() => {
                     window.print();
-                    setTimeout(() => window.close(), 500);
+                    setTimeout(() => { if (window.opener) window.close(); }, 500);
                 }, 250);
             });
         });

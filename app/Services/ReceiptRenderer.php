@@ -35,7 +35,7 @@ final class ReceiptRenderer
     {
         $html = self::renderItems($template->template_html, $sale);
         $html = self::substitute($html, self::tokens($sale, $data));
-        $html = self::withNotice($html, (bool) ($data['isTest'] ?? false));
+        $html = self::withNotice($html, (bool) ($data['isTest'] ?? false), (bool) ($data['isCopy'] ?? false));
 
         return self::withPrintControls($html, (bool) ($data['autoPrint'] ?? false));
     }
@@ -126,20 +126,53 @@ final class ReceiptRenderer
     }
 
     /**
+     * The marker on a reprint (`?copy=1`). Same shape as noticeLines(), same rule: both
+     * languages whatever the receipt language is, short enough for 58 mm paper.
+     *
+     * @return array{label:string,en:string,ar:string}
+     */
+    public static function copyLines(): array
+    {
+        return [
+            'label' => __('receipt.copy', [], 'en').' / '.__('receipt.copy', [], 'ar'),
+            'en' => __('receipt.copy_note', [], 'en'),
+            'ar' => __('receipt.copy_note', [], 'ar'),
+        ];
+    }
+
+    /**
+     * Every banner a printout carries, in order: the demo/test one, then COPY. A demo
+     * build's reprint wears both, so the marker can still be checked on a demo install.
+     *
+     * @return list<array{label:string,en:string,ar:string}>
+     */
+    public static function banners(bool $isTest, bool $isDemo, bool $isCopy): array
+    {
+        return array_values(array_filter([
+            self::noticeLines($isTest, $isDemo),
+            $isCopy ? self::copyLines() : null,
+        ]));
+    }
+
+    /**
      * A custom template is written by the client and cannot be relied on to
      * carry the notice itself, so it is stamped top and bottom from here — the
      * same two places receipts.thermal puts it.
      */
-    private static function withNotice(string $html, bool $isTest): string
+    private static function withNotice(string $html, bool $isTest, bool $isCopy): string
     {
-        $lines = self::noticeLines($isTest, Demo::enabled());
+        $banners = self::banners($isTest, Demo::enabled(), $isCopy);
 
-        if ($lines === null) {
+        if ($banners === []) {
             return $html;
         }
 
-        $notice = '<div style="text-align:center;font-weight:bold">*** '.e($lines['label']).' ***<br>'
-            .e($lines['en']).'<br><span dir="rtl">'.e($lines['ar']).'</span></div><hr>';
+        $notice = '';
+        foreach ($banners as $b) {
+            $notice .= '<div style="text-align:center;font-weight:bold">*** '.e($b['label']).' ***<br>'
+                .e($b['en']).'<br><span dir="rtl">'.e($b['ar']).'</span></div>';
+        }
+        $notice .= '<hr>';
 
         $html = preg_match('/<body[^>]*>/i', $html, $m) === 1
             ? str_replace($m[0], $m[0].$notice, $html)
@@ -158,12 +191,12 @@ final class ReceiptRenderer
     {
         $controls = '<div class="receipt-actions" style="padding:10mm 0;text-align:center">'
             .'<button type="button" onclick="window.print()">'.e(__('receipt.print')).'</button> '
-            .'<button type="button" onclick="window.close()">'.e(__('receipt.close')).'</button></div>'
+            .'<button type="button" onclick="if(window.opener||history.length<2){window.close()}else{history.back()}">'.e(__('receipt.close')).'</button></div>'
             .'<style>@media print{.receipt-actions{display:none}}</style>';
 
         if ($autoPrint) {
             $controls .= '<script>window.addEventListener("load",()=>setTimeout(()=>{window.print();'
-                .'setTimeout(()=>window.close(),500)},250))</script>';
+                .'setTimeout(()=>{if(window.opener)window.close()},500)},250))</script>';
         }
 
         return str_contains($html, '</body>')

@@ -37,14 +37,24 @@ about this repo being read-only; they no longer apply.)
   don't invent a new one.
 - The 14-day trial lock lives in `App\Support\Activation` + `ActivationGate`
   (a web-group middleware, prioritised ahead of `auth`). Status `trial` is written
-  only by `SetupController`; an unset status means `activated`, so installs that
-  predate it never lock. Unlock is `super_admin`-only (Settings → Plan) and the
+  only by `Activation::startTrial()`, which a `Login` listener in `AppServiceProvider`
+  calls on the vendor `super_admin`'s sign-in; an unset status means `activated`, so
+  installs that predate it never lock. Unlock is `super_admin`-only (Settings → Plan) and the
   lock never deletes data. The same tab can lock an install by hand
   (`Activation::deactivate()`, password + tick box); `activation_lock_reason`
   (`trial_expired` | `manual`) picks the lock-screen text, and a locked install
   with no reason reads as `trial_expired`. A migration backfills `activation_status`
   / `installed_at` / `tier` on installs that predate them; the seeder must not
   carry them (it would switch the trial off).
+- There is no setup screen. The vendor's `super_admin` is built in:
+  `App\Support\SuperAdmin::ensure()` creates it from `config('pos.super_admin.*')`
+  (`POS_SUPER_ADMIN_USERNAME` / `_NAME` / `_PASSWORD_HASH`) on every launch
+  (`NativeAppServiceProvider::bootstrapDatabase`), from `SuperAdminSeeder`, and via
+  `pos:ensure-super-admin`. It only creates one while none exists, never in demo
+  builds, and never from a missing/non-bcrypt hash (logged; the login page then says
+  the install is not provisioned). The hash is written with `setRawAttributes()` to
+  bypass the `hashed` cast. It also writes `tier = starter` when none is set, because
+  an unset tier reads as `pos.default_tier` (`premium`, for pre-tier installs).
 - Four roles: `admin`, `manager`, `cashier`, `stock`, enforced via the
   `role:` route middleware (`App\Http\Middleware\RoleMiddleware`).
 - VAT and other tax rates are stored as `0..1` decimals, not percentages.
@@ -57,11 +67,18 @@ about this repo being read-only; they no longer apply.)
   the same arithmetic in PHP and JS (per-line 4-dp rounding, cart-discount
   allocation, tax-exempt). Change both together — `CartMathParityTest` runs the
   real JS through Node and fails if they drift.
+- Who may read or reprint a sale is one rule: `Sale::scopeVisibleTo()` (queries) /
+  `Sale::canBeSeenBy()` (records) — managerial roles see all, everyone else only their own.
+  Receipts, the sale JSON and Sales History all go through it; don't write a new `user_id ===` check.
+- Any print that is not the sell screen's first print after a sale (Sales History, the sale
+  detail page, anything new) must open `receipts.print` with `?copy=1&src=<screen>`: that
+  stamps COPY / نسخة on the page and writes the `receipt_reprint` audit row server-side.
+  The copy flag is opt-in by the caller, not enforced by the server.
 
 ## i18n / RTL
 
 The UI is fully bilingual (`en` / `ar`). Resolution order (`SetLocale`): the
-user's `language` -> the session (`/locale/{locale}`, used on login/setup) ->
+user's `language` -> the session (`/locale/{locale}`, used on the login screen) ->
 the store `language` setting -> `en`. Western digits (0-9) are used in both.
 
 - **Catalogs**: one file per area in `lang/en/` and `lang/ar/` (`nav`, `common`,

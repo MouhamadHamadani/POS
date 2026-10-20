@@ -26,7 +26,8 @@
                 <tbody class="divide-y">
                 @forelse ($rows as $r)
                     <tr>
-                        <td class="p-3"><x-ltr>{{ $r['day'] }}</x-ltr></td>
+                        {{-- One row per day, not per receipt: the day opens that day's completed sales. --}}
+                        <td class="p-3"><a href="{{ route('sales.index', ['from' => $r['day'], 'to' => $r['day'], 'status' => \App\Models\Sale::STATUS_COMPLETED]) }}" class="text-brand-700 hover:underline"><x-ltr>{{ $r['day'] }}</x-ltr></a></td>
                         <td class="p-3 text-end"><x-ltr>{{ $r['txn_count'] }}</x-ltr></td>
                         <td class="p-3 text-end"><x-ltr>${{ number_format((float) $r['subtotal'], 2) }}</x-ltr></td>
                         <td class="p-3 text-end text-gray-500"><x-ltr>${{ number_format((float) $r['discount'], 2) }}</x-ltr></td>

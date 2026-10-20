@@ -10,7 +10,8 @@ use Illuminate\Support\Carbon;
 /**
  * The 14-day trial lock for this paid, perpetual-license build.
  *
- * A fresh install runs normally for TRIAL_DAYS from the moment setup finishes.
+ * A fresh install runs normally for TRIAL_DAYS from the vendor super_admin's
+ * first sign-in (see AppServiceProvider::startTrialOnFirstVendorLogin).
  * If the vendor has not marked it `activated` by then, `evaluate()` flips it to
  * `locked` and ActivationGate shows a lock screen until a super_admin unlocks it.
  * The vendor can also lock an install by hand (`deactivate()`). Locking is the
@@ -48,7 +49,7 @@ final class Activation
     /**
      * Unset means `activated`, on purpose: an install that predates this feature
      * has no row and must never start locking after an upgrade. Only
-     * SetupController (via startTrial()) ever writes `trial`.
+     * startTrial() — on the vendor's first sign-in — ever writes `trial`.
      */
     public static function status(): string
     {
@@ -100,8 +101,8 @@ final class Activation
 
     /**
      * When the trial clock started. Falls back to the first audit-log row (the
-     * setup entry) if the setting is missing, so deleting that one row cannot
-     * restart the trial.
+     * super_admin provisioning entry) if the setting is missing, so deleting that
+     * one row cannot restart the trial.
      */
     public static function installedAt(): Carbon
     {
@@ -131,7 +132,7 @@ final class Activation
             && self::daysRemaining() <= self::TRIAL_DAYS - self::WARN_FROM_DAY;
     }
 
-    /** Called once, by setup. Idempotent: an existing clock or status is left alone. */
+    /** Called on the vendor's sign-in. Idempotent: an existing clock or status is left alone. */
     public static function startTrial(): void
     {
         if (Setting::get('installed_at') === null) {

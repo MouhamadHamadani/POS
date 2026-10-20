@@ -17,6 +17,8 @@ class ReleaseEnvTest extends TestCase
         'APP_DEBUG' => 'false',
         'APP_KEY' => 'base64:notarealkey',
         'POS_DEMO_MODE' => 'false',
+        // bcrypt of a throwaway string; not a credential.
+        'POS_SUPER_ADMIN_PASSWORD_HASH' => '$2y$04$R/XMwzwHkKOJq9quH5INrOfveyBa2uKGgWQLaXvrxi9VRBxITAHnK',
     ];
 
     public function test_a_production_env_is_shippable(): void
@@ -41,6 +43,9 @@ class ReleaseEnvTest extends TestCase
             'debug on as 1'  => [['APP_DEBUG' => '1'], 'APP_DEBUG'],
             'no key'         => [['APP_KEY' => ''], 'APP_KEY'],
             'missing key'    => [['APP_KEY' => null], 'APP_KEY'],
+            'no admin hash'  => [['POS_SUPER_ADMIN_PASSWORD_HASH' => ''], 'POS_SUPER_ADMIN_PASSWORD_HASH'],
+            'unset hash'     => [['POS_SUPER_ADMIN_PASSWORD_HASH' => null], 'POS_SUPER_ADMIN_PASSWORD_HASH'],
+            'plain password' => [['POS_SUPER_ADMIN_PASSWORD_HASH' => 'hunter2'], 'POS_SUPER_ADMIN_PASSWORD_HASH'],
         ];
     }
 
@@ -65,6 +70,14 @@ class ReleaseEnvTest extends TestCase
     {
         $this->assertSame([], ReleaseEnv::problemsIn(
             array_merge(self::SHIPPABLE, ['POS_DEMO_MODE' => 'true']),
+            expectDemo: true,
+        ));
+    }
+
+    public function test_a_demo_build_needs_no_super_admin_hash(): void
+    {
+        $this->assertSame([], ReleaseEnv::problemsIn(
+            ['POS_DEMO_MODE' => 'true'] + array_diff_key(self::SHIPPABLE, ['POS_SUPER_ADMIN_PASSWORD_HASH' => 1]),
             expectDemo: true,
         ));
     }

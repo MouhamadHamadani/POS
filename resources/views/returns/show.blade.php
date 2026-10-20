@@ -25,7 +25,7 @@
         @if ($errors->any())<div class="p-3 bg-red-50 text-red-700 rounded text-sm">{{ $errors->first() }}</div>@endif
 
         <div class="bg-white rounded-lg shadow-card p-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-            <div><dt class="text-xs text-gray-500">{{ __('returns.original_sale') }}</dt><dd class="font-mono text-xs">@if ($return->sale?->receipt_number)<x-ltr>{{ $return->sale->receipt_number }}</x-ltr>@else — @endif</dd></div>
+            <div><dt class="text-xs text-gray-500">{{ __('returns.original_sale') }}</dt><dd class="font-mono text-xs">@if ($return->sale?->receipt_number)<x-receipt-link :sale="$return->sale" />@else — @endif</dd></div>
             <div><dt class="text-xs text-gray-500">{{ __('returns.customer') }}</dt><dd>{{ $return->sale?->customer?->name ?? __('returns.walk_in') }}</dd></div>
             <div><dt class="text-xs text-gray-500">{{ __('returns.reason') }}</dt><dd>{{ $return->reasonLabel() }}</dd></div>
             <div><dt class="text-xs text-gray-500">{{ __('returns.refund_method') }}</dt><dd>{{ $return->refundMethodLabel() }}</dd></div>

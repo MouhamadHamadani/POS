@@ -7,7 +7,9 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Support\Activation;
 use App\Support\License;
+use App\Support\SuperAdmin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
@@ -249,31 +251,31 @@ class PlanTierActivationTest extends TestCase
         $this->assertFalse(Activation::clockRolledBack());
     }
 
-    // === First-run setup asks for both ===
+    // === A fresh install: tier and trial are set independently ===
 
-    public function test_the_setup_screen_offers_the_tier_picker_defaulting_to_starter(): void
+    public function test_a_fresh_install_is_starter_and_its_trial_starts_at_the_vendors_first_sign_in(): void
     {
-        $this->get('/setup')->assertOk()
-            ->assertSee('name="tier"', false)
-            ->assertSee('value="starter" selected', false)
-            ->assertSee('name="username"', false)
-            ->assertSee('name="password"', false);
-    }
+        config([
+            'pos.demo_mode' => false,
+            'pos.super_admin.username' => 'vendor',
+            'pos.super_admin.password_hash' => Hash::make('a-real-password'),
+        ]);
 
-    public function test_setup_records_the_tier_and_starts_the_trial_independently(): void
-    {
-        $this->post('/setup', [
-            'name' => 'Vendor', 'username' => 'vendor', 'password' => 'a-real-password',
-            'password_confirmation' => 'a-real-password', 'language' => 'en', 'tier' => 'standard',
-        ])->assertRedirect(route('dashboard'));
+        SuperAdmin::ensure();
 
-        $this->assertSame('standard', License::tier());
+        // Provisioned: the tier is written, the trial clock is not running yet.
+        $this->assertSame('starter', License::tier());
+        $this->assertNull(Setting::get('activation_status'));
+
+        $this->post('/login', ['login' => 'vendor', 'password' => 'a-real-password'])->assertRedirect('/pos');
+
+        $this->assertSame('starter', License::tier());
         $this->assertSame(Activation::TRIAL, Activation::status());
         $this->assertSame(14, Activation::daysRemaining());
         $this->assertSame(['super_admin'], User::pluck('role')->all());
         $this->assertSame(0, License::seatsUsed());
 
         $this->assertDatabaseHas((new AuditLog)->getTable(), ['action' => 'tier_change']);
-        $this->assertDatabaseHas((new AuditLog)->getTable(), ['action' => 'setup']);
+        $this->assertDatabaseHas((new AuditLog)->getTable(), ['action' => 'super_admin_provisioned']);
     }
 }

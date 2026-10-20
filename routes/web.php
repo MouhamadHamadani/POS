@@ -17,19 +17,20 @@ use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleHistoryController;
 use App\Http\Controllers\SettingController;
-use App\Http\Controllers\SetupController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect(auth()->check() ? '/pos' : '/login');
 });
 
-// Language switch. Outside the auth group: the login and setup screens need it.
+// Language switch. Outside the auth group: the login screen needs it.
 Route::get('/locale/{locale}', [LocaleController::class, 'switch'])
     ->whereIn('locale', ['en', 'ar'])->name('locale.switch');
 
@@ -37,10 +38,6 @@ Route::get('/locale/{locale}', [LocaleController::class, 'switch'])
 // (cashiers, the client's admin) are signed out of nothing and in no position
 // to sign in. See ActivationGate for what is still reachable while locked.
 Route::get('/locked', [ActivationController::class, 'locked'])->name('locked');
-
-// First-run provisioning. Self-closing: 404s once any account exists.
-Route::get('/setup', [SetupController::class, 'show'])->name('setup.show');
-Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
 
 Route::middleware(['auth'])->group(function () {
     Route::view('/dashboard', 'dashboard')->name('dashboard');
@@ -56,6 +53,15 @@ Route::middleware(['auth'])->group(function () {
     // A4 invoice straight to the printer chosen in Settings (desktop app only; the sell screen
     // falls back to the print dialog when this reports it did not print).
     Route::post('/pos/receipts/{sale}/print-a4', [ReceiptController::class, 'printA4'])->name('receipts.print-a4');
+
+    // Sales History — look up a past sale, see what was in it, reprint it. Read-only, so it sits
+    // outside the shift gate for the same reason as the receipt routes above, and it carries no
+    // `feature:` key: finding your own sales ships on every tier. `stock` is left out (see
+    // User::SALES_HISTORY_ROLES); which sales a cashier may open is Sale::canBeSeenBy.
+    Route::middleware('role:'.implode(',', User::SALES_HISTORY_ROLES))->group(function () {
+        Route::get('/sales', [SaleHistoryController::class, 'index'])->name('sales.index');
+        Route::get('/sales/{sale}', [SaleHistoryController::class, 'show'])->name('sales.show');
+    });
 
     // Shifts
     Route::get('/shifts/open', [ShiftController::class, 'showOpen'])->name('shifts.open');

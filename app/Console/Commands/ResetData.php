@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Schema;
  * in: no accounts, no catalogue, no history — but still configured, so the till
  * knows its VAT rate, exchange rate and LBP rounding step.
  *
- * With no accounts left, the next launch lands on /setup.
+ * With no accounts left, the next launch recreates the built-in super_admin
+ * (App\Support\SuperAdmin) and opens on the login page.
  */
 class ResetData extends Command
 {
@@ -114,7 +115,7 @@ class ResetData extends Command
         $this->info("Cleared {$total} rows.");
 
         if (! $this->option('keep-users')) {
-            $this->line('No accounts remain — the next launch will open the setup screen.');
+            $this->line('No accounts remain — the built-in super admin will be recreated on the next launch.');
         }
 
         return self::SUCCESS;

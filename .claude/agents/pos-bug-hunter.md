@@ -23,7 +23,7 @@ Not bugs (do not report): style preferences, missing features, refactoring ideas
 6. **Validation & edge cases** — empty/zero/negative quantities and prices, very large numbers, unique constraints vs soft-deleted rows, Arabic input in `*_ar` fields, null optional relations.
 7. **Audit** — mutations that skip `AuditLog::record()`.
 8. **Reports** — revenue/P&L/stock reports agreeing with the underlying sales, date-range boundaries (start/end of day, timezone).
-9. **Everything else** — settings, backups (super_admin only), setup flow, receipts/numbering, held sales, product import.
+9. **Everything else** — settings, backups (super_admin only), built-in super_admin provisioning, receipts/numbering, held sales, product import.
 
 If the caller names an area, sweep only that area.
 

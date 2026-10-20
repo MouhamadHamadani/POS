@@ -51,7 +51,7 @@
                     <tbody class="divide-y">
                     @forelse ($recent as $s)
                         <tr>
-                            <td class="py-2"><x-ltr>{{ $s->receipt_number }}</x-ltr></td>
+                            <td class="py-2"><x-receipt-link :sale="$s" /></td>
                             <td>{{ $s->user?->name ?? '—' }}</td>
                             <td class="text-end font-medium"><x-ltr>${{ number_format((float) $s->total_usd, 2) }}</x-ltr></td>
                             <td class="text-end text-gray-500">{{ $s->created_at->diffForHumans() }}</td>

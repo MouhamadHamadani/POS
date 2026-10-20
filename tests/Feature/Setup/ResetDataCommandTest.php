@@ -87,13 +87,23 @@ class ResetDataCommandTest extends TestCase
             ->assertSuccessful();
     }
 
-    public function test_a_reset_machine_lands_back_on_the_setup_screen(): void
+    public function test_a_reset_machine_opens_on_the_login_page(): void
     {
         $this->seedSomething();
 
         $this->artisan('pos:reset-data --force')->assertSuccessful();
 
-        $this->get('/')->assertRedirect(route('setup.show'));
-        $this->get('/setup')->assertOk();
+        $this->get('/')->assertRedirect('/login');
+        $this->get('/login')->assertOk();
+        $this->get('/setup')->assertNotFound();
+    }
+
+    public function test_it_says_the_built_in_super_admin_comes_back(): void
+    {
+        $this->seedSomething();
+
+        $this->artisan('pos:reset-data --force')
+            ->expectsOutputToContain('built-in super admin will be recreated on the next launch')
+            ->assertSuccessful();
     }
 }

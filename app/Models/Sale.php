@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,6 +25,16 @@ class Sale extends Model
     public const METHOD_MIXED = 'mixed';
     public const METHOD_CREDIT = 'credit';
     public const METHOD_SPLIT = 'split';
+
+    public const STATUSES = [
+        self::STATUS_COMPLETED, self::STATUS_PARTIAL_REFUND, self::STATUS_REFUNDED,
+        self::STATUS_VOIDED, self::STATUS_ON_HOLD,
+    ];
+
+    public const METHODS = [
+        self::METHOD_CASH_USD, self::METHOD_CASH_LBP, self::METHOD_CARD,
+        self::METHOD_MIXED, self::METHOD_CREDIT, self::METHOD_SPLIT,
+    ];
 
     protected $fillable = [
         'uuid', 'receipt_number', 'customer_id', 'user_id', 'shift_id', 'price_tier',
@@ -80,6 +91,28 @@ class Sale extends Model
     public function returns(): HasMany
     {
         return $this->hasMany(ReturnTransaction::class, 'sale_id');
+    }
+
+    /**
+     * The one ownership rule for reading and reprinting a sale: managerial roles
+     * see every sale, anyone else only the ones they rang up. Query side
+     * (scopeVisibleTo) and record side (canBeSeenBy) are the same rule — every
+     * receipt, sale-JSON and sales-history check goes through one of them.
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        return $user->isManagerial() ? $query : $query->where($query->qualifyColumn('user_id'), $user->id);
+    }
+
+    public function canBeSeenBy(User $user): bool
+    {
+        return $user->isManagerial() || $this->user_id === $user->id;
+    }
+
+    /** A held cart has no receipt yet; every other status can be reprinted, voided included. */
+    public function hasReceipt(): bool
+    {
+        return $this->status !== self::STATUS_ON_HOLD;
     }
 
     public function statusLabel(): string

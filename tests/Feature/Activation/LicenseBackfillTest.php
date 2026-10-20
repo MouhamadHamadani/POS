@@ -7,8 +7,10 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Support\Activation;
 use App\Support\License;
+use App\Support\SuperAdmin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
@@ -133,7 +135,7 @@ class LicenseBackfillTest extends TestCase
         ));
     }
 
-    public function test_a_fresh_database_gets_nothing_and_setup_still_starts_the_trial(): void
+    public function test_a_fresh_database_gets_nothing_and_the_vendors_first_sign_in_still_starts_the_trial(): void
     {
         $this->backfill();
 
@@ -142,14 +144,17 @@ class LicenseBackfillTest extends TestCase
         }
         $this->assertDatabaseMissing((new AuditLog)->getTable(), ['action' => 'settings_backfill']);
 
-        $this->post('/setup', [
-            'name' => 'Vendor', 'username' => 'vendor', 'password' => 'a-real-password',
-            'password_confirmation' => 'a-real-password', 'language' => 'en', 'tier' => 'standard',
-        ])->assertRedirect(route('dashboard'));
+        config([
+            'pos.demo_mode' => false,
+            'pos.super_admin.username' => 'vendor',
+            'pos.super_admin.password_hash' => Hash::make('a-real-password'),
+        ]);
+        SuperAdmin::ensure();
+        $this->post('/login', ['login' => 'vendor', 'password' => 'a-real-password'])->assertRedirect('/pos');
 
         $this->assertSame(Activation::TRIAL, Activation::status());
         $this->assertSame(14, Activation::daysRemaining());
-        $this->assertSame('standard', License::tier());
+        $this->assertSame('starter', License::tier());
     }
 
     public function test_running_it_twice_changes_nothing_the_second_time(): void

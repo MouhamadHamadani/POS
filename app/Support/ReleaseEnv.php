@@ -67,6 +67,12 @@ final class ReleaseEnv
                 : 'POS_DEMO_MODE is off but --demo was passed.';
         }
 
+        // The vendor account is created from this on first launch. Without it the
+        // installer ships with nobody able to sign in (SuperAdmin::ensure()).
+        if (! $isDemo && (password_get_info($env['POS_SUPER_ADMIN_PASSWORD_HASH'] ?? '')['algoName'] ?? '') !== 'bcrypt') {
+            $problems[] = 'POS_SUPER_ADMIN_PASSWORD_HASH is missing or not a bcrypt hash — the build would have no super_admin to sign in with.';
+        }
+
         return $problems;
     }
 
