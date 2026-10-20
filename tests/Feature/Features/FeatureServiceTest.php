@@ -224,6 +224,20 @@ class FeatureServiceTest extends TestCase
         }
     }
 
+    public function test_the_refusal_names_only_what_is_in_the_way_not_everything_else_in_the_same_save(): void
+    {
+        $this->plan('standard');
+
+        try {
+            Feature::sync(['returns' => false, 'expenses' => false]);
+            $this->fail('expected a dependency refusal');
+        } catch (FeatureDependencyException $e) {
+            $this->assertStringContainsString(Feature::label('expenses'), $e->getMessage());
+            $this->assertStringContainsString(Feature::label('reports.profit_loss'), $e->getMessage());
+            $this->assertStringNotContainsString(Feature::label('returns'), $e->getMessage());
+        }
+    }
+
     public function test_switching_a_feature_and_what_it_needs_together_in_one_save_is_fine(): void
     {
         $this->plan('standard');

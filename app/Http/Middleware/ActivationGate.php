@@ -46,7 +46,7 @@ class ActivationGate
         }
 
         // super_admin: the Plan tab and the forms on it (activate, deactivate, and
-        // set the tier) — not settings.update, backups or anything else. Deactivate
+        // set the tier or the per-install features) — not settings.update, backups or anything else. Deactivate
         // is here so a vendor can never lock themselves out of the way back.
         return (bool) $request->user()?->isSuperAdmin()
             && $request->routeIs(
@@ -54,6 +54,8 @@ class ActivationGate
                 'settings.activation.activate',
                 'settings.activation.deactivate',
                 'settings.plan.update',
+                'settings.features.update',
+                'settings.features.reset',
             );
     }
 }

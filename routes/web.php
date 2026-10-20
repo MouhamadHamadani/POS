@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DemoController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PosController;
@@ -271,6 +272,11 @@ Route::middleware(['auth'])->group(function () {
         // Neither control touches the other's setting. Both sit in this group's
         // demo:blocked, so a demo build refuses them server-side.
         Route::post('/settings/plan', [SettingController::class, 'updatePlan'])->name('settings.plan.update');
+        // Per-install feature overrides on top of the plan, and "back to the plan's defaults".
+        // No `feature:` key on these, ever: nothing a plan or override says may lock the
+        // vendor out of the screen that edits them.
+        Route::post('/settings/features', [FeatureController::class, 'update'])->name('settings.features.update');
+        Route::post('/settings/features/reset', [FeatureController::class, 'reset'])->name('settings.features.reset');
         Route::post('/settings/activation', [ActivationController::class, 'activate'])->name('settings.activation.activate');
         Route::post('/settings/activation/deactivate', [ActivationController::class, 'deactivate'])->name('settings.activation.deactivate');
 

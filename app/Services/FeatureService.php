@@ -376,7 +376,10 @@ final class FeatureService
             $messages[] = __('features.errors.requires', ['feature' => $this->label($key), 'missing' => $this->labels($missing)]);
         }
         if ($broken !== []) {
-            $messages[] = __('features.errors.required_by', ['feature' => $this->labels($turnedOff), 'dependents' => $this->labels($broken)]);
+            // Name only what is in the way, not everything else switched off in the same save.
+            $needed = array_merge(...array_map(fn ($dependent) => $this->definitions()[$dependent]['requires'] ?? [], $broken));
+            $blocking = array_values(array_intersect($turnedOff, $needed));
+            $messages[] = __('features.errors.required_by', ['feature' => $this->labels($blocking ?: $turnedOff), 'dependents' => $this->labels($broken)]);
         }
 
         if ($messages !== []) {

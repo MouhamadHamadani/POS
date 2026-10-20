@@ -13,7 +13,7 @@ return [
         'expenses' => 'المصاريف',
         'permissions' => 'الصلاحيات',
         'backup' => 'نسخ احتياطي',
-        'plan' => 'الخطة',
+        'plan' => 'الخطة والميزات',
         'receipt_template' => 'قالب الإيصال',
     ],
     'receipt_template' => [

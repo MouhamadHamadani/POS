@@ -444,6 +444,19 @@
                         $maxUsers = \App\Support\License::maxUsers();
                         $maxDevices = \App\Support\License::maxDevices();
 
+                        // What switching to each plan would turn on and off here, worked out on the
+                        // server with this install's overrides so the confirm panel shows the truth.
+                        $planDiffs = [];
+                        foreach (\App\Support\License::tiers() as $t) {
+                            $diff = \App\Facades\Feature::preview($t);
+                            $names = fn (array $keys) => array_map(fn ($k) => \App\Facades\Feature::label($k), $keys);
+                            $planDiffs[$t] = [
+                                'title' => __('features.plan_change_title', ['plan' => __('plan.tier.'.$t)]),
+                                'on' => $names($diff['on']),
+                                'off' => $names($diff['off']),
+                            ];
+                        }
+
                         $status = \App\Support\Activation::status();
                         $lockReason = \App\Support\Activation::lockReason();
                         $badge =['trial' => 'bg-amber-100 text-amber-800', 'activated' => 'bg-green-100 text-green-800', 'locked' => 'bg-red-100 text-red-800'][$status] ?? 'bg-gray-100 text-gray-800';
@@ -456,17 +469,34 @@
                     <div class="space-y-8 text-sm max-w-xl">
                         <section>
                             <h3 class="font-semibold mb-3">{{ __('plan.section_tier') }}</h3>
-                            <form method="POST" action="{{ route('settings.plan.update') }}" class="space-y-4">
+                            <form method="POST" action="{{ route('settings.plan.update') }}" class="space-y-4"
+                                  x-data="{ current: @js($tier), target: @js($tier), diffs: @js($planDiffs), sep: @js(__('features.separator')) }">
                                 @csrf
                                 <div>
                                     <label class="block text-xs text-gray-500">{{ __('plan.label') }}</label>
-                                    <select name="tier" class="w-full border-gray-300 rounded text-sm">
+                                    <select name="tier" x-model="target" class="w-full border-gray-300 rounded text-sm">
                                         @foreach (\App\Support\License::tiers() as $t)
                                             <option value="{{ $t }}" @selected($tier === $t)>{{ __('plan.tier.'.$t) }}</option>
                                         @endforeach
                                     </select>
                                     <p class="mt-1 text-xs text-gray-500">{{ __('plan.tier_help') }}</p>
                                 </div>
+
+                                {{-- Picking another plan shows what it would change before anything is saved. --}}
+                                <template x-if="target !== current">
+                                    <div class="p-3 rounded bg-amber-50 text-amber-900 text-xs space-y-1">
+                                        <div class="font-medium" x-text="diffs[target].title"></div>
+                                        <div x-show="diffs[target].on.length">
+                                            <span class="font-medium text-green-700">{{ __('features.turns_on') }}:</span>
+                                            <span x-text="diffs[target].on.join(sep)"></span>
+                                        </div>
+                                        <div x-show="diffs[target].off.length">
+                                            <span class="font-medium text-red-700">{{ __('features.turns_off') }}:</span>
+                                            <span x-text="diffs[target].off.join(sep)"></span>
+                                        </div>
+                                        <div x-show="!diffs[target].on.length && !diffs[target].off.length">{{ __('features.no_changes') }}</div>
+                                    </div>
+                                </template>
 
                                 <dl class="grid grid-cols-2 gap-3 border-t pt-4">
                                     <div>
@@ -483,9 +513,15 @@
                                     </div>
                                 </dl>
 
-                                <div class="flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('plan.save') }}</button></div>
+                                <div class="flex justify-end">
+                                    <button :disabled="target === current"
+                                            x-text="target === current ? @js(__('plan.save')) : @js(__('features.confirm_plan'))"
+                                            class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed">{{ __('plan.save') }}</button>
+                                </div>
                             </form>
                         </section>
+
+                        @include('settings._features')
 
                         <section class="border-t pt-6">
                             <h3 class="font-semibold mb-3">{{ __('activation.section') }}</h3>
