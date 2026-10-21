@@ -33,7 +33,7 @@ class SaleHistoryController extends Controller
             'to' => 'nullable|date|after_or_equal:from',
             'user_id' => 'nullable|integer',
             'status' => ['nullable', Rule::in(Sale::STATUSES)],
-            'payment_method' => ['nullable', Rule::in(Sale::METHODS)],
+            'payment_method' => ['nullable', Rule::in(array_merge(SaleHistoryService::PAYMENT_FILTERS, Sale::METHODS))],
             'channel' => ['nullable', Rule::in(Sale::CHANNELS)],
         ]));
 

@@ -35,7 +35,7 @@
                         <label class="block text-xs text-gray-500">{{ __('receipt.payment') }}</label>
                         <select name="payment_method" class="w-full border-gray-300 rounded text-sm">
                             <option value="">{{ __('common.all') }}</option>
-                            @foreach (\App\Models\Sale::METHODS as $m)
+                            @foreach (\App\Services\SaleHistoryService::PAYMENT_FILTERS as $m)
                                 <option value="{{ $m }}" @selected($f['payment_method'] === $m)>{{ \App\Support\EnumLabel::get('payment_method', $m) }}</option>
                             @endforeach
                         </select>

@@ -65,8 +65,9 @@ class ShiftController extends Controller
 
         $totals = $this->shifts->totals($shift);
         $expenses = $this->shifts->drawerExpenses($shift);
+        $nonCash = $this->shifts->nonCashTotals($shift); // card + Wish: for reconciling elsewhere, not the drawer
 
-        return view('shifts.close', compact('shift', 'totals', 'expenses'));
+        return view('shifts.close', compact('shift', 'totals', 'expenses', 'nonCash'));
     }
 
     public function close(Request $request): RedirectResponse

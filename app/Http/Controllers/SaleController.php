@@ -27,13 +27,17 @@ class SaleController extends Controller
             'cart.*.note' => 'nullable|string|max:255',
 
             'payment' => 'required|array',
-            'payment.method' => 'required|string',
+            // `method` is accepted for old clients and ignored: SaleService derives payment_method
+            // from the amounts below (cash USD / LBP, card, Wish, on account — any mix).
+            'payment.method' => 'nullable|string',
             'payment.amount_usd' => 'nullable|numeric|min:0',
             'payment.amount_lbp' => 'nullable|numeric|min:0',
             'payment.amount_card' => 'nullable|numeric|min:0',
+            'payment.amount_wish' => 'nullable|numeric|min:0',
             'payment.amount_credit' => 'nullable|numeric|min:0',
             'payment.card_type' => 'nullable|string|max:50',
             'payment.card_reference' => 'nullable|string|max:100',
+            'payment.wish_reference' => 'nullable|string|max:100',
             'payment.loyalty_points_redeemed' => 'nullable|integer|min:0',
             'payment.change_usd_out' => 'nullable|numeric|min:0',
 
@@ -75,7 +79,7 @@ class SaleController extends Controller
         }
 
         $payment = array_merge([
-            'amount_usd' => 0, 'amount_lbp' => 0, 'amount_card' => 0,
+            'amount_usd' => 0, 'amount_lbp' => 0, 'amount_card' => 0, 'amount_wish' => 0,
             'amount_credit' => 0, 'loyalty_points_redeemed' => 0,
         ], $data['payment']);
 

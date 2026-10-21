@@ -88,6 +88,8 @@ return [
     'shift_closed_sale' => 'لا يمكن تسجيل بيع على وردية مغلقة.',
     'insufficient_stock' => 'المخزون غير كافٍ لـ «:product»: المتوفر :available والمطلوب :requested.',
     'payment_insufficient' => 'المبلغ المدفوع غير كافٍ.',
+    'payment_noncash_exceeds' => 'لا يجوز أن تزيد مبالغ البطاقة وويش والدَّين على المجموع؛ الباقي لا يكون إلا عن الدفع النقدي.',
+    'payment_cash_not_needed' => 'المبلغ المتبقي مغطّى بالبطاقة أو ويش أو الدَّين، لذا لا يجب إدخال مبلغ نقدي.',
     'credit_customer_required' => 'يجب تحديد زبون للبيع بالدَّين.',
     'credit_limit_exceeded' => 'تم تجاوز سقف الدَّين للزبون.',
     'product_missing' => 'المنتج رقم :id غير موجود.',

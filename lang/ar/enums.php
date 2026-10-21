@@ -24,6 +24,7 @@ return [
         'vip' => 'VIP',
     ],
     'payment_method' => [
+        'cash' => 'نقداً',
         'cash_usd' => 'نقداً (دولار)',
         'cash_lbp' => 'نقداً (ل.ل.)',
         'card' => 'بطاقة',
@@ -33,6 +34,7 @@ return [
         'mixed' => 'مختلط',
         'credit' => 'دَين',
         'split' => 'مجزّأ',
+        'wish' => 'ويش',
     ],
     'purchase_status' => [
         'draft' => 'مسودة',
@@ -126,6 +128,8 @@ return [
     'refund_method' => [
         'cash_usd' => 'نقداً (دولار)',
         'cash_lbp' => 'نقداً (ل.ل.)',
+        'card' => 'بطاقة',
+        'wish' => 'ويش',
         'account' => 'رصيد في الحساب',
         'exchange' => 'استبدال',
     ],

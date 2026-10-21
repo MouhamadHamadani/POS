@@ -96,8 +96,13 @@ class DiscountTest extends TestCase
         $product = $this->product();
 
         $this->sell($this->manager(), [['product_id' => $product->id, 'qty' => 1, 'discount_pct' => 50]])->assertCreated();
-        $this->sell($this->userWithShift(['role' => User::ROLE_ADMIN]), [['product_id' => $product->id, 'qty' => 1, 'discount_pct' => 100]])
-            ->assertCreated();
+        // A completely free sale: there is nothing for cash to cover, so nothing is tendered
+        // (cash tendered against a zero cash due is refused: payment_cash_not_needed).
+        $this->sell(
+            $this->userWithShift(['role' => User::ROLE_ADMIN]),
+            [['product_id' => $product->id, 'qty' => 1, 'discount_pct' => 100]],
+            ['payment' => ['amount_usd' => 0]],
+        )->assertCreated();
     }
 
     public function test_a_fixed_amount_is_judged_by_its_effective_percentage(): void

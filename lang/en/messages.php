@@ -88,6 +88,8 @@ return [
     'shift_closed_sale' => 'Cannot record a sale against a closed shift.',
     'insufficient_stock' => 'Insufficient stock for ":product": :available available, :requested requested.',
     'payment_insufficient' => 'Insufficient payment.',
+    'payment_noncash_exceeds' => 'Card, Wish and on-account amounts cannot be more than the total. Only cash can be over-tendered.',
+    'payment_cash_not_needed' => 'The rest is already covered by card, Wish or on account, so no cash should be entered.',
     'credit_customer_required' => 'A customer is required for credit sales.',
     'credit_limit_exceeded' => 'Customer credit limit exceeded.',
     'product_missing' => 'Product #:id not found.',

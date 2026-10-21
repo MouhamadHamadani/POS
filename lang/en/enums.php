@@ -24,6 +24,7 @@ return [
         'vip' => 'VIP',
     ],
     'payment_method' => [
+        'cash' => 'Cash',
         'cash_usd' => 'Cash (USD)',
         'cash_lbp' => 'Cash (LBP)',
         'card' => 'Card',
@@ -33,6 +34,7 @@ return [
         'mixed' => 'Mixed',
         'credit' => 'On account',
         'split' => 'Split',
+        'wish' => 'Wish',
     ],
     'purchase_status' => [
         'draft' => 'Draft',
@@ -126,6 +128,8 @@ return [
     'refund_method' => [
         'cash_usd' => 'Cash (USD)',
         'cash_lbp' => 'Cash (LBP)',
+        'card' => 'Card',
+        'wish' => 'Wish',
         'account' => 'Account credit',
         'exchange' => 'Exchange',
     ],

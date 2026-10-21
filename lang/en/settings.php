@@ -24,6 +24,7 @@ return [
         'placeholders' => 'Placeholders',
         'repeat' => 'Repeat a block per line with',
         'using' => 'using',
+        'repeat_payments' => 'One block per payment line (cash, card, Wish) with',
     ],
     'business_name' => 'Business name',
     'business_name_ar' => 'Business name (Arabic)',

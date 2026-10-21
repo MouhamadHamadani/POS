@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 class Sale extends Model
 {
@@ -25,6 +26,7 @@ class Sale extends Model
     public const METHOD_MIXED = 'mixed';
     public const METHOD_CREDIT = 'credit';
     public const METHOD_SPLIT = 'split';
+    public const METHOD_WISH = 'wish';
 
     /**
      * Where the sale came from. `online` is an order the store took by WhatsApp / Instagram /
@@ -46,7 +48,7 @@ class Sale extends Model
 
     public const METHODS = [
         self::METHOD_CASH_USD, self::METHOD_CASH_LBP, self::METHOD_CARD,
-        self::METHOD_MIXED, self::METHOD_CREDIT, self::METHOD_SPLIT,
+        self::METHOD_MIXED, self::METHOD_CREDIT, self::METHOD_SPLIT, self::METHOD_WISH,
     ];
 
     protected $fillable = [
@@ -105,6 +107,81 @@ class Sale extends Model
     public function returns(): HasMany
     {
         return $this->hasMany(ReturnTransaction::class, 'sale_id');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(SalePayment::class);
+    }
+
+    /**
+     * How the sale was paid, one entry per line (see SalePayment::line for the shape), for
+     * DISPLAY: receipts, the sale detail page. The rows when it has them; otherwise lines read
+     * off the flat columns, so a sale from before `sale_payments` (or one built straight from
+     * those columns) shows the same way. Reports use SQL on the table instead.
+     *
+     * @return Collection<int, array{method:string,currency:string,amount:float,amount_usd:float,reference:?string,card_type:?string,kind:string}>
+     */
+    public function paymentLines(): Collection
+    {
+        $rows = $this->relationLoaded('payments') ? $this->payments : ($this->exists ? $this->payments()->get() : collect());
+
+        return $rows->isNotEmpty()
+            ? $rows->map(fn (SalePayment $p) => $p->toLine())->values()
+            : collect(SalePayment::legacyLines($this));
+    }
+
+    /**
+     * The refund method a return of this sale should start on: the method of its largest payment
+     * line (cash lines count what was kept, tendered less change). A return still takes one
+     * method for the whole refund; this only saves the cashier choosing the obvious one.
+     */
+    public function suggestedRefundMethod(): string
+    {
+        $rate = (float) $this->exchange_rate;
+        $kept = fn (array $l) => match ($l['kind']) {
+            'cash_usd' => $l['amount_usd'] - (float) $this->change_usd,
+            'cash_lbp' => $l['amount_usd'] - ($rate > 0 ? (float) $this->change_lbp / $rate : 0.0),
+            default => $l['amount_usd'],
+        };
+
+        $largest = $this->paymentLines()->sortByDesc($kept)->first();
+
+        return match ($largest['kind'] ?? null) {
+            'cash_lbp' => 'cash_lbp',
+            'card' => 'card',
+            'wish' => 'wish',
+            'credit' => $this->customer_id ? 'account' : 'cash_usd',
+            default => 'cash_usd',
+        };
+    }
+
+    /**
+     * The payment_method for a set of amounts. The server derives it; a method the client sent is
+     * ignored. One kind of money: cash USD -> cash_usd, cash LBP -> cash_lbp, both -> mixed (the
+     * old meaning), card / wish / on-account -> that. Anything combining kinds -> split.
+     */
+    public static function deriveMethod(float $cashUsd, float $cashLbp, float $card, float $wish, float $credit): string
+    {
+        $kinds = array_filter([($cashUsd > 0 || $cashLbp > 0), $card > 0, $wish > 0, $credit > 0]);
+
+        if (count($kinds) > 1) {
+            return self::METHOD_SPLIT;
+        }
+        if ($card > 0) {
+            return self::METHOD_CARD;
+        }
+        if ($wish > 0) {
+            return self::METHOD_WISH;
+        }
+        if ($credit > 0) {
+            return self::METHOD_CREDIT;
+        }
+        if ($cashUsd > 0 && $cashLbp > 0) {
+            return self::METHOD_MIXED;
+        }
+
+        return $cashLbp > 0 ? self::METHOD_CASH_LBP : self::METHOD_CASH_USD;
     }
 
     /**

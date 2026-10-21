@@ -28,6 +28,8 @@ return [
     'tendered_usd' => 'Cash USD tendered',
     'tendered_lbp' => 'Cash LBP tendered',
     'card' => 'Card',
+    'wish' => 'Wish',
+    'ref' => 'Ref.',
     'on_account' => 'On account',
     'change_usd' => 'Change USD',
     'change_lbp' => 'Change LBP',

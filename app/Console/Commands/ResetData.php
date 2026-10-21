@@ -29,6 +29,7 @@ class ResetData extends Command
      */
     private const TRANSACTIONAL = [
         'sale_items',
+        'sale_payments',
         'sales',
         'return_items',
         'returns',

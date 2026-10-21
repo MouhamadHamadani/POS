@@ -162,18 +162,13 @@
     <hr>
     <table class="small">
         <tr><td>{!! $L('payment') !!}</td><td class="amt" style="white-space: normal;">{!! $L($sale->payment_method, [], 'enums.payment_method') !!}</td></tr>
-        @if ($sale->amount_tendered_usd)
-            <tr><td>{!! $L('cash_usd_tendered') !!}</td><td class="amt">{{ $money($sale->amount_tendered_usd) }}</td></tr>
-        @endif
-        @if ($sale->amount_tendered_lbp)
-            <tr><td>{!! $L('cash_lbp_tendered') !!}</td><td class="amt">{{ number_format((float) $sale->amount_tendered_lbp) }} {{ $lbpUnit }}</td></tr>
-        @endif
-        @if ($sale->amount_card_usd > 0)
-            <tr><td>{!! $L('card') !!}</td><td class="amt">{{ $money($sale->amount_card_usd) }}</td></tr>
-        @endif
-        @if ($sale->amount_credit_usd > 0)
-            <tr><td>{!! $L('on_account') !!}</td><td class="amt">{{ $money($sale->amount_credit_usd) }}</td></tr>
-        @endif
+        {{-- One row per payment line: cash USD / LBP as tendered, then card, Wish, on account. --}}
+        @foreach ($sale->paymentLines() as $pl)
+            <tr>
+                <td>{!! $L(['cash_usd' => 'cash_usd_tendered', 'cash_lbp' => 'cash_lbp_tendered', 'card' => 'card', 'wish' => 'wish', 'credit' => 'on_account'][$pl['kind']]) !!}@if ($pl['reference'])<br><span class="small">{!! $L('ref', [], 'receipt', ':') !!} <bdi dir="ltr">{{ $pl['reference'] }}</bdi></span>@endif</td>
+                <td class="amt">{{ $pl['currency'] === 'LBP' ? number_format($pl['amount']).' '.$lbpUnit : $money($pl['amount']) }}</td>
+            </tr>
+        @endforeach
         @if ($sale->change_usd > 0)
             <tr class="bold"><td>{!! $L('change_usd') !!}</td><td class="amt">{{ $money($sale->change_usd) }}</td></tr>
         @endif

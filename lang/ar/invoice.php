@@ -28,6 +28,8 @@ return [
     'tendered_usd' => 'المقبوض دولار',
     'tendered_lbp' => 'المقبوض ليرة',
     'card' => 'بطاقة',
+    'wish' => 'ويش',
+    'ref' => 'المرجع',
     'on_account' => 'دَين',
     'change_usd' => 'الباقي دولار',
     'change_lbp' => 'الباقي ليرة',

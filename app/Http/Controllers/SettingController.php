@@ -8,6 +8,7 @@ use App\Models\ExpenseCategory;
 use App\Models\PrintTemplate;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\SalePayment;
 use App\Models\Setting;
 use App\Models\Tax;
 use App\Services\BackupService;
@@ -284,8 +285,11 @@ class SettingController extends Controller
         });
 
         $total = round($items->sum('line_total_usd'), 4);
-        // Give $4 back in USD and the rest in LBP so both change rows print.
-        $change = $currency->calculateChange($total, 30.0, 0.0, 4.0);
+        // A cash + Wish split rung up as an online (WhatsApp) order, so every row a real sale can print is on
+        // the page: both payment lines with a reference, the online line, and the change. Cash covers only
+        // what Wish left; give $4 back in USD and the rest in LBP so both change rows print.
+        $wish = 10.0;
+        $change = $currency->calculateChange(max(0.0, $total - $wish), 30.0, 0.0, 4.0);
 
         $sale = new Sale([
             'receipt_number' => 'TEST-' . now()->format('His'),
@@ -295,12 +299,18 @@ class SettingController extends Controller
             'total_usd' => $total,
             'total_lbp' => $currency->usdToLbp($total),
             'exchange_rate' => $currency->getRate(),
-            'payment_method' => Sale::METHOD_CASH_USD,
+            'payment_method' => Sale::METHOD_SPLIT,
             'amount_tendered_usd' => 30.0,
             'change_usd' => $change['change_usd'],
             'change_lbp' => $change['change_lbp'],
+            'channel' => Sale::CHANNEL_ONLINE,
+            'channel_source' => 'whatsapp',
         ]);
         $sale->created_at = now();
+        $sale->setRelation('payments', collect([
+            new SalePayment(SalePayment::line(SalePayment::METHOD_CASH, 'USD', 30.0, 30.0) + ['sale_id' => 0]),
+            new SalePayment(SalePayment::line(SalePayment::METHOD_WISH, 'USD', $wish, $wish, 'WISH-TEST-001') + ['sale_id' => 0]),
+        ]));
         $sale->setRelation('items', $items);
         $sale->setRelation('user', $request->user());
         $sale->setRelation('customer', null);
