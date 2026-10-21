@@ -105,6 +105,7 @@ return [
         'paid_so_far' => 'Paid so far',
         'remaining' => 'Remaining',
         'noncash_exceeds' => 'Card, Wish and on-account amounts cannot be more than the total.',
+        'cash_not_needed' => 'Nothing is left for cash to cover. Clear the cash amounts.',
         'card_amount' => 'Card amount (USD)',
         'card_type_ref' => 'Card type / Ref',
         'approval_ref' => 'Approval ref',
