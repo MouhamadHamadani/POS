@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\SalePayment;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -41,6 +42,64 @@ class ReportService
         ];
 
         return compact('rows', 'totals');
+    }
+
+    /**
+     * Two read-only breakdowns shown under the daily sales table. They look at the same sales as
+     * dailySales() (completed, in range), so they add up to its total revenue.
+     *
+     * Payments: card, Wish and on-account come straight from the sale_payments lines; cash is what
+     * is left of the revenue, i.e. cash net of change, so any LBP rounding lands on cash and the rows
+     * always sum to the revenue. A split sale counts under each method it used (the `sales` column
+     * is how many sales used it, not a partition).
+     *
+     * Channels: on-site vs online, sale count and revenue. Callers hide it when `sales_channels` is off.
+     *
+     * @return array{payments: list<array{method:string,sales:int,usd:float,share:float}>, channels: list<array{channel:string,sales:int,usd:float,share:float}>, revenue: float}
+     */
+    public function dailySalesBreakdown(Carbon $from, Carbon $to): array
+    {
+        $completed = fn () => Sale::query()->where('status', Sale::STATUS_COMPLETED)->whereBetween('created_at', [$from, $to]);
+
+        $revenue = round((float) $completed()->sum('total_usd'), 4);
+        $share = fn (float $usd) => $revenue > 0 ? round($usd / $revenue * 100, 2) : 0.0;
+
+        $lines = SalePayment::query()
+            ->join('sales', 'sales.id', '=', 'sale_payments.sale_id')
+            ->where('sales.status', Sale::STATUS_COMPLETED)
+            ->whereBetween('sales.created_at', [$from, $to])
+            ->groupBy('sale_payments.method')
+            ->selectRaw('sale_payments.method AS method, SUM(sale_payments.amount_usd) AS usd, COUNT(DISTINCT sales.id) AS n')
+            ->get()
+            ->keyBy('method');
+
+        $nonCash = 0.0;
+        foreach ([SalePayment::METHOD_CARD, SalePayment::METHOD_WISH, SalePayment::METHOD_CREDIT] as $method) {
+            $nonCash += (float) ($lines[$method]->usd ?? 0);
+        }
+        $amounts = [
+            SalePayment::METHOD_CASH => round($revenue - $nonCash, 4),
+            SalePayment::METHOD_CARD => round((float) ($lines[SalePayment::METHOD_CARD]->usd ?? 0), 4),
+            SalePayment::METHOD_WISH => round((float) ($lines[SalePayment::METHOD_WISH]->usd ?? 0), 4),
+            SalePayment::METHOD_CREDIT => round((float) ($lines[SalePayment::METHOD_CREDIT]->usd ?? 0), 4),
+        ];
+        $payments = [];
+        foreach ($amounts as $method => $usd) {
+            $payments[] = ['method' => $method, 'sales' => (int) ($lines[$method]->n ?? 0), 'usd' => $usd, 'share' => $share($usd)];
+        }
+
+        $byChannel = $completed()
+            ->selectRaw('channel, COUNT(*) AS n, SUM(total_usd) AS usd')
+            ->groupBy('channel')
+            ->get()
+            ->keyBy('channel');
+        $channels = [];
+        foreach (Sale::CHANNELS as $channel) {
+            $usd = round((float) ($byChannel[$channel]->usd ?? 0), 4);
+            $channels[] = ['channel' => $channel, 'sales' => (int) ($byChannel[$channel]->n ?? 0), 'usd' => $usd, 'share' => $share($usd)];
+        }
+
+        return compact('payments', 'channels', 'revenue');
     }
 
     /**

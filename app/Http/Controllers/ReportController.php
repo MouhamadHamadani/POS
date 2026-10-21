@@ -25,7 +25,13 @@ class ReportController extends Controller
     {
         [$from, $to] = $this->range($request);
         $data = $this->reports->dailySales($from, $to);
-        $payload = array_merge($data, ['from' => $from, 'to' => $to]);
+        $breakdown = $this->reports->dailySalesBreakdown($from, $to);
+        $payload = array_merge($data, [
+            'from' => $from, 'to' => $to,
+            'byPayment' => $breakdown['payments'],
+            // The channel split exists only with the sales_channels feature.
+            'byChannel' => feature('sales_channels') ? $breakdown['channels'] : null,
+        ]);
 
         return $this->respond($request, 'reports.daily-sales', $payload, 'daily_sales', function () use ($data) {
             $rows = [];
