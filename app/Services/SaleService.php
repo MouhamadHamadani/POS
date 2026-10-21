@@ -43,12 +43,16 @@ class SaleService
      *    'amount_card'=>float, 'amount_credit'=>float,
      *    'card_type'=>?string, 'card_reference'=>?string,
      *    'loyalty_points_redeemed'=>int]
+     *
+     * $shiftId is the cashier's open shift, or null for a shift-less sale. A shift-less sale
+     * is legal only while Settings > POS > "Require open shift to sell" is off; with it on,
+     * null is refused here too so the service never relies on the controller having checked.
      */
     public function process(
         array $cart,
         array $payment,
         User $user,
-        int $shiftId,
+        ?int $shiftId,
         ?int $customerId = null,
         ?string $notes = null,
         ?string $priceTier = null,
@@ -58,9 +62,14 @@ class SaleService
             throw ValidationException::withMessages(['cart' => __('messages.cart_empty')]);
         }
 
-        $shift = Shift::findOrFail($shiftId);
-        if (!$shift->isOpen()) {
-            throw new RuntimeException(__('messages.shift_closed_sale'));
+        $shift = null;
+        if ($shiftId !== null) {
+            $shift = Shift::findOrFail($shiftId);
+            if (!$shift->isOpen()) {
+                throw new RuntimeException(__('messages.shift_closed_sale'));
+            }
+        } elseif (Setting::get('require_shift', true)) {
+            throw new RuntimeException(__('messages.no_open_shift'));
         }
 
         $customer = $customerId ? Customer::find($customerId) : null;
@@ -130,7 +139,7 @@ class SaleService
                 'receipt_number' => $this->nextReceiptNumber(),
                 'customer_id' => $customer?->id,
                 'user_id' => $userId,
-                'shift_id' => $shift->id,
+                'shift_id' => $shift?->id,
                 'price_tier' => $tier,
                 'subtotal_usd' => $totals['subtotal'],
                 'discount_amount_usd' => $totals['discount'] + $loyaltyRedeemDiscount,

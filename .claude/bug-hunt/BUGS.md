@@ -375,7 +375,7 @@ controls are not sent), so a test passes for any correct fix (controller default
 - Fix notes: FIXED in bb3b3f5. Cause: expenses/index.blade.php rendered only the `expense` and `demo` error keys. Fix: the view shows the from/to validation message (existing validation.after_or_equal in en and ar, no new strings) and the From/To inputs use old('from'|'to', ...) so the entered dates stay. ExpenseController::filters() passes reports.from / reports.to as attribute names so the message reads "The To field..." / the Arabic equivalent instead of the raw `to`/`from`. Files: resources/views/expenses/index.blade.php, app/Http/Controllers/ExpenseController.php. New test: tests/Feature/Expenses/ExpenseFilterErrorTest.php (Arabic message shown, both dates kept). Not changed: the category/kind/paid-from selects still show the previous filter after a rejected range (only the dates were asked for); StockMovementController and ReportController have the same rule but already display the error.
 
 ## BUG-032 — With "Require open shift" turned off, the till opens but every sale is refused
-- Status: needs-decision
+- Status: fixed (2026-10-22, branch feat/shift-optional-channel-split-payments — decision (a) below: nullable `sales.shift_id`; with shifts off there is no drawer reconciliation; sales are still fully reported; a shift a cashier opens voluntarily still takes their sales; with the setting on nothing changed; `tests/Feature/Shifts/ShiftlessSalesTest.php` + the repro in `tests/Feature/BugHunt/` pass)
 - Severity: medium
 - Area: forms / settings / shifts
 - Where: app/Http/Controllers/SaleController.php:51-60 (409 when no open shift), app/Http/Middleware/ShiftRequired.php:15, resources/views/settings/index.blade.php:180

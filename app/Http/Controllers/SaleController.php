@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Sale;
+use App\Models\Setting;
 use App\Models\Shift;
 use App\Services\SaleService;
 use Illuminate\Http\JsonResponse;
@@ -61,7 +62,10 @@ class SaleController extends Controller
             ->latest('opened_at')
             ->first();
 
-        if (!$shift) {
+        // No open shift: refused while shifts are required. With Settings > POS > "Require open
+        // shift to sell" off the sale goes through shift-less (SaleService says the same again).
+        // A cashier who has opened a shift anyway keeps it: the sale lands in their drawer count.
+        if (!$shift && Setting::get('require_shift', true)) {
             return response()->json(['error' => __('messages.no_open_shift')], 409);
         }
 
@@ -75,7 +79,7 @@ class SaleController extends Controller
                 cart: $data['cart'],
                 payment: $payment,
                 user: $request->user(),
-                shiftId: $shift->id,
+                shiftId: $shift?->id,
                 customerId: $data['customer_id'] ?? null,
                 notes: $data['notes'] ?? null,
                 priceTier: $data['price_tier'] ?? null,
