@@ -6,6 +6,7 @@ use App\Models\CashMovement;
 use App\Models\Expense;
 use App\Models\ReturnTransaction;
 use App\Models\Sale;
+use App\Models\SalePayment;
 use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -76,6 +77,30 @@ class ShiftService
             'cash_out_lbp' => $outLbp,
             'expected_usd' => round((float) $shift->opening_cash_usd + $inUsd - $outUsd, 4),
             'expected_lbp' => round((float) $shift->opening_cash_lbp + $inLbp - $outLbp, 2),
+        ];
+    }
+
+    /**
+     * What the shift took by card and by Wish, for checking against the card machine and the
+     * Wish app. Read-only: none of it is in the drawer, so totals() never sees it. Same sales as
+     * the drawer counts (completed, partly refunded and refunded: the money did move).
+     *
+     * @return array{card_usd:float,wish_usd:float}
+     */
+    public function nonCashTotals(Shift $shift): array
+    {
+        $sums = SalePayment::query()
+            ->join('sales', 'sales.id', '=', 'sale_payments.sale_id')
+            ->where('sales.shift_id', $shift->id)
+            ->whereIn('sales.status', [Sale::STATUS_COMPLETED, Sale::STATUS_PARTIAL_REFUND, Sale::STATUS_REFUNDED])
+            ->whereIn('sale_payments.method', [SalePayment::METHOD_CARD, SalePayment::METHOD_WISH])
+            ->groupBy('sale_payments.method')
+            ->selectRaw('sale_payments.method AS method, SUM(sale_payments.amount_usd) AS total')
+            ->pluck('total', 'method');
+
+        return [
+            'card_usd' => round((float) ($sums[SalePayment::METHOD_CARD] ?? 0), 2),
+            'wish_usd' => round((float) ($sums[SalePayment::METHOD_WISH] ?? 0), 2),
         ];
     }
 

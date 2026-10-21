@@ -88,6 +88,7 @@ needs renaming.
 | `reports.stock_levels` | Reports | Stock levels & inventory-by-date reports | `reports` | existing 2 routes; card ×2 |
 | `reports.profit_loss` | Reports | Profit & Loss report | `reports`, **`expenses`** | existing route; card |
 | `returns` | Sales | Returns & refunds | `sales_history` | existing group; sidebar; Return button on sale detail; stock-movement link |
+| `sales_channels` | Sales | On-site and online sales | — | no route to gate: the on-site / online toggle on the till, the Sales History filter and badge, the receipt line, the daily-sales channel section. Off forces every sale on-site |
 | `loyalty` | Customers | Customers & loyalty | — | existing routes; sidebar; Add-customer button on the till; Loyalty settings tab |
 | `suppliers` | Purchasing | Suppliers & purchase orders | `products` | existing group; 2 sidebar items; stock-movement PO link |
 | `receipts.custom_templates` | Receipts | Custom receipt templates | `receipts` | existing route; Receipt Template tab |
@@ -105,6 +106,9 @@ rules against both the real edge and a synthetic config.
   second plan-level switch would be two controls for one thing.
 - **Hold / recall, price lists, discounts, card / credit tender**: in-module buttons. You said
   gate at module / page level only.
+- **Split payments and Wish** (cash USD / LBP + card + Wish + on account in one sale, on-site or
+  online): **core on every plan**, not a feature key. A plan cannot switch off a way of being paid;
+  the on-account part still follows `loyalty` (it needs a customer), and nothing else does.
 - **Trashed products, Backup, Permissions, Plan**: super_admin-only already; the client never sees them.
 - **A4 invoice print**: optional. I can add `receipts.a4_invoice` (requires `receipts`) if you
   want to sell it separately. Off the list unless you say yes (decision 6).
@@ -126,6 +130,7 @@ tier includes today; both new keys are on in all three.** Restricting Starter fu
 | `returns` | – | ✔ | ✔ |
 | `suppliers` | – | ✔ | ✔ |
 | `loyalty` | – | ✔ | ✔ |
+| `sales_channels` | – | ✔ | ✔ |
 | `receipts.custom_templates` | – | – | ✔ |
 
 Per-plan **limits** are not features and stay as plan attributes (moved next to the presets in

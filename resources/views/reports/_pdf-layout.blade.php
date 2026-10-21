@@ -22,6 +22,7 @@
     td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: {{ $start }}; }
     th.num, td.num { text-align: {{ $end }}; }
     tfoot td { background: #f5f7fa; font-weight: bold; border-top: 2px solid #124F4A; }
+    h2 { font-size: 12px; color: #124F4A; margin: 16px 0 4px; text-align: {{ $start }}; }
     .center { text-align: center !important; padding: 20px; }
     .indent { color: #555; }
     .heavy td { font-weight: bold; background: #f5f7fa; border-top: 2px solid #124F4A; }

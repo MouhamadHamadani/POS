@@ -9,6 +9,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Read side of `sales` for the Sales History screens. Nothing here prices, totals
@@ -22,6 +23,13 @@ class SaleHistoryService
 {
     public const PER_PAGE = 25;
 
+    /**
+     * The payment filter's options. A split sale shows up under every method it contains, so
+     * these are not the stored payment_method values (see paymentMatches). The stored values
+     * (cash_usd, cash_lbp, mixed) are still accepted, as an exact match, for old bookmarks.
+     */
+    public const PAYMENT_FILTERS = ['cash', 'card', 'wish', 'credit', 'split'];
+
     public function __construct(private readonly ReceiptPrintService $prints) {}
 
     /**
@@ -33,7 +41,7 @@ class SaleHistoryService
      * one cheap range scan. A text search with no dates looks through every date:
      * "find any past receipt" must not need the date pickers moved first.
      *
-     * @return array{q:string,from:?Carbon,to:?Carbon,defaulted:bool,user_id:?int,status:?string,payment_method:?string}
+     * @return array{q:string,from:?Carbon,to:?Carbon,defaulted:bool,user_id:?int,status:?string,payment_method:?string,channel:?string}
      */
     public function filters(array $input): array
     {
@@ -53,7 +61,9 @@ class SaleHistoryService
             'defaulted' => $defaulted,
             'user_id' => ! empty($input['user_id']) ? (int) $input['user_id'] : null,
             'status' => in_array($input['status'] ?? null, Sale::STATUSES, true) ? $input['status'] : null,
-            'payment_method' => in_array($input['payment_method'] ?? null, Sale::METHODS, true) ? $input['payment_method'] : null,
+            'payment_method' => in_array($input['payment_method'] ?? null, array_merge(self::PAYMENT_FILTERS, Sale::METHODS), true) ? $input['payment_method'] : null,
+            // The channel filter exists only with the feature; a stale ?channel= in a bookmark is ignored without it.
+            'channel' => feature('sales_channels') && in_array($input['channel'] ?? null, Sale::CHANNELS, true) ? $input['channel'] : null,
         ];
     }
 
@@ -71,7 +81,10 @@ class SaleHistoryService
             $q->where('sales.status', $f['status']);
         }
         if ($f['payment_method']) {
-            $q->where('sales.payment_method', $f['payment_method']);
+            $q->where(fn ($w) => $this->paymentMatches($w, $f['payment_method']));
+        }
+        if ($f['channel']) {
+            $q->where('sales.channel', $f['channel']);
         }
         // A cashier's own filter is a no-op next to visibleTo(): another id matches nothing.
         if ($f['user_id']) {
@@ -88,6 +101,29 @@ class SaleHistoryService
         }
 
         return $q;
+    }
+
+    /**
+     * One rule for "was this sale paid with X": the stored payment_method, or a payment line of
+     * that kind, or (for sales from before sale_payments, which have no lines) the flat column
+     * that method always filled. A split sale therefore matches each method it contains.
+     */
+    private function paymentMatches($w, string $method): void
+    {
+        $hasLine = fn (string $kind) => fn ($sub) => $sub->select(DB::raw(1))->from('sale_payments')
+            ->whereColumn('sale_payments.sale_id', 'sales.id')->where('sale_payments.method', $kind);
+
+        match ($method) {
+            'cash' => $w->whereIn('sales.payment_method', [Sale::METHOD_CASH_USD, Sale::METHOD_CASH_LBP, Sale::METHOD_MIXED])
+                ->orWhere('sales.amount_tendered_usd', '>', 0)->orWhere('sales.amount_tendered_lbp', '>', 0)
+                ->orWhereExists($hasLine('cash')),
+            'card' => $w->where('sales.payment_method', Sale::METHOD_CARD)
+                ->orWhere('sales.amount_card_usd', '>', 0)->orWhereExists($hasLine('card')),
+            'wish' => $w->where('sales.payment_method', Sale::METHOD_WISH)->orWhereExists($hasLine('wish')),
+            'credit' => $w->where('sales.payment_method', Sale::METHOD_CREDIT)
+                ->orWhere('sales.amount_credit_usd', '>', 0)->orWhereExists($hasLine('credit')),
+            default => $w->where('sales.payment_method', $method), // split, or a stored value from an old link
+        };
     }
 
     /**
@@ -110,7 +146,7 @@ class SaleHistoryService
     {
         return $this->query($f, $user)
             ->select('sales.id', 'sales.receipt_number', 'sales.customer_id', 'sales.user_id', 'sales.status',
-                'sales.payment_method', 'sales.total_usd', 'sales.total_lbp', 'sales.created_at')
+                'sales.payment_method', 'sales.channel', 'sales.channel_source', 'sales.total_usd', 'sales.total_lbp', 'sales.created_at')
             ->with(['customer' => fn ($c) => $c->withTrashed()->select('id', 'name'), 'user:id,name'])
             ->orderByDesc('sales.created_at')->orderByDesc('sales.id')
             ->paginate(self::PER_PAGE);

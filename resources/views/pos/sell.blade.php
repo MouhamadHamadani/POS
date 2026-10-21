@@ -86,6 +86,31 @@
                                 </template>
                             </div>
 
+                            {{-- On-site or an online order (WhatsApp / Instagram / ... rung up by hand).
+                                 Bookkeeping only: no price, stock or tax rule depends on it. The server
+                                 forces on-site when the feature is off (Sale::resolveChannel). --}}
+                            @feature('sales_channels')
+                                <div class="flex items-center gap-1">
+                                    <div class="inline-flex rounded border border-gray-300 overflow-hidden text-xs" role="group"
+                                         aria-label="{{ __('pos.ui.channel') }}" title="{{ __('pos.ui.channel') }}">
+                                        @foreach (\App\Models\Sale::CHANNELS as $ch)
+                                            <button type="button" @click="setChannel('{{ $ch }}')"
+                                                    :aria-pressed="channel === '{{ $ch }}'"
+                                                    :class="channel === '{{ $ch }}' ? 'bg-brand-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                                                    class="px-2.5 py-1">{{ \App\Support\EnumLabel::get('sale_channel', $ch) }}</button>
+                                        @endforeach
+                                    </div>
+                                    <select x-show="channel === 'online'" x-cloak x-model="channelSource"
+                                            aria-label="{{ __('pos.ui.channel_source') }}"
+                                            class="border-gray-300 rounded text-xs py-1">
+                                        <option value="">{{ __('pos.ui.channel_source') }}</option>
+                                        @foreach (\App\Models\Sale::CHANNEL_SOURCES as $src)
+                                            <option value="{{ $src }}">{{ \App\Support\EnumLabel::get('sale_channel_source', $src) }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endfeature
+
                             <button type="button" @click="clearCart()" x-show="cart.length"
                                     class="text-xs text-red-600 hover:underline">{{ __('pos.ui.clear') }}</button>
                         </div>
@@ -393,10 +418,11 @@
                 </div>
             </div>
 
-            {{-- Payment modal --}}
+            {{-- Payment modal. Split shows every field at once, so on a short screen it scrolls
+                 inside itself rather than clipping the header and the Complete button. --}}
             <div x-show="showPayment" x-cloak @keydown.escape.window="showPayment=false"
                  class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5">
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5 max-h-full overflow-y-auto">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-lg font-bold">{{ __('pos.ui.payment') }}</h3>
                         <button type="button" @click="showPayment=false" class="text-gray-400 hover:text-gray-700 text-xl">×</button>
@@ -409,19 +435,20 @@
                     </div>
 
                     <div class="space-y-3 text-sm">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600">{{ __('customers.method') }}</label>
-                            <select x-model="payment.method" class="w-full border-gray-300 rounded mt-1 text-sm">
-                                <option value="cash_usd">{{ __('enums.payment_method.cash_usd') }}</option>
-                                <option value="cash_lbp">{{ __('enums.payment_method.cash_lbp') }}</option>
-                                <option value="mixed">{{ __('pos.ui.mixed') }}</option>
-                                <option value="card">{{ __('enums.payment_method.card') }}</option>
-                            </select>
+                        {{-- How the customer pays. The buttons only choose which fields are shown (and pre-fill the
+                             obvious amounts); what is SENT is the amounts, and the server derives the method. --}}
+                        <div class="grid grid-cols-4 gap-1" role="group" aria-label="{{ __('customers.method') }}">
+                            @foreach (['cash', 'card', 'wish', 'split'] as $mode)
+                                <button type="button" @click="setPayMode('{{ $mode }}')"
+                                        :aria-pressed="payMode === '{{ $mode }}'"
+                                        :class="payMode === '{{ $mode }}' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+                                        class="py-2 rounded border text-sm font-medium">{{ __("pos.ui.pay_$mode") }}</button>
+                            @endforeach
                         </div>
 
-                        <div x-show="['cash_usd','mixed'].includes(payment.method)">
+                        <div x-show="['cash','split'].includes(payMode)">
                             <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.cash_usd_tendered') }}</label>
-                            <input type="number" dir="ltr" step="0.01" min="0" x-model.number="payment.amount_usd" @input="refreshChangePreview()"
+                            <input type="number" dir="ltr" step="0.01" min="0" x-ref="cashUsd" x-model.number="payment.amount_usd" @input="refreshChangePreview()"
                                    class="w-full border-gray-300 rounded mt-1 text-sm" />
                             <div class="flex gap-1 mt-1">
                                 <template x-for="d in [1,5,10,20,50,100]">
@@ -431,7 +458,7 @@
                             </div>
                         </div>
 
-                        <div x-show="['cash_lbp','mixed'].includes(payment.method)">
+                        <div x-show="['cash','split'].includes(payMode)">
                             <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.cash_lbp_tendered') }}</label>
                             <input type="number" dir="ltr" step="1000" min="0" x-model.number="payment.amount_lbp" @input="refreshChangePreview()"
                                    class="w-full border-gray-300 rounded mt-1 text-sm" />
@@ -443,10 +470,14 @@
                             </div>
                         </div>
 
-                        <div x-show="payment.method === 'card'">
+                        <div x-show="['card','split'].includes(payMode)">
                             <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.card_amount') }}</label>
-                            <input type="number" dir="ltr" step="0.01" min="0" x-model.number="payment.amount_card"
-                                   class="w-full border-gray-300 rounded mt-1 text-sm" />
+                            <div class="flex gap-1 mt-1">
+                                <input type="number" dir="ltr" step="0.01" min="0" x-model.number="payment.amount_card" @input="refreshChangePreview()"
+                                       class="flex-1 border-gray-300 rounded text-sm" />
+                                <button type="button" x-show="payMode === 'split'" @click="fillRemaining('amount_card')"
+                                        class="text-xs px-2 py-1 bg-gray-100 rounded whitespace-nowrap">{{ __('pos.ui.fill_remaining') }}</button>
+                            </div>
                             <label class="block text-xs font-medium text-gray-600 mt-2">{{ __('pos.ui.card_type_ref') }}</label>
                             <div class="flex gap-2">
                                 <select x-model="payment.card_type" class="border-gray-300 rounded text-sm">
@@ -458,16 +489,34 @@
                             </div>
                         </div>
 
-                        <div class="bg-gray-50 p-2 rounded text-xs space-y-1">
-                            <div class="flex justify-between"><span>{{ __('pos.ui.tendered') }}</span><span><x-ltr>$<span x-text="tenderedUsd().toFixed(2)"></span></x-ltr></span></div>
-                            <div class="flex justify-between font-semibold" :class="changeUsd() >= 0 ? 'text-green-700' : 'text-red-600'">
-                                <span x-text="changeUsd() >= 0 ? t('change_owed') : t('short')"></span>
-                                <span><x-ltr>$<span x-text="Math.abs(changeUsd()).toFixed(2)"></span></x-ltr></span>
+                        {{-- Wish is bookkeeping only: the cashier takes the payment in the Wish app, this records it. --}}
+                        <div x-show="['wish','split'].includes(payMode)">
+                            <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.wish_amount') }}</label>
+                            <div class="flex gap-1 mt-1">
+                                <input type="number" dir="ltr" step="0.01" min="0" x-model.number="payment.amount_wish" @input="refreshChangePreview()"
+                                       class="flex-1 border-gray-300 rounded text-sm" />
+                                <button type="button" x-show="payMode === 'split'" @click="fillRemaining('amount_wish')"
+                                        class="text-xs px-2 py-1 bg-gray-100 rounded whitespace-nowrap">{{ __('pos.ui.fill_remaining') }}</button>
                             </div>
+                            <label class="block text-xs font-medium text-gray-600 mt-2">{{ __('pos.ui.wish_ref') }}</label>
+                            <input type="text" x-model="payment.wish_reference" dir="ltr" maxlength="100"
+                                   class="w-full border-gray-300 rounded text-sm" />
                         </div>
 
+                        {{-- Total / Paid so far / Remaining (or the change owed). --}}
+                        <div class="bg-gray-50 p-2 rounded text-xs space-y-1">
+                            <div class="flex justify-between"><span>{{ __('pos.ui.total_due') }}</span><span><x-ltr>$<span x-text="totals.total.toFixed(2)"></span></x-ltr></span></div>
+                            <div class="flex justify-between"><span>{{ __('pos.ui.paid_so_far') }}</span><span><x-ltr>$<span x-text="tenderedUsd().toFixed(2)"></span></x-ltr></span></div>
+                            <div class="flex justify-between font-semibold" :class="changeUsd() >= -0.005 && !noncashExceeds() ? 'text-green-700' : 'text-red-600'">
+                                <span x-text="changeUsd() > 0.005 && !noncashExceeds() ? t('change_owed') : t('remaining')"></span>
+                                <span><x-ltr>$<span x-text="(changeUsd() > 0.005 && !noncashExceeds() ? changeUsd() : remainingUsd()).toFixed(2)"></span></x-ltr></span>
+                            </div>
+                        </div>
+                        <div x-show="noncashExceeds()" x-cloak class="text-xs text-red-600" x-text="t('noncash_exceeds')"></div>
+                        <div x-show="cashNotNeeded()" x-cloak class="text-xs text-red-600" x-text="t('cash_not_needed')"></div>
+
                         {{-- Split-change section: cashier decides how much USD to give back --}}
-                        <div x-show="changeUsd() > 0.005" class="border border-brand-200 bg-brand-50 p-2 rounded text-xs space-y-2">
+                        <div x-show="changeUsd() > 0.005 && !noncashExceeds()" class="border border-brand-200 bg-brand-50 p-2 rounded text-xs space-y-2">
                             <div class="flex justify-between items-center">
                                 <span class="font-semibold text-brand-800">{{ __('pos.ui.change_to_return') }}</span>
                                 <div class="flex gap-1">
@@ -503,7 +552,7 @@
 
                         <div x-show="errorMsg" x-cloak class="text-sm text-red-600 bg-red-50 p-2 rounded" x-text="errorMsg"></div>
 
-                        <button type="button" @click="submit()" :disabled="processing || changeUsd() < -0.005"
+                        <button type="button" @click="submit()" :disabled="!canComplete()"
                                 class="w-full py-3 bg-green-600 text-white rounded font-bold hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
                             <span x-show="!processing">{{ __('pos.ui.complete_sale') }} (F12)</span>
                             <span x-show="processing">{{ __('pos.ui.processing') }}</span>
@@ -558,6 +607,8 @@
                 units: @json(__('enums.unit')),
                 tiers: ['retail', 'wholesale', 'vip'],
                 priceTier: 'retail',        // active price list; the server re-checks it (SaleService::resolvePriceTier)
+                channel: 'onsite',          // onsite | online; bookkeeping, resets to onsite after every sale or hold
+                channelSource: '',          // whatsapp | facebook | ... (only with online; '' = not specified)
                 canChangeTier: @json($canChangeTier),
                 showCost: @json($showCost), // managers only: lets the "below cost" warning work
                 maxDiscountPct: @json($maxDiscountPct), // effective % of a line's gross; 100 = unlimited
@@ -588,7 +639,9 @@
                 processing: false,
                 errorMsg: '',
                 lastSale: null,
-                payment: { method: 'cash_usd', amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', change_usd_out: null },
+                // Flat, one slot per kind of money. `method` is gone: the server derives it from the amounts.
+                payment: { amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', amount_wish: 0, wish_reference: '', change_usd_out: null },
+                payMode: 'cash',            // cash | card | wish | split: which fields are shown, nothing more
                 changePreview: null,
                 _previewTimer: null,
 
@@ -779,6 +832,8 @@
                                     note: l.note,
                                 })),
                                 price_tier: this.priceTier,
+                                channel: this.channel,
+                                channel_source: this.channelPayload(),
                                 cart_discount: Number(this.cartDiscount.value) > 0
                                     ? { type: this.cartDiscount.type, value: Number(this.cartDiscount.value) }
                                     : null,
@@ -840,6 +895,8 @@
                         this.cartDiscount = data.cart_discount
                             ? { type: data.cart_discount.type, value: Number(data.cart_discount.value) }
                             : { type: 'pct', value: 0 };
+                        this.channel = data.channel === 'online' ? 'online' : 'onsite';
+                        this.channelSource = this.channel === 'online' ? (data.channel_source || '') : '';
                         this.lastScannedIndex = null;
                         this.showHeldList = false;
                         await this.refreshHeldCount();
@@ -1031,14 +1088,24 @@
                     }
                 },
 
-                // Back to a blank retail sale (after checkout or hold).
+                // Back to a blank on-site retail sale (after checkout or hold).
                 resetSale() {
                     this.cart = [];
                     this.customer = null;
                     this.lastScannedIndex = null;
                     this.priceTier = 'retail';
                     this.cartDiscount = { type: 'pct', value: 0 };
+                    this.channel = 'onsite';
+                    this.channelSource = '';
                 },
+
+                setChannel(ch) {
+                    this.channel = ch;
+                    if (ch !== 'online') this.channelSource = '';
+                },
+
+                // The source only travels with an online sale; '' means "not specified".
+                channelPayload() { return this.channel === 'online' && this.channelSource ? this.channelSource : null; },
 
                 // One pass over a cart: price, line discount, the line's share of the cart
                 // discount, tax, total. Mirrors SaleService::totalsFromCart step for step
@@ -1232,19 +1299,59 @@
 
                 openPayment() {
                     if (!this.cart.length || this.issues.length) return;
-                    this.payment = { method: 'cash_usd', amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', change_usd_out: null };
+                    this.payment = { amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', amount_wish: 0, wish_reference: '', change_usd_out: null };
+                    this.payMode = 'cash';
                     this.changePreview = null;
                     this.errorMsg = '';
                     this.showPayment = true;
+                    this.$nextTick(() => this.$refs.cashUsd?.focus());
                 },
 
+                // Choosing a method pre-fills the obvious amounts and clears the ones that cannot apply together.
+                // Cash keeps its own fields; Card and Wish take the whole total; Split leaves everything to the cashier.
+                setPayMode(mode) {
+                    const total = Number(this.totals.total.toFixed(2));
+                    this.payMode = mode;
+                    if (mode === 'cash') {
+                        Object.assign(this.payment, { amount_card: 0, amount_wish: 0, card_reference: '', wish_reference: '' });
+                        this.$nextTick(() => this.$refs.cashUsd?.focus());
+                    } else if (mode === 'card') {
+                        Object.assign(this.payment, { amount_usd: 0, amount_lbp: 0, amount_wish: 0, wish_reference: '', change_usd_out: null, amount_card: total });
+                    } else if (mode === 'wish') {
+                        Object.assign(this.payment, { amount_usd: 0, amount_lbp: 0, amount_card: 0, card_reference: '', change_usd_out: null, amount_wish: total });
+                    }
+                    this.refreshChangePreview();
+                },
+
+                // Money already taken: cash (USD + LBP at the till rate) + card + Wish. The one "paid" figure
+                // the modal reads; the readout, the change and the Complete button all derive from it.
                 tenderedUsd() {
-                    return (this.payment.amount_usd || 0)
-                        + (this.payment.amount_lbp || 0) / this.exchangeRate
-                        + (this.payment.amount_card || 0);
+                    return this.cashTenderedUsd() + this.nonCashUsd();
+                },
+                cashTenderedUsd() {
+                    return (this.payment.amount_usd || 0) + (this.payment.amount_lbp || 0) / this.exchangeRate;
+                },
+                // Card and Wish are money that moved elsewhere: they can fill the total but never exceed it.
+                nonCashUsd() {
+                    return (this.payment.amount_card || 0) + (this.payment.amount_wish || 0);
+                },
+                noncashExceeds() { return this.nonCashUsd() > this.totals.total + 0.005; },
+                // What is left for cash to cover; never negative (this is what the change preview works from).
+                cashDueUsd() { return Math.max(0, this.totals.total - this.nonCashUsd()); },
+                // Cash typed in when card / Wish already cover everything is a keying mistake the server refuses too.
+                cashNotNeeded() { return this.cashDueUsd() <= 0.005 && this.cashTenderedUsd() > 0.005; },
+                remainingUsd() { return Math.max(0, this.totals.total - this.tenderedUsd()); },
+                changeUsd() { return this.tenderedUsd() - this.totals.total; },
+                canComplete() {
+                    return !this.processing && this.changeUsd() >= -0.005 && !this.noncashExceeds() && !this.cashNotNeeded();
                 },
 
-                changeUsd() { return this.tenderedUsd() - this.totals.total; },
+                // Set a card / Wish row to whatever the other rows leave uncovered (0 if they already cover it).
+                fillRemaining(field) {
+                    const others = this.tenderedUsd() - (this.payment[field] || 0);
+                    this.payment[field] = Number(Math.max(0, this.totals.total - others).toFixed(2));
+                    this.refreshChangePreview();
+                },
 
                 setSplit(mode) {
                     if (mode === 'all_usd') {
@@ -1261,7 +1368,7 @@
                 },
 
                 async _fetchChangePreview() {
-                    if (this.changeUsd() <= 0.005) {
+                    if (this.changeUsd() <= 0.005 || this.noncashExceeds()) {
                         this.changePreview = null;
                         return;
                     }
@@ -1274,7 +1381,8 @@
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                             },
                             body: JSON.stringify({
-                                total_usd: this.totals.total,
+                                // The cash due, never negative: card / Wish take their share first.
+                                total_usd: this.cashDueUsd(),
                                 paid_usd: this.payment.amount_usd || 0,
                                 paid_lbp: this.payment.amount_lbp || 0,
                                 change_usd_out: this.payment.change_usd_out,
@@ -1311,6 +1419,8 @@
                                     ? Number(this.cartDiscount.value) : null,
                                 payment: this.payment,
                                 customer_id: this.customer?.id || null,
+                                channel: this.channel,
+                                channel_source: this.channelPayload(),
                             }),
                         });
                         const data = await res.json();

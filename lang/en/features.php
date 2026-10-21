@@ -33,6 +33,7 @@ return [
         'reports_stock_levels' => 'Stock levels and inventory-by-date reports',
         'reports_profit_loss' => 'Profit and loss report',
         'returns' => 'Returns and refunds',
+        'sales_channels' => 'On-site and online sales',
         'loyalty' => 'Customers and loyalty',
         'suppliers' => 'Suppliers and purchase orders',
         'receipts_custom_templates' => 'Custom receipt templates',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\HeldSale;
 use App\Models\Product;
+use App\Models\Sale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -61,7 +62,10 @@ class HeldSaleController extends Controller
             'customer_id' => 'nullable|integer|exists:customers,id',
             'label' => 'nullable|string|max:80',
             'notes' => 'nullable|string|max:500',
+            'channel' => ['nullable', Rule::in(Sale::CHANNELS)],
+            'channel_source' => ['nullable', Rule::in(Sale::CHANNEL_SOURCES)],
         ]);
+        [$channel, $channelSource] = Sale::resolveChannel($data['channel'] ?? null, $data['channel_source'] ?? null);
 
         $held = HeldSale::create([
             'user_id' => $request->user()->id,
@@ -70,6 +74,8 @@ class HeldSaleController extends Controller
             'label' => $data['label'] ?? null,
             'cart' => $data['cart'],
             'price_tier' => $data['price_tier'] ?? Customer::GROUP_RETAIL,
+            'channel' => $channel,
+            'channel_source' => $channelSource,
             'cart_discount' => $data['cart_discount'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
@@ -93,12 +99,16 @@ class HeldSaleController extends Controller
         // A hold made while loyalty was on comes back as a walk-in cart once it is off: the
         // till has no customer chip to show or remove, and the sale endpoint would refuse it.
         $withCustomer = feature('loyalty');
+        [$channel, $channelSource] = Sale::resolveChannel($heldSale->channel, $heldSale->channel_source);
 
         $payload = [
             'cart' => $heldSale->cart,
             'customer_id' => $withCustomer ? $heldSale->customer_id : null,
             'customer' => $withCustomer ? $heldSale->customer?->posSummary() : null,
             'price_tier' => $heldSale->price_tier,
+            // A hold parked while the feature was on comes back on-site once it is off.
+            'channel' => $channel,
+            'channel_source' => $channelSource,
             'cart_discount' => $heldSale->cart_discount,
             'notes' => $heldSale->notes,
             'label' => $heldSale->label,

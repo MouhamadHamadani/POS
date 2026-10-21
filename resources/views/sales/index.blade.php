@@ -35,11 +35,22 @@
                         <label class="block text-xs text-gray-500">{{ __('receipt.payment') }}</label>
                         <select name="payment_method" class="w-full border-gray-300 rounded text-sm">
                             <option value="">{{ __('common.all') }}</option>
-                            @foreach (\App\Models\Sale::METHODS as $m)
+                            @foreach (\App\Services\SaleHistoryService::PAYMENT_FILTERS as $m)
                                 <option value="{{ $m }}" @selected($f['payment_method'] === $m)>{{ \App\Support\EnumLabel::get('payment_method', $m) }}</option>
                             @endforeach
                         </select>
                     </div>
+                    @feature('sales_channels')
+                        <div>
+                            <label class="block text-xs text-gray-500">{{ __('sales.channel') }}</label>
+                            <select name="channel" class="w-full border-gray-300 rounded text-sm">
+                                <option value="">{{ __('common.all') }}</option>
+                                @foreach (\App\Models\Sale::CHANNELS as $ch)
+                                    <option value="{{ $ch }}" @selected($f['channel'] === $ch)>{{ \App\Support\EnumLabel::get('sale_channel', $ch) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endfeature
                     {{-- Only managerial roles can see anyone else's sales, so only they get this filter. --}}
                     @if ($cashiers->isNotEmpty())
                         <div>
@@ -77,6 +88,7 @@
                         <th class="p-3 text-start">{{ __('receipt.customer') }}</th>
                         <th class="p-3 text-start">{{ __('receipt.cashier') }}</th>
                         <th class="p-3 text-start">{{ __('receipt.payment') }}</th>
+                        @feature('sales_channels')<th class="p-3 text-start">{{ __('sales.channel') }}</th>@endfeature
                         <th class="p-3 text-end">{{ __('dashboard.total') }}</th>
                         <th class="p-3 text-center">{{ __('common.status') }}</th>
                         <th class="p-3 text-end">{{ __('common.actions') }}</th>
@@ -93,6 +105,12 @@
                         <td class="p-3">{{ $s->customer?->name ?? __('returns.walk_in') }}</td>
                         <td class="p-3">{{ $s->user?->name ?? '—' }}</td>
                         <td class="p-3 text-xs">{{ $s->paymentMethodLabel() }}</td>
+                        @feature('sales_channels')
+                            <td class="p-3 text-xs whitespace-nowrap">
+                                <span class="px-1.5 py-0.5 rounded {{ $s->isOnline() ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600' }}">{{ $s->channelLabel() }}</span>
+                                @if ($s->channel_source)<span class="text-gray-500">· {{ $s->channelSourceLabel() }}</span>@endif
+                            </td>
+                        @endfeature
                         <td class="p-3 text-end whitespace-nowrap">
                             <div class="font-medium"><x-ltr>${{ number_format((float) $s->total_usd, 2) }}</x-ltr></div>
                             @if ((float) $s->total_lbp > 0)
@@ -112,7 +130,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="p-10 text-center text-gray-500">{{ __('sales.none') }}</td></tr>
+                    <tr><td colspan="{{ feature('sales_channels') ? 9 : 8 }}" class="p-10 text-center text-gray-500">{{ __('sales.none') }}</td></tr>
                 @endforelse
                 </tbody>
             </table>

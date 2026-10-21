@@ -33,7 +33,7 @@ final class ReceiptRenderer
 
     public static function render(PrintTemplate $template, Sale $sale, array $data): string
     {
-        $html = self::renderItems($template->template_html, $sale);
+        $html = self::renderPayments(self::renderItems($template->template_html, $sale), $sale);
         $html = self::substitute($html, self::tokens($sale, $data));
         $html = self::withNotice($html, (bool) ($data['isTest'] ?? false), (bool) ($data['isCopy'] ?? false));
 
@@ -64,10 +64,35 @@ final class ReceiptRenderer
             'total_usd' => $money($sale->total_usd),
             'total_lbp' => number_format((float) $sale->total_lbp),
             'payment_method' => str_replace('_', ' ', (string) $sale->payment_method),
+            // "Online order · WhatsApp" for an online order, empty for a counter sale.
+            'channel' => $sale->isOnline()
+                ? trim(__('receipt.online_order', [], 'en').($sale->channel_source ? ' · '.__('enums.sale_channel_source.'.$sale->channel_source, [], 'en') : ''))
+                : '',
             'change_usd' => $money($sale->change_usd),
             'change_lbp' => number_format((float) $sale->change_lbp),
             'loyalty_points_earned' => (string) (int) $sale->loyalty_points_earned,
         ];
+    }
+
+    /** {{#payments}} ... {{/payments}}: one block per payment line; tokens method, amount, reference. */
+    private static function renderPayments(string $html, Sale $sale): string
+    {
+        return (string) preg_replace_callback(
+            '/\{\{#payments\}\}(.*?)\{\{\/payments\}\}/s',
+            function (array $m) use ($sale) {
+                $out = '';
+                foreach ($sale->paymentLines() as $line) {
+                    $out .= self::substitute($m[1], [
+                        'method' => __('enums.payment_method.'.$line['kind'], [], 'en'),
+                        'amount' => $line['currency'] === 'LBP' ? number_format($line['amount']).' LBP' : number_format($line['amount'], 2),
+                        'reference' => (string) ($line['reference'] ?? ''),
+                    ]);
+                }
+
+                return $out;
+            },
+            $html,
+        );
     }
 
     private static function renderItems(string $html, Sale $sale): string

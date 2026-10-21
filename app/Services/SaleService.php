@@ -7,9 +7,11 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\SalePayment;
 use App\Models\Setting;
 use App\Models\Shift;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -18,6 +20,9 @@ class SaleService
 {
     /** Half of the last stored decimal — slack for comparing 4-dp USD amounts. */
     private const EPS = 0.00005;
+
+    /** Slack for comparing what was paid with what is due: a JS float or a rounded LBP note, never real money. */
+    private const PAY_TOLERANCE = 0.001;
 
     public function __construct(
         private readonly CurrencyService $currency,
@@ -38,36 +43,56 @@ class SaleService
      * group, else retail" (see resolvePriceTier() for who may override it).
      * $cartDiscount is ['pct'=>float, 'amount'=>float] (see totalsFromCart()).
      *
-     * Payment shape:
-     *   ['method'=>string, 'amount_usd'=>float, 'amount_lbp'=>float,
-     *    'amount_card'=>float, 'amount_credit'=>float,
-     *    'card_type'=>?string, 'card_reference'=>?string,
-     *    'loyalty_points_redeemed'=>int]
+     * Payment shape (flat: each kind of money at most once; USD and LBP cash are two fields):
+     *   ['amount_usd'=>float, 'amount_lbp'=>float,                       cash tendered, by currency
+     *    'amount_card'=>float, 'card_type'=>?string, 'card_reference'=>?string,
+     *    'amount_wish'=>float, 'wish_reference'=>?string,                USD
+     *    'amount_credit'=>float,                                         on account (loyalty feature)
+     *    'change_usd_out'=>?float, 'loyalty_points_redeemed'=>int]
+     * `method` is no longer read: payment_method is derived from the amounts (Sale::deriveMethod).
+     * Non-cash can never exceed the total and never causes change; cash covers what is left.
+     *
+     * $shiftId is the cashier's open shift, or null for a shift-less sale. A shift-less sale
+     * is legal only while Settings > POS > "Require open shift to sell" is off; with it on,
+     * null is refused here too so the service never relies on the controller having checked.
      */
     public function process(
         array $cart,
         array $payment,
         User $user,
-        int $shiftId,
+        ?int $shiftId,
         ?int $customerId = null,
         ?string $notes = null,
         ?string $priceTier = null,
         array $cartDiscount = [],
+        string $channel = Sale::CHANNEL_ONSITE,
+        ?string $channelSource = null,
     ): Sale {
         if (empty($cart)) {
             throw ValidationException::withMessages(['cart' => __('messages.cart_empty')]);
         }
 
-        $shift = Shift::findOrFail($shiftId);
-        if (!$shift->isOpen()) {
-            throw new RuntimeException(__('messages.shift_closed_sale'));
+        $shift = null;
+        if ($shiftId !== null) {
+            $shift = Shift::findOrFail($shiftId);
+            if (!$shift->isOpen()) {
+                throw new RuntimeException(__('messages.shift_closed_sale'));
+            }
+        } elseif (Setting::get('require_shift', true)) {
+            throw new RuntimeException(__('messages.no_open_shift'));
         }
 
         $customer = $customerId ? Customer::find($customerId) : null;
         $tier = $this->resolvePriceTier($user, $priceTier, $customer);
         $userId = $user->id;
 
-        return DB::transaction(function () use ($cart, $payment, $user, $userId, $shift, $customer, $notes, $tier, $cartDiscount) {
+        // Channel is bookkeeping: it prices, stocks, taxes and awards nothing differently. The
+        // request's own rules (the feature gate, source only with online) are Sale::resolveChannel's;
+        // this just refuses to store a value the enum does not have.
+        $channel = $channel === Sale::CHANNEL_ONLINE ? Sale::CHANNEL_ONLINE : Sale::CHANNEL_ONSITE;
+        $channelSource = $channel === Sale::CHANNEL_ONLINE && in_array($channelSource, Sale::CHANNEL_SOURCES, true) ? $channelSource : null;
+
+        return DB::transaction(function () use ($cart, $payment, $user, $userId, $shift, $customer, $notes, $tier, $cartDiscount, $channel, $channelSource) {
             $exchangeRate = $this->currency->getRate();
             $totals = $this->totalsFromCart($cart, $customer, $tier, $cartDiscount);
             $this->assertWithinDiscountLimit($totals, $user);
@@ -101,13 +126,29 @@ class SaleService
             $tendUsd = (float) ($payment['amount_usd'] ?? 0);
             $tendLbp = (float) ($payment['amount_lbp'] ?? 0);
             $card = (float) ($payment['amount_card'] ?? 0);
+            $wish = (float) ($payment['amount_wish'] ?? 0);
             $credit = (float) ($payment['amount_credit'] ?? 0);
 
             $cashAsUsd = $tendUsd + $this->currency->lbpToUsd($tendLbp);
-            $totalPaid = $cashAsUsd + $card + $credit;
+            $nonCash = $card + $wish + $credit;
+            $totalPaid = $cashAsUsd + $nonCash;
 
-            if ($totalPaid + 0.001 < $grandTotal) {
+            if ($totalPaid + self::PAY_TOLERANCE < $grandTotal) {
                 throw ValidationException::withMessages(['payment' => __('messages.payment_insufficient')]);
+            }
+
+            // Card, Wish and on-account are money that moved somewhere else (the card machine, the
+            // Wish app, the customer's tab). They are exact or less, so they can never create change
+            // out of the drawer: only cash can be over-tendered.
+            if ($nonCash > $grandTotal + self::PAY_TOLERANCE) {
+                throw ValidationException::withMessages(['payment' => __('messages.payment_noncash_exceeds')]);
+            }
+
+            // What is left for cash to cover. Cash tendered when nothing is left to cover is a
+            // keying mistake, not a tip: refuse it rather than quietly handing it back as change.
+            $cashDue = max(0.0, $grandTotal - $nonCash);
+            if ($cashDue <= self::PAY_TOLERANCE && ($tendUsd > 0 || $tendLbp > 0)) {
+                throw ValidationException::withMessages(['payment' => __('messages.payment_cash_not_needed')]);
             }
 
             if ($credit > 0) {
@@ -122,16 +163,19 @@ class SaleService
             $changeUsdOut = array_key_exists('change_usd_out', $payment) && $payment['change_usd_out'] !== null
                 ? (float) $payment['change_usd_out']
                 : null;
-            $change = $this->currency->calculateChange(
-                $grandTotal - $card - $credit, $tendUsd, $tendLbp, $changeUsdOut
-            );
+            // Change is worked out against the cash due only. (It used to be total - card - credit,
+            // which went negative when card + credit exceeded the total and told the cashier to hand
+            // back drawer cash for a card overpayment.)
+            $change = $this->currency->calculateChange($cashDue, $tendUsd, $tendLbp, $changeUsdOut);
 
             $sale = Sale::create([
                 'receipt_number' => $this->nextReceiptNumber(),
                 'customer_id' => $customer?->id,
                 'user_id' => $userId,
-                'shift_id' => $shift->id,
+                'shift_id' => $shift?->id,
                 'price_tier' => $tier,
+                'channel' => $channel,
+                'channel_source' => $channelSource,
                 'subtotal_usd' => $totals['subtotal'],
                 'discount_amount_usd' => $totals['discount'] + $loyaltyRedeemDiscount,
                 'cart_discount_usd' => $totals['cart_discount'],
@@ -139,7 +183,8 @@ class SaleService
                 'total_usd' => $grandTotal,
                 'total_lbp' => $this->currency->usdToLbp($grandTotal),
                 'exchange_rate' => $exchangeRate,
-                'payment_method' => $payment['method'] ?? Sale::METHOD_CASH_USD,
+                // Derived from the amounts; the client's own `payment.method` is not read.
+                'payment_method' => Sale::deriveMethod($tendUsd, $tendLbp, $card, $wish, $credit),
                 'amount_tendered_usd' => $tendUsd ?: null,
                 'amount_tendered_lbp' => $tendLbp ?: null,
                 'amount_card_usd' => $card,
@@ -147,8 +192,9 @@ class SaleService
                 'change_usd' => $change['change_usd'],
                 'change_lbp' => $change['change_lbp'],
                 'loyalty_points_redeemed' => (int) ($payment['loyalty_points_redeemed'] ?? 0),
-                'card_type' => $payment['card_type'] ?? null,
-                'card_reference' => $payment['card_reference'] ?? null,
+                // The till always sends a default card type; it only means something on a card payment.
+                'card_type' => $card > 0 ? ($payment['card_type'] ?? null) : null,
+                'card_reference' => $card > 0 ? ($payment['card_reference'] ?? null) : null,
                 'status' => Sale::STATUS_COMPLETED,
                 'notes' => $notes,
             ]);
@@ -175,6 +221,12 @@ class SaleService
                 $this->inventory->deductForSale($line['product'], (float) $line['qty'], $userId, $sale->id);
             }
 
+            // The itemised record, beside the flat columns above (which stay the drawer's ledger).
+            $paymentLines = $this->paymentRows($payment, $tendUsd, $tendLbp, $card, $wish, $credit);
+            foreach ($paymentLines as $row) {
+                $sale->payments()->create(Arr::except($row, 'kind'));
+            }
+
             if ($customer && $credit > 0) {
                 $customer->increment('balance', $credit);
             }
@@ -187,13 +239,49 @@ class SaleService
                 'receipt' => $sale->receipt_number,
                 'total' => $grandTotal,
                 'price_tier' => $tier,
+                'channel' => $channel,
+                'channel_source' => $channelSource,
+                'payment_method' => $sale->payment_method,
+                // Per-method amounts as paid (cash USD / LBP are what was tendered; the change is on the sale).
+                'payments' => collect($paymentLines)->mapWithKeys(fn ($l) => [$l['kind'] => $l['amount']])->all(),
                 'discount_total' => $totals['discount'],
                 'cart_discount' => $totals['cart_discount'],
                 'max_line_discount_pct' => $totals['max_line_discount_pct'],
             ]);
 
-            return $sale->load('items', 'customer');
+            return $sale->load('items', 'customer', 'payments');
         });
+    }
+
+    /**
+     * The sale_payments rows for one payment: a line per kind of money that was actually used.
+     * Cash lines carry what was TENDERED in that currency (change stays on the sale); LBP is also
+     * stored as its USD value at today's rate. Wish is USD in v1.
+     *
+     * @return list<array{sale_id?:int,method:string,currency:string,amount:float,amount_usd:float,reference:?string,card_type:?string,kind:string}>
+     */
+    private function paymentRows(array $payment, float $tendUsd, float $tendLbp, float $card, float $wish, float $credit): array
+    {
+        $ref = fn (string $key) => ($v = trim((string) ($payment[$key] ?? ''))) !== '' ? $v : null;
+        $lines = [];
+
+        if ($tendUsd > 0) {
+            $lines[] = SalePayment::line(SalePayment::METHOD_CASH, 'USD', $tendUsd, $tendUsd);
+        }
+        if ($tendLbp > 0) {
+            $lines[] = SalePayment::line(SalePayment::METHOD_CASH, 'LBP', $tendLbp, $this->currency->lbpToUsd($tendLbp));
+        }
+        if ($card > 0) {
+            $lines[] = SalePayment::line(SalePayment::METHOD_CARD, 'USD', $card, $card, $ref('card_reference'), $payment['card_type'] ?? null);
+        }
+        if ($wish > 0) {
+            $lines[] = SalePayment::line(SalePayment::METHOD_WISH, 'USD', $wish, $wish, $ref('wish_reference'));
+        }
+        if ($credit > 0) {
+            $lines[] = SalePayment::line(SalePayment::METHOD_CREDIT, 'USD', $credit, $credit);
+        }
+
+        return $lines;
     }
 
     /**

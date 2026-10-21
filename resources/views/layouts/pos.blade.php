@@ -37,10 +37,13 @@
                 </div>
 
                 <div class="ms-auto flex items-center gap-2 text-xs">
-                    <a href="{{ route('shifts.close') }}"
-                       class="px-3 py-1.5 bg-danger hover:bg-red-700 rounded transition">
-                       {{ __('nav.close_shift') }}
-                    </a>
+                    {{-- Nothing to close when shifts are optional and this cashier never opened one. --}}
+                    @if ($shift || \App\Models\Setting::get('require_shift', true))
+                        <a href="{{ route('shifts.close') }}"
+                           class="px-3 py-1.5 bg-danger hover:bg-red-700 rounded transition">
+                           {{ __('nav.close_shift') }}
+                        </a>
+                    @endif
 
                     <div x-data="{ open: false }" class="relative">
                         <button @click="open = !open" class="flex items-center gap-1 px-2 py-1 hover:bg-brand-600 rounded">

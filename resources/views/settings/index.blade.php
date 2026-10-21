@@ -427,12 +427,17 @@
                                 &#123;&#123;receipt_number&#125;&#125; &#123;&#123;date&#125;&#125; &#123;&#123;cashier&#125;&#125; &#123;&#123;customer&#125;&#125;
                                 &#123;&#123;subtotal&#125;&#125; &#123;&#123;discount&#125;&#125; &#123;&#123;tax&#125;&#125; &#123;&#123;total_usd&#125;&#125;
                                 &#123;&#123;total_lbp&#125;&#125; &#123;&#123;payment_method&#125;&#125; &#123;&#123;change_usd&#125;&#125;
-                                &#123;&#123;change_lbp&#125;&#125; &#123;&#123;loyalty_points_earned&#125;&#125;
+                                &#123;&#123;change_lbp&#125;&#125; &#123;&#123;loyalty_points_earned&#125;&#125; &#123;&#123;channel&#125;&#125;
                             </code>
                             <div class="mt-2">
                                 {{ __('settings.receipt_template.repeat') }}
                                 <code dir="ltr">&#123;&#123;#items&#125;&#125; &hellip; &#123;&#123;/items&#125;&#125;</code>, {{ __('settings.receipt_template.using') }}
                                 <code dir="ltr">&#123;&#123;name&#125;&#125; &#123;&#123;qty&#125;&#125; &#123;&#123;unit_price&#125;&#125; &#123;&#123;discount&#125;&#125; &#123;&#123;line_total&#125;&#125;</code>.
+                            </div>
+                            <div class="mt-1">
+                                {{ __('settings.receipt_template.repeat_payments') }}
+                                <code dir="ltr">&#123;&#123;#payments&#125;&#125; &hellip; &#123;&#123;/payments&#125;&#125;</code>, {{ __('settings.receipt_template.using') }}
+                                <code dir="ltr">&#123;&#123;method&#125;&#125; &#123;&#123;amount&#125;&#125; &#123;&#123;reference&#125;&#125;</code>.
                             </div>
                         </div>
                         <div class="flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('common.save') }}</button></div>

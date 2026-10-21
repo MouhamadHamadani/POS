@@ -59,6 +59,13 @@
                 </dd>
             </div>
             <div><dt class="text-xs text-gray-500">{{ __('pos.receipt.price_list') }}</dt><dd>{{ __("pos.tier.$tier") }}</dd></div>
+            {{-- Shown with the feature, and for any online order even once it is off: what was stored stays readable. --}}
+            @if (feature('sales_channels') || $sale->isOnline())
+                <div>
+                    <dt class="text-xs text-gray-500">{{ __('sales.channel') }}</dt>
+                    <dd>{{ $sale->channelLabel() }}@if ($sale->channel_source) <span class="text-gray-500">· {{ $sale->channelSourceLabel() }}</span>@endif</dd>
+                </div>
+            @endif
             <div><dt class="text-xs text-gray-500">{{ __('receipt.payment') }}</dt><dd>{{ $sale->paymentMethodLabel() }}</dd></div>
             @if ((float) $sale->exchange_rate > 0)
                 <div><dt class="text-xs text-gray-500">{{ __('invoice.exchange_rate') }}</dt><dd><x-ltr>1 USD = {{ $fx($sale->exchange_rate) }} LBP</x-ltr></dd></div>
@@ -124,21 +131,18 @@
                 @endif
 
                 <tr class="border-t"><td class="pt-1.5">{{ __('receipt.payment') }}</td><td class="pt-1.5 text-end">{{ $sale->paymentMethodLabel() }}</td></tr>
-                @if ((float) $sale->amount_tendered_usd > 0)
-                    <tr><td class="py-0.5">{{ __('receipt.cash_usd_tendered') }}</td><td class="text-end"><x-ltr>{{ $money($sale->amount_tendered_usd) }}</x-ltr></td></tr>
-                @endif
-                @if ((float) $sale->amount_tendered_lbp > 0)
-                    <tr><td class="py-0.5">{{ __('receipt.cash_lbp_tendered') }}</td><td class="text-end"><x-ltr>{{ number_format((float) $sale->amount_tendered_lbp) }}</x-ltr></td></tr>
-                @endif
-                @if ((float) $sale->amount_card_usd > 0)
+                {{-- One row per payment line (cash as tendered; the change is below). --}}
+                @foreach ($sale->paymentLines() as $pl)
                     <tr>
-                        <td class="py-0.5">{{ __('receipt.card') }}@if ($sale->card_type || $sale->card_reference)<div class="text-xs text-gray-500">{{ $sale->card_type }}@if ($sale->card_reference) <x-ltr>{{ __('sales.card_reference', ['ref' => $sale->card_reference]) }}</x-ltr>@endif</div>@endif</td>
-                        <td class="text-end"><x-ltr>{{ $money($sale->amount_card_usd) }}</x-ltr></td>
+                        <td class="py-0.5">
+                            {{ __('receipt.'.['cash_usd' => 'cash_usd_tendered', 'cash_lbp' => 'cash_lbp_tendered', 'card' => 'card', 'wish' => 'wish', 'credit' => 'on_account'][$pl['kind']]) }}
+                            @if ($pl['card_type'] || $pl['reference'])
+                                <div class="text-xs text-gray-500">{{ $pl['card_type'] }}@if ($pl['reference']) <x-ltr>{{ __('sales.card_reference', ['ref' => $pl['reference']]) }}</x-ltr>@endif</div>
+                            @endif
+                        </td>
+                        <td class="text-end"><x-ltr>{{ $pl['currency'] === 'LBP' ? number_format($pl['amount']) : $money($pl['amount']) }}</x-ltr></td>
                     </tr>
-                @endif
-                @if ((float) $sale->amount_credit_usd > 0)
-                    <tr><td class="py-0.5">{{ __('receipt.on_account') }}</td><td class="text-end"><x-ltr>{{ $money($sale->amount_credit_usd) }}</x-ltr></td></tr>
-                @endif
+                @endforeach
                 @if ((float) $sale->change_usd > 0)
                     <tr class="font-medium"><td class="py-0.5">{{ __('receipt.change_usd') }}</td><td class="text-end"><x-ltr>{{ $money($sale->change_usd) }}</x-ltr></td></tr>
                 @endif

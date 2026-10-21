@@ -398,7 +398,7 @@ class FeatureServiceTest extends TestCase
 
         $down = Feature::preview('starter');
         $this->assertEqualsCanonicalizing(
-            ['reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'receipts.custom_templates'],
+            ['reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'sales_channels', 'receipts.custom_templates'],
             $down['off'],
         );
         $this->assertSame([], $down['on']);

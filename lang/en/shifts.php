@@ -26,4 +26,6 @@ return [
     'cash_out_usd' => 'Paid out of drawer (USD)',
     'cash_out_lbp' => 'Paid out of drawer (LBP)',
     'drawer_expenses' => 'Expenses paid from this drawer',
+    'noncash_title' => 'Non-cash takings this shift',
+    'noncash_help' => 'For checking against the card machine and the Wish app. These are not in the drawer count.',
 ];

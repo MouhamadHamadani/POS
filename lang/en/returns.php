@@ -30,6 +30,8 @@ return [
     'refund_method' => 'Refund method',
     'opt_cash_usd' => 'Cash (USD) — give cash back',
     'opt_cash_lbp' => 'Cash (LBP) — give LBP equivalent',
+    'opt_card' => 'Card — refund on the card machine',
+    'opt_wish' => 'Wish — refund in the Wish app',
     'opt_account' => 'Credit to customer account',
     'opt_exchange' => 'Exchange — ring up a new sale separately',
     'account_needs_customer' => 'Account credit requires a customer on the original sale.',

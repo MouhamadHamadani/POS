@@ -104,11 +104,15 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('returns.refund_method') }} *</label>
+                    {{-- One refund method per return. The method of the sale's largest payment line is preselected. --}}
+                    @php $suggested = $sale->suggestedRefundMethod(); @endphp
                     <select name="refund_method" required class="w-full border-gray-300 rounded text-sm">
-                        <option value="cash_usd">{{ __('returns.opt_cash_usd') }}</option>
-                        <option value="cash_lbp">{{ __('returns.opt_cash_lbp') }}</option>
+                        <option value="cash_usd" @selected($suggested === 'cash_usd')>{{ __('returns.opt_cash_usd') }}</option>
+                        <option value="cash_lbp" @selected($suggested === 'cash_lbp')>{{ __('returns.opt_cash_lbp') }}</option>
+                        <option value="card" @selected($suggested === 'card')>{{ __('returns.opt_card') }}</option>
+                        <option value="wish" @selected($suggested === 'wish')>{{ __('returns.opt_wish') }}</option>
                         @if ($sale->customer_id)
-                            <option value="account">{{ __('returns.opt_account') }}</option>
+                            <option value="account" @selected($suggested === 'account')>{{ __('returns.opt_account') }}</option>
                         @endif
                         <option value="exchange">{{ __('returns.opt_exchange') }}</option>
                     </select>

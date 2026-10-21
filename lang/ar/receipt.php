@@ -3,6 +3,7 @@
 /** Arabic counterpart of lang/en/receipt.php — keep both in sync (LangParityTest enforces it). */
 return [
     'receipt' => 'إيصال',
+    'online_order' => 'طلب أونلاين',
     'date' => 'التاريخ',
     'cashier' => 'كاشير',
     'customer' => 'الزبون',
@@ -16,6 +17,8 @@ return [
     'cash_usd_tendered' => 'المقبوض دولار',
     'cash_lbp_tendered' => 'المقبوض ليرة',
     'card' => 'بطاقة',
+    'wish' => 'ويش',
+    'ref' => 'المرجع',
     'on_account' => 'دَين',
     'change_usd' => 'الباقي دولار',
     'change_lbp' => 'الباقي ليرة',

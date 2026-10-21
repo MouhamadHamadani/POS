@@ -22,7 +22,7 @@
 
 // What each plan adds on top of the one below it. Core keys are never listed.
 $starter = ['expenses', 'stock_movements'];
-$standard = [...$starter, 'reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty'];
+$standard = [...$starter, 'reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'sales_channels'];
 $premium = [...$standard, 'receipts.custom_templates'];
 
 return [
@@ -47,6 +47,8 @@ return [
         // Nets expenses off gross profit; with Expenses off it would report a wrong profit.
         'reports.profit_loss' => ['group' => 'reports', 'requires' => ['reports', 'expenses']],
         'returns' => ['group' => 'sales', 'requires' => ['sales_history']],
+        // On-site vs online-order tag on a sale (bookkeeping only; no integration). No route to gate.
+        'sales_channels' => ['group' => 'sales', 'requires' => []],
         'loyalty' => ['group' => 'customers', 'requires' => []],
         'suppliers' => ['group' => 'purchasing', 'requires' => ['products']],
         'receipts.custom_templates' => ['group' => 'receipts', 'requires' => ['receipts']],

@@ -128,6 +128,9 @@
                 <div class="small"><span class="bold">{!! $L('number') !!}:</span> <bdi dir="ltr">{{ $sale->receipt_number }}</bdi></div>
                 <div class="small"><span class="bold">{!! $L('date') !!}:</span> <bdi dir="ltr">{{ $sale->created_at->format('Y-m-d H:i') }}</bdi></div>
                 <div class="small"><span class="bold">{!! $L('cashier') !!}:</span> {{ $sale->user?->name ?? '—' }}</div>
+                @if ($sale->isOnline())
+                    <div class="small"><span class="bold">{!! $L('online_order', [], 'receipt') !!}</span>@if ($sale->channel_source) · {!! $L($sale->channel_source, [], 'enums.sale_channel_source') !!}@endif</div>
+                @endif
             </div>
         </div>
 
@@ -191,18 +194,12 @@
                     @endif
 
                     <tr class="sep"><td>{!! $L('payment') !!}</td><td class="num" style="white-space: normal">{!! $L($sale->payment_method, [], 'enums.payment_method') !!}</td></tr>
-                    @if ($sale->amount_tendered_usd)
-                        <tr><td>{!! $L('tendered_usd') !!}</td><td class="num">{{ $money($sale->amount_tendered_usd) }}</td></tr>
-                    @endif
-                    @if ($sale->amount_tendered_lbp)
-                        <tr><td>{!! $L('tendered_lbp') !!}</td><td class="num">{{ number_format((float) $sale->amount_tendered_lbp) }}</td></tr>
-                    @endif
-                    @if ($sale->amount_card_usd > 0)
-                        <tr><td>{!! $L('card') !!}</td><td class="num">{{ $money($sale->amount_card_usd) }}</td></tr>
-                    @endif
-                    @if ($sale->amount_credit_usd > 0)
-                        <tr><td>{!! $L('on_account') !!}</td><td class="num">{{ $money($sale->amount_credit_usd) }}</td></tr>
-                    @endif
+                    @foreach ($sale->paymentLines() as $pl)
+                        <tr>
+                            <td>{!! $L(['cash_usd' => 'tendered_usd', 'cash_lbp' => 'tendered_lbp', 'card' => 'card', 'wish' => 'wish', 'credit' => 'on_account'][$pl['kind']]) !!}@if ($pl['reference']) <span class="small muted">{!! $L('ref') !!} <bdi dir="ltr">{{ $pl['reference'] }}</bdi></span>@endif</td>
+                            <td class="num">{{ $pl['currency'] === 'LBP' ? number_format($pl['amount']) : $money($pl['amount']) }}</td>
+                        </tr>
+                    @endforeach
                     @if ($sale->change_usd > 0)
                         <tr class="bold"><td>{!! $L('change_usd') !!}</td><td class="num">{{ $money($sale->change_usd) }}</td></tr>
                     @endif

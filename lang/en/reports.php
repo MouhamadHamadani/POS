@@ -31,6 +31,9 @@ return [
     'all_reports' => 'All reports',
     'revenue_usd' => 'Revenue (USD)',
     'no_sales_range' => 'No sales in this date range.',
+    'by_payment' => 'By payment method',
+    'by_payment_note' => 'Cash is net of change. A split sale counts under each method it used; the amounts add up to total revenue.',
+    'by_channel' => 'By sales channel',
     'no_product_sales' => 'No product sales in this range.',
     'filter_all' => 'All tracked products',
     'filter_low' => 'Low stock only',
@@ -71,6 +74,8 @@ return [
         'category' => 'Category',
         'amount_usd' => 'Amount (USD)',
         'share_pct' => '% of total',
+        'method' => 'Method',
+        'channel' => 'Channel',
     ],
     'inv' => [
         'mode_on_date' => 'Stock on date',

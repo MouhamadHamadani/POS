@@ -82,7 +82,8 @@ class ReturnController extends Controller
             'items.*.condition' => 'nullable|in:good,damaged,expired',
             'reason' => 'required|in:defective,wrong_item,customer_preference,other',
             'reason_note' => 'nullable|string|max:500',
-            'refund_method' => 'required|in:cash_usd,cash_lbp,account,exchange',
+            // card / wish refunds are paid on the card machine / in the Wish app: bookkeeping only, no drawer cash.
+            'refund_method' => 'required|in:cash_usd,cash_lbp,card,wish,account,exchange',
             'notes' => 'nullable|string|max:1000',
         ]);
 

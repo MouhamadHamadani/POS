@@ -71,6 +71,30 @@ about this repo being read-only; they no longer apply.)
   and a row in `claude/feature-matrix.md` (`FeatureUpgradeAndCatalogueTest` fails if the
   matrix and the config drift). The Plan & Features routes carry no `feature:` key on
   purpose: the vendor is never locked out of them.
+- Shifts are optional only when Settings -> POS "Require open shift to sell" is off.
+  `sales.shift_id` is nullable for exactly that case: `SaleController` and `SaleService`
+  both refuse a shift-less sale while the setting is on, and a cashier who opened a shift
+  anyway still gets their sales attached to it. A shift-less sale is a normal sale in every
+  report and in Sales History; it simply is in no drawer count (`ShiftService::totals()`
+  only reads a shift's own sales). Never assume `$sale->shift` is set.
+- Payments: the client sends flat amounts (`amount_usd`, `amount_lbp`, `amount_card`,
+  `amount_wish`, `amount_credit`, plus references); `SaleService` derives `payment_method`
+  itself (`Sale::deriveMethod`) and never reads the client's `method`. The legacy columns on
+  `sales` (tendered, change, card, credit) stay the authoritative **cash-drawer ledger** that
+  `ShiftService` reads; `sale_payments` is the itemised record for display and reports, written in
+  the same transaction. Card, Wish and on-account must be exact or less than the total and can
+  never create change; cash covers only what they leave (`payment_noncash_exceeds`,
+  `payment_cash_not_needed`). Card and Wish are bookkeeping only (the cashier takes the money
+  in the card machine / Wish app); Wish is USD in v1. Show a sale's payments through
+  `Sale::paymentLines()`, which also covers sales that have no rows; report with SQL on
+  `sale_payments`. `PaymentModalParityTest` pins the till's modal to the server's rules: change
+  the rules in both places together.
+- Sales channel: `sales.channel` is `onsite` or `online` ("online" = an order taken by WhatsApp /
+  Instagram / Facebook / phone and rung up by hand, not a website integration) with an optional
+  `channel_source`. It is bookkeeping only (no price, stock, tax or loyalty rule reads it). Behind
+  the `sales_channels` feature (Standard+): off means the server forces on-site
+  (`Sale::resolveChannel`) and the till toggle, History filter and report section are hidden, while
+  stored values stay readable.
 - Four roles: `admin`, `manager`, `cashier`, `stock`, enforced via the
   `role:` route middleware (`App\Http\Middleware\RoleMiddleware`).
 - VAT and other tax rates are stored as `0..1` decimals, not percentages.

@@ -24,6 +24,7 @@ return [
         'vip' => 'VIP',
     ],
     'payment_method' => [
+        'cash' => 'نقداً',
         'cash_usd' => 'نقداً (دولار)',
         'cash_lbp' => 'نقداً (ل.ل.)',
         'card' => 'بطاقة',
@@ -33,6 +34,7 @@ return [
         'mixed' => 'مختلط',
         'credit' => 'دَين',
         'split' => 'مجزّأ',
+        'wish' => 'ويش',
     ],
     'purchase_status' => [
         'draft' => 'مسودة',
@@ -108,6 +110,17 @@ return [
         'partial_refund' => 'مُسترد جزئياً',
         'on_hold' => 'معلّق',
     ],
+    'sale_channel' => [
+        'onsite' => 'في المتجر',
+        'online' => 'أونلاين',
+    ],
+    'sale_channel_source' => [
+        'whatsapp' => 'واتساب',
+        'facebook' => 'فيسبوك',
+        'instagram' => 'إنستغرام',
+        'phone' => 'هاتف',
+        'other' => 'أخرى',
+    ],
     'shift_status' => [
         'open' => 'مفتوحة',
         'closed' => 'مغلقة',
@@ -115,6 +128,8 @@ return [
     'refund_method' => [
         'cash_usd' => 'نقداً (دولار)',
         'cash_lbp' => 'نقداً (ل.ل.)',
+        'card' => 'بطاقة',
+        'wish' => 'ويش',
         'account' => 'رصيد في الحساب',
         'exchange' => 'استبدال',
     ],

@@ -17,6 +17,18 @@
                 @endif
             </dl>
 
+            {{-- Card and Wish takings: nothing here is in the drawer count or the variance. --}}
+            @if ($nonCash['card_usd'] > 0 || $nonCash['wish_usd'] > 0)
+                <div class="mb-6 p-3 bg-gray-50 border rounded">
+                    <h4 class="text-sm font-semibold">{{ __('shifts.noncash_title') }}</h4>
+                    <p class="text-xs text-gray-500 mb-2">{{ __('shifts.noncash_help') }}</p>
+                    <dl class="grid grid-cols-2 gap-3 text-sm">
+                        <div><dt class="text-gray-500">{{ __('enums.payment_method.card') }}</dt><dd class="font-medium"><x-ltr>${{ number_format($nonCash['card_usd'], 2) }}</x-ltr></dd></div>
+                        <div><dt class="text-gray-500">{{ __('enums.payment_method.wish') }}</dt><dd class="font-medium"><x-ltr>${{ number_format($nonCash['wish_usd'], 2) }}</x-ltr></dd></div>
+                    </dl>
+                </div>
+            @endif
+
             @if ($expenses->isNotEmpty())
                 <div class="mb-6">
                     <h4 class="text-sm font-semibold mb-2">{{ __('shifts.drawer_expenses') }}</h4>
