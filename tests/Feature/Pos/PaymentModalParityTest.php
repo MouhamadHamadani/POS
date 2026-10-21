@@ -70,6 +70,23 @@ class PaymentModalParityTest extends TestCase
             $cases[] = ['total' => $total, 'payment' => $payment];
         }
 
+        // Totals with four decimals (per-line VAT): the till shows cents, so what the customer pays lands a
+        // fraction of a cent either side of the stored total. This is where the half-cent slack matters.
+        for ($i = 0; $i < 120; $i++) {
+            $total = mt_rand(100, 200000) / 10000;
+            $cents = round($total, 2);
+            $wish = round($total * 0.4, 2);
+            $card = round($total * 0.5, 2);
+            $cases[] = ['total' => $total, 'payment' => match (mt_rand(0, 5)) {
+                0 => ['amount_card' => $cents],
+                1 => ['amount_wish' => $cents],
+                2 => ['amount_card' => round($cents - 0.01, 2)],                              // a whole cent short
+                3 => ['amount_wish' => $wish, 'amount_usd' => ceil(($total - $wish) * 100) / 100],
+                4 => ['amount_card' => $card, 'amount_wish' => round($total - $card, 2)],
+                default => ['amount_usd' => ceil($total * 100) / 100],
+            }];
+        }
+
         return $cases;
     }
 

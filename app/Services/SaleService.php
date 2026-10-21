@@ -21,8 +21,14 @@ class SaleService
     /** Half of the last stored decimal — slack for comparing 4-dp USD amounts. */
     private const EPS = 0.00005;
 
-    /** Slack for comparing what was paid with what is due: a JS float or a rounded LBP note, never real money. */
-    private const PAY_TOLERANCE = 0.001;
+    /**
+     * Slack for comparing what was paid with what is due: half a cent. A sale's total carries four decimals
+     * (per-line VAT), but the till shows it rounded to cents and that is what a customer pays on the card
+     * machine or in the Wish app, so a payment up to half a cent either side of the stored total is the total.
+     * The extra 0.0001 keeps an exact half cent (and a JS float) on the right side of the line.
+     * The till's own slack (resources/views/pos/sell.blade.php, PaymentModalParityTest) is the same number.
+     */
+    private const PAY_TOLERANCE = 0.0051;
 
     public function __construct(
         private readonly CurrencyService $currency,
@@ -222,7 +228,7 @@ class SaleService
             }
 
             // The itemised record, beside the flat columns above (which stay the drawer's ledger).
-            $paymentLines = $this->paymentRows($payment, $tendUsd, $tendLbp, $card, $wish, $credit);
+            $paymentLines = $this->paymentRows($payment, $tendUsd, $tendLbp, $card, $wish, $credit, (float) $grandTotal);
             foreach ($paymentLines as $row) {
                 $sale->payments()->create(Arr::except($row, 'kind'));
             }
@@ -260,7 +266,7 @@ class SaleService
      *
      * @return list<array{sale_id?:int,method:string,currency:string,amount:float,amount_usd:float,reference:?string,card_type:?string,kind:string}>
      */
-    private function paymentRows(array $payment, float $tendUsd, float $tendLbp, float $card, float $wish, float $credit): array
+    private function paymentRows(array $payment, float $tendUsd, float $tendLbp, float $card, float $wish, float $credit, float $grandTotal): array
     {
         $ref = fn (string $key) => ($v = trim((string) ($payment[$key] ?? ''))) !== '' ? $v : null;
         $lines = [];
@@ -279,6 +285,21 @@ class SaleService
         }
         if ($credit > 0) {
             $lines[] = SalePayment::line(SalePayment::METHOD_CREDIT, 'USD', $credit, $credit);
+        }
+
+        // Paid to the cent by card or Wish with no cash to absorb the sub-cent gap: the machine was charged
+        // $1.50 for a $1.4985 sale. `amount` keeps what the machine / the app was charged (that is what the
+        // shift's reconciliation panel adds up); `amount_usd`, which the reports add up, is booked at what the
+        // sale actually came to, so the lines sum to the total and a day of card sales never shows phantom cash.
+        if ($tendUsd <= 0 && $tendLbp <= 0) {
+            $gap = round($grandTotal - ($card + $wish + $credit), 4);
+            if ($gap !== 0.0 && abs($gap) <= self::PAY_TOLERANCE) {
+                $adjustable = array_keys(array_filter($lines, fn ($l) => in_array($l['method'], [SalePayment::METHOD_CARD, SalePayment::METHOD_WISH], true)));
+                if ($adjustable !== []) {
+                    usort($adjustable, fn ($a, $b) => $lines[$b]['amount'] <=> $lines[$a]['amount']);
+                    $lines[$adjustable[0]]['amount_usd'] = round($lines[$adjustable[0]]['amount_usd'] + $gap, 4);
+                }
+            }
         }
 
         return $lines;

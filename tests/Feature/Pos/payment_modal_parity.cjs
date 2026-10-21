@@ -25,9 +25,14 @@ function method(name) {
 
 const methods = eval('({' + NAMES.map(method).join(',\n') + '})');
 
+// The half-cent slack is a constant on the screen's state: read from the file, not copied here.
+const slack = /paySlack:\s*([0-9.]+)/.exec(src);
+if (!slack) throw new Error('paySlack not found in the sell screen');
+
 process.stdout.write(JSON.stringify(input.scenarios.map((s) => {
     const screen = Object.assign({
         exchangeRate: input.exchangeRate,
+        paySlack: Number(slack[1]),
         totals: { total: s.total },
         payment: Object.assign({ amount_usd: 0, amount_lbp: 0, amount_card: 0, amount_wish: 0, card_reference: '', wish_reference: '', change_usd_out: null }, s.payment),
         payMode: 'split',

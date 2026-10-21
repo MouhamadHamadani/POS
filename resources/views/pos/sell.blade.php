@@ -507,16 +507,16 @@
                         <div class="bg-gray-50 p-2 rounded text-xs space-y-1">
                             <div class="flex justify-between"><span>{{ __('pos.ui.total_due') }}</span><span><x-ltr>$<span x-text="totals.total.toFixed(2)"></span></x-ltr></span></div>
                             <div class="flex justify-between"><span>{{ __('pos.ui.paid_so_far') }}</span><span><x-ltr>$<span x-text="tenderedUsd().toFixed(2)"></span></x-ltr></span></div>
-                            <div class="flex justify-between font-semibold" :class="changeUsd() >= -0.005 && !noncashExceeds() ? 'text-green-700' : 'text-red-600'">
-                                <span x-text="changeUsd() > 0.005 && !noncashExceeds() ? t('change_owed') : t('remaining')"></span>
-                                <span><x-ltr>$<span x-text="(changeUsd() > 0.005 && !noncashExceeds() ? changeUsd() : remainingUsd()).toFixed(2)"></span></x-ltr></span>
+                            <div class="flex justify-between font-semibold" :class="changeUsd() >= -paySlack && !noncashExceeds() ? 'text-green-700' : 'text-red-600'">
+                                <span x-text="changeUsd() > paySlack && !noncashExceeds() ? t('change_owed') : t('remaining')"></span>
+                                <span><x-ltr>$<span x-text="(changeUsd() > paySlack && !noncashExceeds() ? changeUsd() : remainingUsd()).toFixed(2)"></span></x-ltr></span>
                             </div>
                         </div>
                         <div x-show="noncashExceeds()" x-cloak class="text-xs text-red-600" x-text="t('noncash_exceeds')"></div>
                         <div x-show="cashNotNeeded()" x-cloak class="text-xs text-red-600" x-text="t('cash_not_needed')"></div>
 
                         {{-- Split-change section: cashier decides how much USD to give back --}}
-                        <div x-show="changeUsd() > 0.005 && !noncashExceeds()" class="border border-brand-200 bg-brand-50 p-2 rounded text-xs space-y-2">
+                        <div x-show="changeUsd() > paySlack && !noncashExceeds()" class="border border-brand-200 bg-brand-50 p-2 rounded text-xs space-y-2">
                             <div class="flex justify-between items-center">
                                 <span class="font-semibold text-brand-800">{{ __('pos.ui.change_to_return') }}</span>
                                 <div class="flex gap-1">
@@ -642,6 +642,9 @@
                 // Flat, one slot per kind of money. `method` is gone: the server derives it from the amounts.
                 payment: { amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', amount_wish: 0, wish_reference: '', change_usd_out: null },
                 payMode: 'cash',            // cash | card | wish | split: which fields are shown, nothing more
+                // Half a cent (+0.0001): the till shows totals rounded to cents, so a payment that close is the total.
+                // Same number as SaleService::PAY_TOLERANCE; PaymentModalParityTest keeps the two in step.
+                paySlack: 0.0051,
                 changePreview: null,
                 _previewTimer: null,
 
@@ -1335,15 +1338,15 @@
                 nonCashUsd() {
                     return (this.payment.amount_card || 0) + (this.payment.amount_wish || 0);
                 },
-                noncashExceeds() { return this.nonCashUsd() > this.totals.total + 0.005; },
+                noncashExceeds() { return this.nonCashUsd() > this.totals.total + this.paySlack; },
                 // What is left for cash to cover; never negative (this is what the change preview works from).
                 cashDueUsd() { return Math.max(0, this.totals.total - this.nonCashUsd()); },
                 // Cash typed in when card / Wish already cover everything is a keying mistake the server refuses too.
-                cashNotNeeded() { return this.cashDueUsd() <= 0.005 && this.cashTenderedUsd() > 0.005; },
+                cashNotNeeded() { return this.cashDueUsd() <= this.paySlack && this.cashTenderedUsd() > 0; },
                 remainingUsd() { return Math.max(0, this.totals.total - this.tenderedUsd()); },
                 changeUsd() { return this.tenderedUsd() - this.totals.total; },
                 canComplete() {
-                    return !this.processing && this.changeUsd() >= -0.005 && !this.noncashExceeds() && !this.cashNotNeeded();
+                    return !this.processing && this.changeUsd() >= -this.paySlack && !this.noncashExceeds() && !this.cashNotNeeded();
                 },
 
                 // Set a card / Wish row to whatever the other rows leave uncovered (0 if they already cover it).
@@ -1368,7 +1371,7 @@
                 },
 
                 async _fetchChangePreview() {
-                    if (this.changeUsd() <= 0.005 || this.noncashExceeds()) {
+                    if (this.changeUsd() <= this.paySlack || this.noncashExceeds()) {
                         this.changePreview = null;
                         return;
                     }
