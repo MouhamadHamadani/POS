@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Support\FakeData;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -19,5 +20,12 @@ class DatabaseSeeder extends Seeder
             DefaultSettingsSeeder::class,
             SuperAdminSeeder::class,
         ]);
+
+        // Development and testing only: POS_FAKE_DATA=true, and never in production, in a demo build, or into a
+        // database that already holds business data. enabled() and problem() are the whole of that rule
+        // (App\Support\FakeData); ReleaseEnv also refuses to package a build with the flag on.
+        if (FakeData::enabled() && FakeData::problem() === null) {
+            $this->call(FakeDataSeeder::class);
+        }
     }
 }
