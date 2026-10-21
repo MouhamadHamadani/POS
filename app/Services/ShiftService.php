@@ -95,7 +95,8 @@ class ShiftService
             ->whereIn('sales.status', [Sale::STATUS_COMPLETED, Sale::STATUS_PARTIAL_REFUND, Sale::STATUS_REFUNDED])
             ->whereIn('sale_payments.method', [SalePayment::METHOD_CARD, SalePayment::METHOD_WISH])
             ->groupBy('sale_payments.method')
-            ->selectRaw('sale_payments.method AS method, SUM(sale_payments.amount_usd) AS total')
+            // `amount`, not `amount_usd`: what the card machine / the Wish app was charged (both are USD today).
+            ->selectRaw('sale_payments.method AS method, SUM(sale_payments.amount) AS total')
             ->pluck('total', 'method');
 
         return [

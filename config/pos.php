@@ -67,6 +67,20 @@ return [
     'demo_password' => env('POS_DEMO_PASSWORD', 'demo1234'),
 
     /**
+     * Fake data mode, for development and testing. With POS_FAKE_DATA=true and APP_ENV other than
+     * production, a database with no business data yet is seeded with a realistic fake business
+     * (App\Support\FakeData, Database\Seeders\FakeDataSeeder): accounts, a catalogue, customers,
+     * suppliers, a few weeks of shifts and sales in every payment method, returns, expenses.
+     * Launching with APP_ENV=production resets such a database to a clean one; a database that
+     * does not carry the seeder's marker is never touched. `php artisan pos:fake-data` does the
+     * same on demand, whatever this flag says.
+     */
+    'fake_data' => env('POS_FAKE_DATA', false),
+    /** Shared password for the fake accounts (fake_admin, fake_manager, ...). Never a real one. */
+    'fake_password' => env('POS_FAKE_PASSWORD', 'test1234'),
+    'fake_data_days' => (int) env('POS_FAKE_DATA_DAYS', 21),
+
+    /**
      * The vendor's built-in super_admin, created on launch by
      * App\Support\SuperAdmin::ensure(). The password is a bcrypt HASH — never
      * the plain password — and has no default: with none, no account is made

@@ -61,6 +61,12 @@ final class ReleaseEnv
 
         $isDemo = self::bool($env['POS_DEMO_MODE'] ?? null);
 
+        // Fake data mode refuses to run in a production environment anyway; a build that still has the flag on is a
+        // development .env about to be packaged, which is the mistake worth stopping.
+        if (self::bool($env['POS_FAKE_DATA'] ?? null)) {
+            $problems[] = 'POS_FAKE_DATA is on — fake data mode is for development and testing, never for a build a client receives.';
+        }
+
         if ($expectDemo !== null && $isDemo !== $expectDemo) {
             $problems[] = $isDemo
                 ? 'POS_DEMO_MODE is on. A demo build ships known credentials — pass --demo if that is what you meant.'

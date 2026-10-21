@@ -95,6 +95,15 @@ about this repo being read-only; they no longer apply.)
   the `sales_channels` feature (Standard+): off means the server forces on-site
   (`Sale::resolveChannel`) and the till toggle, History filter and report section are hidden, while
   stored values stay readable.
+- Fake data mode (`docs/fake-data.md`): `php artisan pos:fake-data` seeds a fake business for
+  development and testing; `POS_FAKE_DATA=true` does it on an empty database's first launch; a
+  production launch (`APP_ENV=production`) resets a database carrying the `fake_data_seeded` marker
+  to a clean install. All of it goes through `App\Support\FakeData`: it refuses in production, in a
+  demo build and into a database with data of its own, only a marked database is ever reset, and
+  `ReleaseEnv` refuses a build with the flag on. The seeder drives the real services (never raw
+  `sales` rows) with a faked clock, so a new money or stock rule needs no seeder change, but a new
+  table does need `FakeDataModeTest`'s `BUSINESS_TABLES` and, if it holds reference data a
+  migration inserts, an entry in `FakeData::tables()`.
 - Four roles: `admin`, `manager`, `cashier`, `stock`, enforced via the
   `role:` route middleware (`App\Http\Middleware\RoleMiddleware`).
 - VAT and other tax rates are stored as `0..1` decimals, not percentages.

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Setting;
 use App\Support\Demo;
+use App\Support\FakeData;
 use App\Support\SuperAdmin;
 use Illuminate\Support\Facades\Artisan;
 use Native\Laravel\Contracts\ProvidesPhpIni;
@@ -151,6 +152,12 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             // after the runtime DB was first created). `migrate` is idempotent:
             // already-applied migrations are skipped.
             Artisan::call('migrate', ['--force' => true]);
+
+            // Switching from a development build to a production one on the same machine leaves the old app's
+            // data directory behind, fake data and all. A database carrying the fake-data marker, launched in a
+            // production environment, goes back to a clean install (this lays the config defaults down again,
+            // so the checks below then see a configured database). Anything without the marker is never touched.
+            FakeData::resetIfSwitchedToProduction();
 
             // Only into a database that has no config yet. DefaultSettingsSeeder
             // is updateOrCreate, so re-running it on every launch would silently
