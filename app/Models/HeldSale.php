@@ -11,7 +11,7 @@ class HeldSale extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'customer_id', 'label', 'cart', 'price_tier', 'cart_discount', 'notes',
+        'user_id', 'customer_id', 'label', 'cart', 'price_tier', 'channel', 'channel_source', 'cart_discount', 'notes',
     ];
 
     protected $casts = [

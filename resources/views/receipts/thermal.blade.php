@@ -108,6 +108,10 @@
         @if (($sale->price_tier ?? 'retail') !== 'retail')
             <strong>{!! $L('price_list', [], 'pos.receipt', ':') !!}</strong> {!! $L($sale->price_tier, [], 'pos.tier') !!}<br>
         @endif
+        {{-- Only an online order says so; an ordinary counter sale prints exactly what it always did. --}}
+        @if ($sale->isOnline())
+            <strong>{!! $L('online_order') !!}</strong>@if ($sale->channel_source) · {!! $L($sale->channel_source, [], 'enums.sale_channel_source') !!}@endif<br>
+        @endif
     </div>
     <hr>
 

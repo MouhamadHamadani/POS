@@ -19,11 +19,14 @@ class FeatureUpgradeAndCatalogueTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** The keys the three tiers gated before feature overrides existed, by tier. */
+    /**
+     * The gated keys each plan includes: what the three tiers gated before feature overrides existed,
+     * plus `sales_channels`, a new capability (nobody had it before), in Standard and up.
+     */
     private const OLD_GATED = [
         'starter' => [],
-        'standard' => ['reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty'],
-        'premium' => ['reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'receipts.custom_templates'],
+        'standard' => ['reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'sales_channels'],
+        'premium' => ['reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'sales_channels', 'receipts.custom_templates'],
     ];
 
     // --- Upgrade safety ---------------------------------------------------------------
@@ -48,7 +51,7 @@ class FeatureUpgradeAndCatalogueTest extends TestCase
         foreach (self::OLD_GATED as $plan => $shipped) {
             Setting::set('tier', $plan, 'license');
 
-            foreach (['reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'receipts.custom_templates'] as $key) {
+            foreach (['reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'sales_channels', 'receipts.custom_templates'] as $key) {
                 $this->assertSame(in_array($key, $shipped, true), Feature::enabled($key), "{$plan}: {$key}");
             }
 

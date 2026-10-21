@@ -57,6 +57,8 @@ return [
         'stock_line' => 'Stock: :qty :unit',
         'cart' => 'Cart',
         'clear' => 'Clear',
+        'channel' => 'Sale type',
+        'channel_source' => 'Source (optional)',
         'add_customer' => '+ Add customer',
         'owes' => 'Owes :amount',
         'change_customer' => 'Change',

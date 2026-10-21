@@ -86,6 +86,31 @@
                                 </template>
                             </div>
 
+                            {{-- On-site or an online order (WhatsApp / Instagram / ... rung up by hand).
+                                 Bookkeeping only: no price, stock or tax rule depends on it. The server
+                                 forces on-site when the feature is off (Sale::resolveChannel). --}}
+                            @feature('sales_channels')
+                                <div class="flex items-center gap-1">
+                                    <div class="inline-flex rounded border border-gray-300 overflow-hidden text-xs" role="group"
+                                         aria-label="{{ __('pos.ui.channel') }}" title="{{ __('pos.ui.channel') }}">
+                                        @foreach (\App\Models\Sale::CHANNELS as $ch)
+                                            <button type="button" @click="setChannel('{{ $ch }}')"
+                                                    :aria-pressed="channel === '{{ $ch }}'"
+                                                    :class="channel === '{{ $ch }}' ? 'bg-brand-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                                                    class="px-2.5 py-1">{{ \App\Support\EnumLabel::get('sale_channel', $ch) }}</button>
+                                        @endforeach
+                                    </div>
+                                    <select x-show="channel === 'online'" x-cloak x-model="channelSource"
+                                            aria-label="{{ __('pos.ui.channel_source') }}"
+                                            class="border-gray-300 rounded text-xs py-1">
+                                        <option value="">{{ __('pos.ui.channel_source') }}</option>
+                                        @foreach (\App\Models\Sale::CHANNEL_SOURCES as $src)
+                                            <option value="{{ $src }}">{{ \App\Support\EnumLabel::get('sale_channel_source', $src) }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endfeature
+
                             <button type="button" @click="clearCart()" x-show="cart.length"
                                     class="text-xs text-red-600 hover:underline">{{ __('pos.ui.clear') }}</button>
                         </div>
@@ -558,6 +583,8 @@
                 units: @json(__('enums.unit')),
                 tiers: ['retail', 'wholesale', 'vip'],
                 priceTier: 'retail',        // active price list; the server re-checks it (SaleService::resolvePriceTier)
+                channel: 'onsite',          // onsite | online; bookkeeping, resets to onsite after every sale or hold
+                channelSource: '',          // whatsapp | facebook | ... (only with online; '' = not specified)
                 canChangeTier: @json($canChangeTier),
                 showCost: @json($showCost), // managers only: lets the "below cost" warning work
                 maxDiscountPct: @json($maxDiscountPct), // effective % of a line's gross; 100 = unlimited
@@ -779,6 +806,8 @@
                                     note: l.note,
                                 })),
                                 price_tier: this.priceTier,
+                                channel: this.channel,
+                                channel_source: this.channelPayload(),
                                 cart_discount: Number(this.cartDiscount.value) > 0
                                     ? { type: this.cartDiscount.type, value: Number(this.cartDiscount.value) }
                                     : null,
@@ -840,6 +869,8 @@
                         this.cartDiscount = data.cart_discount
                             ? { type: data.cart_discount.type, value: Number(data.cart_discount.value) }
                             : { type: 'pct', value: 0 };
+                        this.channel = data.channel === 'online' ? 'online' : 'onsite';
+                        this.channelSource = this.channel === 'online' ? (data.channel_source || '') : '';
                         this.lastScannedIndex = null;
                         this.showHeldList = false;
                         await this.refreshHeldCount();
@@ -1031,14 +1062,24 @@
                     }
                 },
 
-                // Back to a blank retail sale (after checkout or hold).
+                // Back to a blank on-site retail sale (after checkout or hold).
                 resetSale() {
                     this.cart = [];
                     this.customer = null;
                     this.lastScannedIndex = null;
                     this.priceTier = 'retail';
                     this.cartDiscount = { type: 'pct', value: 0 };
+                    this.channel = 'onsite';
+                    this.channelSource = '';
                 },
+
+                setChannel(ch) {
+                    this.channel = ch;
+                    if (ch !== 'online') this.channelSource = '';
+                },
+
+                // The source only travels with an online sale; '' means "not specified".
+                channelPayload() { return this.channel === 'online' && this.channelSource ? this.channelSource : null; },
 
                 // One pass over a cart: price, line discount, the line's share of the cart
                 // discount, tax, total. Mirrors SaleService::totalsFromCart step for step
@@ -1311,6 +1352,8 @@
                                     ? Number(this.cartDiscount.value) : null,
                                 payment: this.payment,
                                 customer_id: this.customer?.id || null,
+                                channel: this.channel,
+                                channel_source: this.channelPayload(),
                             }),
                         });
                         const data = await res.json();

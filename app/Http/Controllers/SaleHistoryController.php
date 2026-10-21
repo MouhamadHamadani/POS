@@ -34,6 +34,7 @@ class SaleHistoryController extends Controller
             'user_id' => 'nullable|integer',
             'status' => ['nullable', Rule::in(Sale::STATUSES)],
             'payment_method' => ['nullable', Rule::in(Sale::METHODS)],
+            'channel' => ['nullable', Rule::in(Sale::CHANNELS)],
         ]));
 
         return view('sales.index', [

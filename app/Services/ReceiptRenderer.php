@@ -64,6 +64,10 @@ final class ReceiptRenderer
             'total_usd' => $money($sale->total_usd),
             'total_lbp' => number_format((float) $sale->total_lbp),
             'payment_method' => str_replace('_', ' ', (string) $sale->payment_method),
+            // "Online order · WhatsApp" for an online order, empty for a counter sale.
+            'channel' => $sale->isOnline()
+                ? trim(__('receipt.online_order', [], 'en').($sale->channel_source ? ' · '.__('enums.sale_channel_source.'.$sale->channel_source, [], 'en') : ''))
+                : '',
             'change_usd' => $money($sale->change_usd),
             'change_lbp' => number_format((float) $sale->change_lbp),
             'loyalty_points_earned' => (string) (int) $sale->loyalty_points_earned,

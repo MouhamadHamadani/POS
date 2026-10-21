@@ -3,6 +3,7 @@
 /** Arabic counterpart of lang/en/receipt.php — keep both in sync (LangParityTest enforces it). */
 return [
     'receipt' => 'إيصال',
+    'online_order' => 'طلب أونلاين',
     'date' => 'التاريخ',
     'cashier' => 'كاشير',
     'customer' => 'الزبون',

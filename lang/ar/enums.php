@@ -108,6 +108,17 @@ return [
         'partial_refund' => 'مُسترد جزئياً',
         'on_hold' => 'معلّق',
     ],
+    'sale_channel' => [
+        'onsite' => 'في المتجر',
+        'online' => 'أونلاين',
+    ],
+    'sale_channel_source' => [
+        'whatsapp' => 'واتساب',
+        'facebook' => 'فيسبوك',
+        'instagram' => 'إنستغرام',
+        'phone' => 'هاتف',
+        'other' => 'أخرى',
+    ],
     'shift_status' => [
         'open' => 'مفتوحة',
         'closed' => 'مغلقة',

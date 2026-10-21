@@ -43,7 +43,12 @@ class SaleController extends Controller
 
             'customer_id' => 'nullable|integer|exists:customers,id',
             'notes' => 'nullable|string|max:1000',
+
+            // On-site or an online order rung up by hand; see Sale::resolveChannel() for the rules.
+            'channel' => ['nullable', Rule::in(Sale::CHANNELS)],
+            'channel_source' => ['nullable', Rule::in(Sale::CHANNEL_SOURCES)],
         ]);
+        [$channel, $channelSource] = Sale::resolveChannel($data['channel'] ?? null, $data['channel_source'] ?? null);
 
         // Attaching a customer, paying on account and redeeming points are the loyalty
         // feature's. The sale itself is core and goes through without them; only the
@@ -87,12 +92,14 @@ class SaleController extends Controller
                     'pct' => (float) ($data['cart_discount_pct'] ?? 0),
                     'amount' => (float) ($data['cart_discount_amount'] ?? 0),
                 ],
+                channel: $channel,
+                channelSource: $channelSource,
             );
 
             return response()->json([
                 'success' => true,
                 'sale' => $sale->only([
-                    'id', 'receipt_number', 'price_tier', 'subtotal_usd', 'discount_amount_usd', 'cart_discount_usd',
+                    'id', 'receipt_number', 'price_tier', 'channel', 'channel_source', 'subtotal_usd', 'discount_amount_usd', 'cart_discount_usd',
                     'tax_amount_usd', 'total_usd', 'total_lbp',
                     'change_usd', 'change_lbp', 'payment_method',
                     'loyalty_points_earned',

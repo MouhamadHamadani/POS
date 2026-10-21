@@ -18,6 +18,7 @@ return [
     'start_return' => 'Start a return',
     'back_to_list' => 'Back to sales',
     'shift' => 'Shift',
+    'channel' => 'Channel',
     'items' => 'Items',
     'linked_returns' => 'Returns on this sale',
     'voided_on' => 'Voided on :date',

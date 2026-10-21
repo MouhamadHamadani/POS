@@ -57,6 +57,8 @@ return [
         'stock_line' => 'المخزون: :qty :unit',
         'cart' => 'السلة',
         'clear' => 'تفريغ',
+        'channel' => 'نوع البيع',
+        'channel_source' => 'المصدر (اختياري)',
         'add_customer' => '+ إضافة زبون',
         'owes' => 'عليه :amount',
         'change_customer' => 'تغيير',

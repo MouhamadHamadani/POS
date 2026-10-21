@@ -108,6 +108,17 @@ return [
         'partial_refund' => 'Partially refunded',
         'on_hold' => 'On hold',
     ],
+    'sale_channel' => [
+        'onsite' => 'On-site',
+        'online' => 'Online',
+    ],
+    'sale_channel_source' => [
+        'whatsapp' => 'WhatsApp',
+        'facebook' => 'Facebook',
+        'instagram' => 'Instagram',
+        'phone' => 'Phone',
+        'other' => 'Other',
+    ],
     'shift_status' => [
         'open' => 'Open',
         'closed' => 'Closed',

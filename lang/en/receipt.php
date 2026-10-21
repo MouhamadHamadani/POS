@@ -3,6 +3,7 @@
 /** English source for lang/ar/receipt.php — keep both in sync (LangParityTest enforces it). */
 return [
     'receipt' => 'Receipt',
+    'online_order' => 'Online order',
     'date' => 'Date',
     'cashier' => 'Cashier',
     'customer' => 'Customer',

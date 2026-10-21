@@ -128,6 +128,9 @@
                 <div class="small"><span class="bold">{!! $L('number') !!}:</span> <bdi dir="ltr">{{ $sale->receipt_number }}</bdi></div>
                 <div class="small"><span class="bold">{!! $L('date') !!}:</span> <bdi dir="ltr">{{ $sale->created_at->format('Y-m-d H:i') }}</bdi></div>
                 <div class="small"><span class="bold">{!! $L('cashier') !!}:</span> {{ $sale->user?->name ?? '—' }}</div>
+                @if ($sale->isOnline())
+                    <div class="small"><span class="bold">{!! $L('online_order', [], 'receipt') !!}</span>@if ($sale->channel_source) · {!! $L($sale->channel_source, [], 'enums.sale_channel_source') !!}@endif</div>
+                @endif
             </div>
         </div>
 

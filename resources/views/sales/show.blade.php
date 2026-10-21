@@ -59,6 +59,13 @@
                 </dd>
             </div>
             <div><dt class="text-xs text-gray-500">{{ __('pos.receipt.price_list') }}</dt><dd>{{ __("pos.tier.$tier") }}</dd></div>
+            {{-- Shown with the feature, and for any online order even once it is off: what was stored stays readable. --}}
+            @if (feature('sales_channels') || $sale->isOnline())
+                <div>
+                    <dt class="text-xs text-gray-500">{{ __('sales.channel') }}</dt>
+                    <dd>{{ $sale->channelLabel() }}@if ($sale->channel_source) <span class="text-gray-500">· {{ $sale->channelSourceLabel() }}</span>@endif</dd>
+                </div>
+            @endif
             <div><dt class="text-xs text-gray-500">{{ __('receipt.payment') }}</dt><dd>{{ $sale->paymentMethodLabel() }}</dd></div>
             @if ((float) $sale->exchange_rate > 0)
                 <div><dt class="text-xs text-gray-500">{{ __('invoice.exchange_rate') }}</dt><dd><x-ltr>1 USD = {{ $fx($sale->exchange_rate) }} LBP</x-ltr></dd></div>

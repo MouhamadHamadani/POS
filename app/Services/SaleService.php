@@ -57,6 +57,8 @@ class SaleService
         ?string $notes = null,
         ?string $priceTier = null,
         array $cartDiscount = [],
+        string $channel = Sale::CHANNEL_ONSITE,
+        ?string $channelSource = null,
     ): Sale {
         if (empty($cart)) {
             throw ValidationException::withMessages(['cart' => __('messages.cart_empty')]);
@@ -76,7 +78,13 @@ class SaleService
         $tier = $this->resolvePriceTier($user, $priceTier, $customer);
         $userId = $user->id;
 
-        return DB::transaction(function () use ($cart, $payment, $user, $userId, $shift, $customer, $notes, $tier, $cartDiscount) {
+        // Channel is bookkeeping: it prices, stocks, taxes and awards nothing differently. The
+        // request's own rules (the feature gate, source only with online) are Sale::resolveChannel's;
+        // this just refuses to store a value the enum does not have.
+        $channel = $channel === Sale::CHANNEL_ONLINE ? Sale::CHANNEL_ONLINE : Sale::CHANNEL_ONSITE;
+        $channelSource = $channel === Sale::CHANNEL_ONLINE && in_array($channelSource, Sale::CHANNEL_SOURCES, true) ? $channelSource : null;
+
+        return DB::transaction(function () use ($cart, $payment, $user, $userId, $shift, $customer, $notes, $tier, $cartDiscount, $channel, $channelSource) {
             $exchangeRate = $this->currency->getRate();
             $totals = $this->totalsFromCart($cart, $customer, $tier, $cartDiscount);
             $this->assertWithinDiscountLimit($totals, $user);
@@ -141,6 +149,8 @@ class SaleService
                 'user_id' => $userId,
                 'shift_id' => $shift?->id,
                 'price_tier' => $tier,
+                'channel' => $channel,
+                'channel_source' => $channelSource,
                 'subtotal_usd' => $totals['subtotal'],
                 'discount_amount_usd' => $totals['discount'] + $loyaltyRedeemDiscount,
                 'cart_discount_usd' => $totals['cart_discount'],
@@ -196,6 +206,9 @@ class SaleService
                 'receipt' => $sale->receipt_number,
                 'total' => $grandTotal,
                 'price_tier' => $tier,
+                'channel' => $channel,
+                'channel_source' => $channelSource,
+                'payment_method' => $sale->payment_method,
                 'discount_total' => $totals['discount'],
                 'cart_discount' => $totals['cart_discount'],
                 'max_line_discount_pct' => $totals['max_line_discount_pct'],

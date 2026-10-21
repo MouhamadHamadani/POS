@@ -26,6 +26,19 @@ class Sale extends Model
     public const METHOD_CREDIT = 'credit';
     public const METHOD_SPLIT = 'split';
 
+    /**
+     * Where the sale came from. `online` is an order the store took by WhatsApp / Instagram /
+     * Facebook / phone and rang up by hand; it is not a website integration. It changes no price,
+     * stock, tax or loyalty rule, it only lets History and the reports tell the two apart.
+     */
+    public const CHANNEL_ONSITE = 'onsite';
+    public const CHANNEL_ONLINE = 'online';
+
+    public const CHANNELS = [self::CHANNEL_ONSITE, self::CHANNEL_ONLINE];
+
+    /** Only meaningful with CHANNEL_ONLINE. */
+    public const CHANNEL_SOURCES = ['whatsapp', 'facebook', 'instagram', 'phone', 'other'];
+
     public const STATUSES = [
         self::STATUS_COMPLETED, self::STATUS_PARTIAL_REFUND, self::STATUS_REFUNDED,
         self::STATUS_VOIDED, self::STATUS_ON_HOLD,
@@ -38,6 +51,7 @@ class Sale extends Model
 
     protected $fillable = [
         'uuid', 'receipt_number', 'customer_id', 'user_id', 'shift_id', 'price_tier',
+        'channel', 'channel_source',
         'subtotal_usd', 'discount_amount_usd', 'cart_discount_usd', 'tax_amount_usd',
         'total_usd', 'total_lbp', 'exchange_rate',
         'payment_method',
@@ -123,5 +137,36 @@ class Sale extends Model
     public function paymentMethodLabel(): string
     {
         return \App\Support\EnumLabel::get('payment_method', $this->payment_method);
+    }
+
+    /**
+     * The one rule for what channel a request may record: the `sales_channels` feature off means
+     * everything is on-site (what was sent is ignored, not an error: selling must work either
+     * way), and a source is kept only with `online` and only if it is one we know.
+     *
+     * @return array{0:string,1:?string} [channel, channel_source]
+     */
+    public static function resolveChannel(?string $channel, ?string $source): array
+    {
+        if (! feature('sales_channels') || $channel !== self::CHANNEL_ONLINE) {
+            return [self::CHANNEL_ONSITE, null];
+        }
+
+        return [self::CHANNEL_ONLINE, in_array($source, self::CHANNEL_SOURCES, true) ? $source : null];
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->channel === self::CHANNEL_ONLINE;
+    }
+
+    public function channelLabel(): string
+    {
+        return \App\Support\EnumLabel::get('sale_channel', $this->channel);
+    }
+
+    public function channelSourceLabel(): ?string
+    {
+        return $this->channel_source ? \App\Support\EnumLabel::get('sale_channel_source', $this->channel_source) : null;
     }
 }

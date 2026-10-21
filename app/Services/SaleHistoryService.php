@@ -33,7 +33,7 @@ class SaleHistoryService
      * one cheap range scan. A text search with no dates looks through every date:
      * "find any past receipt" must not need the date pickers moved first.
      *
-     * @return array{q:string,from:?Carbon,to:?Carbon,defaulted:bool,user_id:?int,status:?string,payment_method:?string}
+     * @return array{q:string,from:?Carbon,to:?Carbon,defaulted:bool,user_id:?int,status:?string,payment_method:?string,channel:?string}
      */
     public function filters(array $input): array
     {
@@ -54,6 +54,8 @@ class SaleHistoryService
             'user_id' => ! empty($input['user_id']) ? (int) $input['user_id'] : null,
             'status' => in_array($input['status'] ?? null, Sale::STATUSES, true) ? $input['status'] : null,
             'payment_method' => in_array($input['payment_method'] ?? null, Sale::METHODS, true) ? $input['payment_method'] : null,
+            // The channel filter exists only with the feature; a stale ?channel= in a bookmark is ignored without it.
+            'channel' => feature('sales_channels') && in_array($input['channel'] ?? null, Sale::CHANNELS, true) ? $input['channel'] : null,
         ];
     }
 
@@ -72,6 +74,9 @@ class SaleHistoryService
         }
         if ($f['payment_method']) {
             $q->where('sales.payment_method', $f['payment_method']);
+        }
+        if ($f['channel']) {
+            $q->where('sales.channel', $f['channel']);
         }
         // A cashier's own filter is a no-op next to visibleTo(): another id matches nothing.
         if ($f['user_id']) {
@@ -110,7 +115,7 @@ class SaleHistoryService
     {
         return $this->query($f, $user)
             ->select('sales.id', 'sales.receipt_number', 'sales.customer_id', 'sales.user_id', 'sales.status',
-                'sales.payment_method', 'sales.total_usd', 'sales.total_lbp', 'sales.created_at')
+                'sales.payment_method', 'sales.channel', 'sales.channel_source', 'sales.total_usd', 'sales.total_lbp', 'sales.created_at')
             ->with(['customer' => fn ($c) => $c->withTrashed()->select('id', 'name'), 'user:id,name'])
             ->orderByDesc('sales.created_at')->orderByDesc('sales.id')
             ->paginate(self::PER_PAGE);

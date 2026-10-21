@@ -18,6 +18,7 @@ return [
     'start_return' => 'بدء مرتجع',
     'back_to_list' => 'العودة إلى المبيعات',
     'shift' => 'الوردية',
+    'channel' => 'القناة',
     'items' => 'الأصناف',
     'linked_returns' => 'مرتجعات هذا البيع',
     'voided_on' => 'أُلغي بتاريخ :date',

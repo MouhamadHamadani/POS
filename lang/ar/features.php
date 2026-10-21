@@ -33,6 +33,7 @@ return [
         'reports_stock_levels' => 'تقارير مستويات المخزون والمخزون بتاريخ',
         'reports_profit_loss' => 'تقرير الأرباح والخسائر',
         'returns' => 'المرتجعات والاسترداد',
+        'sales_channels' => 'المبيعات في المتجر وأونلاين',
         'loyalty' => 'الزبائن والولاء',
         'suppliers' => 'الموردون وأوامر الشراء',
         'receipts_custom_templates' => 'قوالب الإيصالات المخصصة',
