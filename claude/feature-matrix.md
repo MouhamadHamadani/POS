@@ -106,6 +106,9 @@ rules against both the real edge and a synthetic config.
   second plan-level switch would be two controls for one thing.
 - **Hold / recall, price lists, discounts, card / credit tender**: in-module buttons. You said
   gate at module / page level only.
+- **Split payments and Wish** (cash USD / LBP + card + Wish + on account in one sale, on-site or
+  online): **core on every plan**, not a feature key. A plan cannot switch off a way of being paid;
+  the on-account part still follows `loyalty` (it needs a customer), and nothing else does.
 - **Trashed products, Backup, Permissions, Plan**: super_admin-only already; the client never sees them.
 - **A4 invoice print**: optional. I can add `receipts.a4_invoice` (requires `receipts`) if you
   want to sell it separately. Off the list unless you say yes (decision 6).
