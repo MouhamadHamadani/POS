@@ -54,6 +54,7 @@ Route::middleware(['auth'])->group(function () {
     // A4 invoice straight to the printer chosen in Settings (desktop app only; the sell screen
     // falls back to the print dialog when this reports it did not print).
     Route::post('/pos/receipts/{sale}/print-a4', [ReceiptController::class, 'printA4'])->name('receipts.print-a4');
+    Route::post('/pos/receipts/{sale}/print-thermal', [ReceiptController::class, 'printThermal'])->name('receipts.print-thermal');
 
     // Sales History — look up a past sale, see what was in it, reprint it. Read-only, so it sits
     // outside the shift gate for the same reason as the receipt routes above, and it carries no

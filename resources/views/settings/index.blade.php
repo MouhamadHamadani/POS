@@ -244,6 +244,22 @@
                             <div class="text-xs text-gray-500 mt-1">{{ __('settings.receipt_format_help') }}</div>
                         </div>
                         <div>
+                            <label class="block text-xs text-gray-500">{{ __('settings.thermal_printer') }}</label>
+                            @php $thermalPrinter = $get('thermal_printer_name'); @endphp
+                            @if (count($printers))
+                                <select name="settings[thermal_printer_name]" class="w-full border-gray-300 rounded text-sm">
+                                    <option value="">{{ __('settings.thermal_printer_ask') }}</option>
+                                    @foreach ($printers + ($thermalPrinter !== '' && ! isset($printers[$thermalPrinter]) ? [$thermalPrinter => $thermalPrinter] : []) as $name => $display)
+                                        <option value="{{ $name }}" @selected($thermalPrinter === $name)>{{ $display }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="text-xs text-gray-500 mt-1">{{ __('settings.thermal_printer_help') }}</div>
+                            @else
+                                <input type="text" name="settings[thermal_printer_name]" dir="ltr" value="{{ $thermalPrinter }}" class="w-full border-gray-300 rounded text-sm" />
+                                <div class="text-xs text-gray-500 mt-1">{{ __('settings.thermal_printer_text_help') }}</div>
+                            @endif
+                        </div>
+                        <div>
                             <label class="block text-xs text-gray-500">{{ __('settings.a4_printer') }}</label>
                             @php $a4Printer = $get('a4_printer_name'); @endphp
                             @if (count($printers))
@@ -268,9 +284,19 @@
                             <textarea name="settings[receipt_footer]" dir="auto" rows="2" class="w-full border-gray-300 rounded text-sm">{{ $get('receipt_footer') }}</textarea>
                         </div>
                         {{-- Save stays first: Enter in a field submits via the first submit button. --}}
-                        <div class="md:col-span-2 flex justify-end gap-2">
+                        <div class="md:col-span-2 flex justify-end items-center gap-2" x-data="{ state: '' }">
+                            @if ($desktop)
+                                {{-- Desktop app: the test receipt goes to the printer silently, using the values typed above. --}}
+                                <span x-show="state" x-cloak class="text-sm" :class="state === 'ok' ? 'text-green-700' : 'text-red-700'"
+                                      x-text="state === 'ok' ? @js(__('receipt.test_print_sent')) : @js(__('receipt.print_failed'))"></span>
+                            @endif
                             <button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('common.save') }}</button>
-                            <button type="submit" formaction="{{ route('settings.receipt.test-print') }}" formtarget="_blank" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">{{ __('settings.print_test') }}</button>
+                            @if ($desktop)
+                                <button type="button" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50"
+                                        @click="state = ''; fetch(@js(route('settings.receipt.test-print')), { method: 'POST', headers: { 'Accept': 'application/json' }, body: new FormData($el.closest('form')) }).then(r => r.json().catch(() => ({}))).then(d => state = d.printed ? 'ok' : 'error').catch(() => state = 'error')">{{ __('settings.print_test') }}</button>
+                            @else
+                                <button type="submit" formaction="{{ route('settings.receipt.test-print') }}" formtarget="_blank" class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">{{ __('settings.print_test') }}</button>
+                            @endif
                         </div>
                     </form>
 

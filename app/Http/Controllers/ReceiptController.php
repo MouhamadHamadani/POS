@@ -46,25 +46,59 @@ class ReceiptController extends Controller
     }
 
     /**
-     * Send the A4 invoice straight to the printer chosen in Settings. Only meaningful
-     * in the packaged app; `printed: false` tells the sell screen to open the A4 page
-     * with the system print dialog instead.
+     * Send the thermal receipt straight to the receipt printer chosen in Settings (the Windows
+     * default printer when none is). Only the packaged app can: the answer is
+     * `{printed, desktop}`. Outside it `desktop` is false and the page opens the receipt in a
+     * popup instead; inside it a failed print is a 502 and the page shows Retry — it never falls
+     * back to a dialog.
      */
+    public function printThermal(Request $request, Sale $sale): JsonResponse
+    {
+        $data = $this->data($request, $sale);
+
+        if (! $this->prints->inNativeShell()) {
+            return $this->printResult(false, false);
+        }
+
+        $data = ['autoPrint' => false, 'embedded' => true] + $data;
+        $template = ReceiptRenderer::active();
+        $html = $template
+            ? ReceiptRenderer::render($template, $sale, $data)
+            : view('receipts.thermal', $data)->render();
+
+        return $this->printed($request, $sale, ReceiptPrintService::FORMAT_THERMAL, $this->prints->printThermalSilently($html));
+    }
+
+    /** The A4 invoice, same contract as printThermal() with the A4 printer. */
     public function printA4(Request $request, Sale $sale): JsonResponse
     {
         $data = $this->data($request, $sale);
 
-        $printed = $this->prints->silentA4Available() && $this->prints->printA4Silently(
-            view('receipts.a4', $data + ['inv' => $this->prints->invoice($sale), 'embedded' => true, 'autoPrint' => false])->render()
-        );
-
-        // Only a print that actually went out is a reprint; when it did not, the sell screen
-        // falls back to show() with the same flag, which logs it instead.
-        if ($printed) {
-            $this->auditReprint($request, $sale, ReceiptPrintService::FORMAT_A4);
+        if (! $this->prints->inNativeShell()) {
+            return $this->printResult(false, false);
         }
 
-        return response()->json(['printed' => $printed]);
+        return $this->printed($request, $sale, ReceiptPrintService::FORMAT_A4, $this->prints->printA4Silently(
+            view('receipts.a4', $data + ['inv' => $this->prints->invoice($sale), 'embedded' => true, 'autoPrint' => false])->render()
+        ));
+    }
+
+    /**
+     * Only a print that actually went out is a reprint; a failed one is retried by the page and
+     * logged when it finally prints.
+     */
+    private function printed(Request $request, Sale $sale, string $format, bool $printed): JsonResponse
+    {
+        if ($printed) {
+            $this->auditReprint($request, $sale, $format);
+        }
+
+        return $this->printResult($printed, true);
+    }
+
+    private function printResult(bool $printed, bool $desktop): JsonResponse
+    {
+        return response()->json(['printed' => $printed, 'desktop' => $desktop], $desktop && ! $printed ? 502 : 200);
     }
 
     /** A copy is a reprint, and every reprint is logged: who, which receipt, which format, from which screen. */

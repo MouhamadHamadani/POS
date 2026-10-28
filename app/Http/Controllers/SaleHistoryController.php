@@ -61,9 +61,9 @@ class SaleHistoryController extends Controller
         ] + $this->printing());
     }
 
-    /** What the reprint buttons need: format order, whether to ask, and whether A4 can go straight to a printer. */
+    /** What the reprint buttons need: format order, whether to ask, and whether this is the desktop app (silent printing, no popup). */
     private function printing(): array
     {
-        return $this->history->reprintFormats() + ['a4Silent' => $this->prints->silentA4Available()];
+        return $this->history->reprintFormats() + ['desktop' => $this->prints->inNativeShell()];
     }
 }

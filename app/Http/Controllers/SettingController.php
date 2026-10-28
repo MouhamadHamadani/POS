@@ -59,7 +59,7 @@ class SettingController extends Controller
         'receipt' => [
             'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
             'receipt_header' => 'string', 'receipt_footer' => 'string',
-            'receipt_format' => 'string', 'a4_printer_name' => 'string',
+            'receipt_format' => 'string', 'a4_printer_name' => 'string', 'thermal_printer_name' => 'string',
         ],
         'numbering' => [
             'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
@@ -131,10 +131,12 @@ class SettingController extends Controller
             ? ExpenseCategory::withCount(['expenses' => fn ($q) => $q->withTrashed()])->orderBy('kind')->orderBy('sort_order')->get()
             : collect();
 
-        // The installed printers, for the A4 printer dropdown (empty outside the desktop app).
-        $printers = $tab === 'receipt' ? app(ReceiptPrintService::class)->printers() : [];
+        // The installed printers, for the printer dropdowns (empty outside the desktop app).
+        $prints = app(ReceiptPrintService::class);
+        $printers = $tab === 'receipt' ? $prints->printers() : [];
+        $desktop = $prints->inNativeShell();
 
-        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate', 'expenseCategories', 'printers'));
+        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate', 'expenseCategories', 'printers', 'desktop'));
     }
 
     public function update(Request $request): RedirectResponse
@@ -148,6 +150,7 @@ class SettingController extends Controller
         $request->validate([
             'settings.receipt_format' => ['nullable', \Illuminate\Validation\Rule::in(ReceiptPrintService::FORMATS)],
             'settings.a4_printer_name' => 'nullable|string|max:255',
+            'settings.thermal_printer_name' => 'nullable|string|max:255',
         ] + $this->numericSettingRules(), [
             // A rate of 0 prices everything at 0 LBP and counts every LBP note as $0 tendered.
             'settings.exchange_rate.required' => __('messages.exchange_rate_invalid'),
@@ -256,7 +259,7 @@ class SettingController extends Controller
      * the Receipt tab's typed-but-unsaved width/header/footer. Pure render:
      * nothing is persisted, no receipt number is consumed, nothing is audited.
      */
-    public function testPrintReceipt(Request $request, CurrencyService $currency): View|Response
+    public function testPrintReceipt(Request $request, CurrencyService $currency, ReceiptPrintService $prints): View|Response
     {
         $input = fn (string $key, $default) => $request->input("settings.$key", Setting::get($key, $default));
         $width = (int) $input('receipt_width', 80);
@@ -331,6 +334,18 @@ class SettingController extends Controller
             'autoPrint' => true,
             'isTest' => true,
         ];
+
+        // The desktop app prints it silently, like a real receipt (no popup, no dialog), and answers
+        // with {printed, desktop}; a browser tab still gets the page and prints it itself.
+        if ($prints->inNativeShell()) {
+            $data = ['autoPrint' => false, 'embedded' => true] + $data;
+            $html = ($template = ReceiptRenderer::active())
+                ? ReceiptRenderer::render($template, $sale, $data)
+                : view('receipts.thermal', $data)->render();
+            $printed = $prints->printThermalSilently($html);
+
+            return response()->json(['printed' => $printed, 'desktop' => true], $printed ? 200 : 502);
+        }
 
         // Whatever a real sale would print, this has to print too — checking the
         // layout is the entire point of the button. On Premium that means the

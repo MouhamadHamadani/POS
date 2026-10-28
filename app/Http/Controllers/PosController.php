@@ -48,7 +48,7 @@ class PosController extends Controller
             'lbpStep' => $lbpStep,
             'autoPrint' => (bool) Setting::get('auto_print', false),
             'receiptFormat' => $prints->formatSetting(),
-            'a4Silent' => $prints->silentA4Available(),
+            'desktop' => $prints->inNativeShell(),
             'canChangeTier' => $user->canChangePriceTier(),
             'showCost' => $user->isManagerial(),
             'maxDiscountPct' => $user->maxDiscountPct(),

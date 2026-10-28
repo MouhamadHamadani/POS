@@ -20,7 +20,9 @@
         </div>
     </x-slot>
 
-    <div class="py-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4" x-data="salesReprint(@js($a4Silent))">
+    <div class="py-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4" x-data="salesReprint(@js($desktop))">
+
+        @include('sales._reprint_error')
 
         <div class="bg-white rounded-lg shadow-card p-4 flex flex-wrap items-center gap-2">
             @if ($sale->hasReceipt())

@@ -6,6 +6,7 @@
     $isDemo = \App\Support\Demo::enabled();
     $isTest = $isTest ?? false; // Settings → Receipt test print; real sales never pass it
     $isCopy = $isCopy ?? false; // ?copy=1: a reprint from Sales History — see ReceiptController
+    $embedded = $embedded ?? false; // printed silently by the desktop app from a data: URL: no buttons, fonts inline
 
     // A label (or value) in the receipt language(s). Bilingual prints "English / العربية";
     // the Arabic half is its own inline-block, so on 58 mm paper it wraps as a unit onto a second line.
@@ -37,17 +38,11 @@
 <title>{{ __('receipt.receipt', [], 'en') }} {{ $sale->receipt_number }}</title>
 <style>
     /* Cairo is bundled (public/fonts) so Arabic prints with no network; Courier New has no Arabic glyphs. */
-    @font-face { font-family: 'Cairo'; font-weight: 400; src: url('{{ asset('fonts/cairo-arabic-400-normal.woff2') }}') format('woff2');
-        unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
-    @font-face { font-family: 'Cairo'; font-weight: 700; src: url('{{ asset('fonts/cairo-arabic-700-normal.woff2') }}') format('woff2');
-        unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
-    @font-face { font-family: 'Cairo'; font-weight: 400; src: url('{{ asset('fonts/cairo-latin-400-normal.woff2') }}') format('woff2');
-        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-    @font-face { font-family: 'Cairo'; font-weight: 700; src: url('{{ asset('fonts/cairo-latin-700-normal.woff2') }}') format('woff2');
-        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @include('receipts._fonts', ['embedded' => $embedded])
     @page { size: {{ $width }}mm auto; margin: 0; }
     html, body { margin: 0; padding: 0; background: white; font-family: 'Cairo', 'Courier New', monospace; }
-    body { width: {{ $width }}mm; padding: 4mm; font-size: 11px; color: #111; }
+    /* border-box: the paper is exactly receipt_width wide, so the padding must sit inside it or the right edge is cut. */
+    body { box-sizing: border-box; width: {{ $width }}mm; padding: 4mm; font-size: 11px; color: #111; }
     .center { text-align: center; }
     /* Amounts: left-to-right, isolated, and always on the same (end) edge of the line. */
     .amt    { text-align: right; direction: ltr; unicode-bidi: isolate; white-space: nowrap; padding-inline-start: 2mm; }
@@ -195,12 +190,14 @@
         @endforeach
     @endif
 
+    @unless ($embedded)
     <div class="actions">
         <button type="button" onclick="window.print()">{{ __('receipt.print') }}</button>
         <button type="button" onclick="if(window.opener||history.length<2){window.close()}else{history.back()}">{{ __('receipt.close') }}</button>
     </div>
+    @endunless
 
-    @if ($autoPrint)
+    @if ($autoPrint && ! $embedded)
         <script>
             window.addEventListener('load', () => {
                 setTimeout(() => {
