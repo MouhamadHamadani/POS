@@ -231,7 +231,7 @@ class ExpenseService
     // ---- internals -----------------------------------------------------------
 
     /** [amount_usd, amount_lbp] for an amount typed in `$currency`. */
-    private function amounts(string $currency, float $amount): array
+    public function amounts(string $currency, float $amount): array
     {
         return $currency === 'lbp'
             ? [$this->currency->lbpToUsd($amount), round($amount, 2)]

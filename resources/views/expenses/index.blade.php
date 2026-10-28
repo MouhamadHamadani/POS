@@ -15,6 +15,7 @@
     @endphp
 
     <div class="py-6 max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
+        @include('expenses._tabs', ['active' => 'expenses'])
 
         @if (session('success'))
             <div class="p-3 bg-green-50 text-green-800 rounded text-sm">{{ session('success') }}</div>
@@ -113,6 +114,9 @@
                         <td class="p-3 whitespace-nowrap text-xs text-gray-600"><x-ltr>{{ $e->date->format('Y-m-d') }}</x-ltr></td>
                         <td class="p-3">
                             {{ $e->category->localName() }}
+                            @if ($e->isAutomatic())
+                                <span class="ms-1 px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700" title="{{ __('expenses.auto_title') }}">{{ __('expenses.auto') }}</span>
+                            @endif
                             <div class="text-xs text-gray-400">{{ $e->category->kindLabel() }}</div>
                         </td>
                         <td class="p-3 text-xs">

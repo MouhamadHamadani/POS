@@ -47,6 +47,7 @@ Roles come from `routes/web.php` middleware. `super_admin` passes every `role:` 
 | 14 | **Suppliers & Purchase Orders**: suppliers, supplier payments, PO create / receive / transition | `/suppliers*`, `/purchase-orders*` | admin, manager, stock | `feature:suppliers` | products |
 | 15 | **Returns**: search sale, create, approve / reject | `/returns*` | cashier, manager, admin (approve: manager, admin) | `feature:returns` | sales history |
 | 16 | **Expenses**: fixed + running, optional cash-out of the open drawer, duplicate-fixed, export | `/expenses*` | manager, admin | — | shifts |
+| 16b | – Recurring expenses (templates that book an expense weekly / monthly / yearly, at launch, sign-in and daily) | `/expenses/recurring*` | manager, admin | — | expenses |
 | 17 | Reports index | `/reports` | manager, admin | — | — |
 | 17a | – Daily sales | `/reports/sales/daily` | manager, admin | — (key `reports.daily_sales` exists in config but **no route uses it**) | sales |
 | 17b | – Sales by product | `/reports/sales/by-product` | manager, admin | `feature:reports.sales_by_product` | sales |

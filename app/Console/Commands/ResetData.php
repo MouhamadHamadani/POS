@@ -41,6 +41,7 @@ class ResetData extends Command
         // product to get an id would inherit a stranger's history.
         'inventory_adjustments',
         'expenses',
+        'recurring_expenses', // after expenses: they point at it
         'cash_movements',
         'shifts',
         'audit_logs',

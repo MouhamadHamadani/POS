@@ -14,6 +14,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReceiptController;
+use App\Http\Controllers\RecurringExpenseController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReturnController;
@@ -189,6 +190,16 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
             Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
             Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+
+            // Recurring expenses: templates that book an expense on a schedule (also at launch and sign-in).
+            Route::get('/expenses/recurring', [RecurringExpenseController::class, 'index'])->name('expenses.recurring.index');
+            Route::get('/expenses/recurring/create', [RecurringExpenseController::class, 'create'])->name('expenses.recurring.create');
+            Route::post('/expenses/recurring', [RecurringExpenseController::class, 'store'])->name('expenses.recurring.store');
+            Route::post('/expenses/recurring/generate', [RecurringExpenseController::class, 'generate'])->name('expenses.recurring.generate');
+            Route::get('/expenses/recurring/{recurring}/edit', [RecurringExpenseController::class, 'edit'])->name('expenses.recurring.edit');
+            Route::put('/expenses/recurring/{recurring}', [RecurringExpenseController::class, 'update'])->name('expenses.recurring.update');
+            Route::post('/expenses/recurring/{recurring}/toggle', [RecurringExpenseController::class, 'toggle'])->name('expenses.recurring.toggle');
+            Route::delete('/expenses/recurring/{recurring}', [RecurringExpenseController::class, 'destroy'])->name('expenses.recurring.destroy');
         });
 
         // The index and the daily summary ship on every tier; the three that
