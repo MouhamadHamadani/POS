@@ -52,7 +52,7 @@ class PlanTierActivationTest extends TestCase
         $this->assertSame(Activation::TRIAL, Activation::status());
     }
 
-    public function test_a_starter_install_has_one_seat_and_the_vendor_does_not_use_it(): void
+    public function test_a_starter_install_has_two_seats_and_the_vendor_does_not_use_them(): void
     {
         $this->install('starter', Activation::TRIAL, 3);
         $vendor = $this->vendor();
@@ -68,11 +68,17 @@ class PlanTierActivationTest extends TestCase
         $this->actingAs($vendor)->post('/users', [
             'name' => 'Second', 'username' => 'second', 'password' => 'secret123',
             'password_confirmation' => 'secret123', 'role' => User::ROLE_CASHIER, 'language' => 'en', 'is_active' => 1,
+        ])->assertRedirect(route('users.index'));
+        $this->assertSame(2, License::seatsUsed());
+
+        $this->actingAs($vendor)->post('/users', [
+            'name' => 'Third', 'username' => 'third', 'password' => 'secret123',
+            'password_confirmation' => 'secret123', 'role' => User::ROLE_CASHIER, 'language' => 'en', 'is_active' => 1,
         ])->assertSessionHasErrors('role');
-        $this->assertSame(1, License::seatsUsed());
+        $this->assertSame(2, License::seatsUsed());
     }
 
-    public function test_the_trial_banner_reaches_a_starter_manager_because_starter_has_no_admin(): void
+    public function test_the_trial_banner_reaches_a_starter_manager(): void
     {
         $this->install('starter', Activation::TRIAL, 11);
 

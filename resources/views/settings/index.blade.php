@@ -537,6 +537,10 @@
                                         </dd>
                                         <p class="text-xs text-gray-500">{{ __('plan.super_admin_not_counted') }}</p>
                                     </div>
+                                    <div class="col-span-2">
+                                        <dt class="text-xs text-gray-500">{{ __('plan.roles') }}</dt>
+                                        <dd class="font-medium">{{ collect(\App\Support\License::allowedRoles())->map(fn ($r) => \App\Support\EnumLabel::get('role', $r))->implode(__('features.separator')) }}</dd>
+                                    </div>
                                     <div>
                                         <dt class="text-xs text-gray-500">{{ __('plan.devices') }}</dt>
                                         <dd class="font-medium"><x-ltr>{{ $maxDevices ?? __('plan.unlimited') }}</x-ltr></dd>

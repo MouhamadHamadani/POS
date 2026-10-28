@@ -134,8 +134,16 @@ tier includes today; both new keys are on in all three.** Restricting Starter fu
 | `receipts.custom_templates` | – | – | ✔ |
 
 Per-plan **limits** are not features and stay as plan attributes (moved next to the presets in
-`config/features.php`): Starter 1 user / 1 device / roles manager+cashier; Standard 3 / 3 /
-+stock+admin; Premium unlimited. Overrides apply to features only, not to seat or role caps.
+`config/features.php`): Starter 2 users / 1 device / roles manager+cashier+admin; Standard 3 / 3 /
++stock; Premium unlimited. The `admin` role (the client's owner account) is in every plan; the
+vendor's `super_admin` is in none and takes no seat. Overrides apply to features only, not to seat
+or role caps.
+
+**Settings by role** (enforced on the server, not by hiding tabs): the client's `admin` gets
+General, Currency, Tax, POS, Receipt (printer settings, test print and the receipt template),
+Numbering, Loyalty, Expenses categories and Appearance. `super_admin` only: Plan & Features,
+Backup, Permissions and Activation / trial, and creating `admin` accounts. A crafted POST from an
+admin to any of those answers 403.
 
 Example you gave, in real keys: Starter + override `reports.stock_levels = true` → that report
 (both routes + card) appears, nothing else changes.

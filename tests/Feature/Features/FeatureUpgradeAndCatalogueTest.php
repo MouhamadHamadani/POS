@@ -62,10 +62,11 @@ class FeatureUpgradeAndCatalogueTest extends TestCase
         }
     }
 
-    public function test_the_seat_and_role_limits_did_not_move(): void
+    public function test_the_seat_and_role_limits_are_the_ones_the_matrix_lists(): void
     {
+        // Starter has 2 seats (the owner's admin and one more) and the admin role, like every plan.
         $expected = [
-            'starter' => [1, 1, ['manager', 'cashier']],
+            'starter' => [2, 1, ['manager', 'cashier', 'admin']],
             'standard' => [3, 3, ['manager', 'cashier', 'stock', 'admin']],
             'premium' => [null, null, ['manager', 'cashier', 'stock', 'admin']],
         ];

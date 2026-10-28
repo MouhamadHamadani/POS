@@ -76,6 +76,13 @@ class SettingController extends Controller
         ],
     ];
 
+    /**
+     * Setting groups only a super_admin may write. The Plan, Permissions and Activation tabs have
+     * routes of their own in the super_admin-only group, so Backup is the one group left that
+     * the shared `settings.update` route could reach.
+     */
+    private const SUPER_ADMIN_GROUPS = ['backup'];
+
     /** What a tax-rate audit entry records (old / new values). */
     private const TAX_AUDITED = ['name', 'name_ar', 'rate', 'is_inclusive', 'is_default', 'is_active'];
 
@@ -141,6 +148,8 @@ class SettingController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
+        $this->guardSuperAdminKeys($request);
+
         $group = $request->input('group');
         $data = $request->validate([
             'group' => 'required|in:general,currency,pos,receipt,numbering,loyalty,backup,appearance',
@@ -206,6 +215,28 @@ class SettingController extends Controller
         Cache::flush();
 
         return redirect()->route('settings.index', ['tab' => $group])->with('success', __('messages.settings_saved'));
+    }
+
+    /**
+     * The same lock the demo build uses, by key as well as by group: `settings.update` writes
+     * whatever known key it is handed, so `group=pos` carrying a Backup key must be refused too.
+     * The client's admin gets a 403; the route itself stays open to them for every other tab.
+     */
+    private function guardSuperAdminKeys(Request $request): void
+    {
+        if ($request->user()->isSuperAdmin()) {
+            return;
+        }
+
+        $locked = array_merge(...array_values(array_intersect_key(self::SETTING_TYPES, array_flip(self::SUPER_ADMIN_GROUPS))));
+        $posted = $request->input('settings');
+
+        abort_if(
+            in_array($request->input('group'), self::SUPER_ADMIN_GROUPS, true)
+                || (is_array($posted) && array_intersect_key($posted, $locked)),
+            403,
+            __('messages.forbidden'),
+        );
     }
 
     /**

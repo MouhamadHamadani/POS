@@ -61,13 +61,14 @@ return [
 
     /**
      * `limits` are plan attributes, not features: `max_users` counts every account that
-     * is not super_admin (null = unlimited), `roles` are the roles the plan lets exist,
+     * is not super_admin (null = unlimited), `roles` are the roles the plan lets exist
+     * (`admin`, the client's owner account, is in every plan),
      * and `max_devices` is informational (the app is single-machine, nothing counts it).
      * Overrides apply to features only, never to limits.
      */
     'plans' => [
         'starter' => [
-            'limits' => ['max_users' => 1, 'max_devices' => 1, 'roles' => ['manager', 'cashier']],
+            'limits' => ['max_users' => 2, 'max_devices' => 1, 'roles' => ['manager', 'cashier', 'admin']],
             'features' => $starter,
         ],
         'standard' => [
