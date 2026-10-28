@@ -66,7 +66,22 @@ owner), Manager, Cashier, Stock Keeper.
 - The Admin keeps everything for running the shop: Users, Reports (including Profit & Loss where the
   plan has it), Expenses, Sales History, Returns approval, Products, Customers.
 
-## 3. Recurring (automatic) expenses
+## 3. Error pages and "Page expired"
+
+**What changed.** If a page fails, the program now shows a page with the LebaSouk logo, the name of the
+error ("Error 419 — Page expired", "Page not found", "Access denied", "Something went wrong"...), one
+sentence on what to do, and a **Go home** button (plus **Go back** when there is a page to go back to).
+Before, some of these were bare pages with no way out, and the only fix was to close and reopen the program.
+
+- **"Page expired" while signing in** no longer happens as a dead end: if the sign-in page was left open
+  for a long time, pressing **Log in** simply shows the sign-in page again with the notice "Your session
+  expired, so the page was refreshed. Please sign in again." — type the password again. The sign-in page also
+  refreshes itself when it has been idle for a long time.
+- *Manual, Troubleshooting*: replace any "close and reopen the program" advice for Page expired with the
+  above; for "Access denied" say the account's role does not include that screen (see Users).
+- Arabic users see the same pages in Arabic.
+
+## 4. Recurring (automatic) expenses
 
 **Where.** *Expenses → Recurring* (a tab next to the expense list; same plans and same people as
 Expenses: Admin and Manager).

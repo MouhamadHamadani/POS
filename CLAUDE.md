@@ -148,6 +148,17 @@ about this repo being read-only; they no longer apply.)
   the silent `print-thermal` / `print-a4` route (desktop): that stamps COPY / نسخة on the page and
   writes the `receipt_reprint` audit row server-side, and only for a print that actually went
   out. The copy flag is opt-in by the caller, not enforced by the server.
+- Failed pages (`App\Support\ErrorPages`, wired in `bootstrap/app.php`): the desktop window has no
+  address bar, so no failed page may be a dead end. Every non-JSON status >= 400 renders the one
+  standalone page `resources/views/errors/page.blade.php` (logo, "Error NNN", title, message, Go
+  home / Go back; inline CSS, no Vite, no database, so it renders when the app itself broke; copy in
+  `lang/*/errors.php`, with a generic fallback for any other status). A message passed to
+  `abort(403, '...')` is shown; exception text never is, and `APP_DEBUG` keeps the stack trace for
+  unhandled exceptions. A 419 (CSRF token no longer matches its session) on a signed-out request
+  redirects to the login page with a notice and a fresh token, a JSON one answers in the user's
+  language, and only a signed-in user sees the error page. The login page also reloads itself before
+  the session lifetime runs out and when restored from the back/forward cache. Add copy for a new
+  status to `errors.codes`; don't add per-status view files.
 - Recurring expenses (Expenses > Recurring, behind the `expenses` feature and `role:admin,manager`):
   `recurring_expenses` templates (weekly `day_of_week` 1=Mon..7=Sun, monthly `day_of_month` with the
   month's last day when it is short, yearly = the start date's day and month) are turned into real

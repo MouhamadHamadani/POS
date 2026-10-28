@@ -8,6 +8,13 @@
         </div>
     @endif
 
+    {{-- A token the server no longer knows (see App\Support\ErrorPages::tokenMismatch) lands here with a fresh one. --}}
+    @if (session('expired'))
+        <div role="alert" class="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            {{ session('expired') }}
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('login') }}">
         @csrf
 
@@ -42,6 +49,17 @@
             </x-primary-button>
         </div>
     </form>
+
+    <script>
+        // A login page left open for hours holds a token the server has forgotten (the session ran out, or
+        // the window came back from the back/forward cache). Reload it for a fresh one, unless someone is typing.
+        (() => {
+            const fields = ['login', 'password'].map((id) => document.getElementById(id));
+            const refresh = () => (fields.every((f) => !f.value) ? location.reload() : setTimeout(refresh, 60000));
+            setTimeout(refresh, {{ max(5, (int) config('session.lifetime') - 5) }} * 60000);
+            window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
+        })();
+    </script>
 
     @includeWhen(\App\Support\Demo::enabled(), 'partials.demo-credentials')
 </x-guest-layout>
