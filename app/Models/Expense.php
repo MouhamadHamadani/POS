@@ -18,6 +18,7 @@ class Expense extends Model
     protected $fillable = [
         'expense_category_id', 'date', 'amount_usd', 'amount_lbp', 'currency',
         'payee', 'reference', 'notes', 'paid_from', 'shift_id', 'cash_movement_id', 'created_by',
+        'recurring_expense_id', 'period_date',
     ];
 
     protected $casts = [
@@ -56,6 +57,18 @@ class Expense extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** The template that booked this expense; trashed ones included, so the link outlives a deleted template. */
+    public function recurringExpense(): BelongsTo
+    {
+        return $this->belongsTo(RecurringExpense::class)->withTrashed();
+    }
+
+    /** Booked by a recurring template rather than typed in. */
+    public function isAutomatic(): bool
+    {
+        return $this->recurring_expense_id !== null;
     }
 
     /**

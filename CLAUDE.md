@@ -104,8 +104,21 @@ about this repo being read-only; they no longer apply.)
   `sales` rows) with a faked clock, so a new money or stock rule needs no seeder change, but a new
   table does need `FakeDataModeTest`'s `BUSINESS_TABLES` and, if it holds reference data a
   migration inserts, an entry in `FakeData::tables()`.
-- Four roles: `admin`, `manager`, `cashier`, `stock`, enforced via the
-  `role:` route middleware (`App\Http\Middleware\RoleMiddleware`).
+- Five roles: `super_admin` (the vendor's built-in account, no seat), `admin` (the client's owner),
+  `manager`, `cashier`, `stock`, enforced via the `role:` route middleware
+  (`App\Http\Middleware\RoleMiddleware`, where `super_admin` passes every route that lists any
+  role). `admin` is in every plan, Starter included (Starter = 2 seats: the owner plus one more).
+  An admin creates and manages manager / cashier / stock users, never an admin-tier account
+  (`User::STAFF_ROLES`, `UserController::guardPrivilegedTarget`); only the super_admin creates an
+  admin. Settings split, enforced on the server and not by hiding tabs: the admin gets General,
+  Currency, Tax, POS, Receipt (printers, test print, receipt template), Numbering, Loyalty,
+  Expenses categories and Appearance; **only the super_admin** gets Plan & Features, Backup,
+  Permissions and Activation / trial. Those have `role:super_admin` routes of their own, and
+  `SettingController::update` (open to the admin for the other groups) refuses a Backup-group
+  write with a 403 whether it is posted as the group or smuggled in under another one
+  (`SUPER_ADMIN_GROUPS`). A new vendor-only setting goes in its own `role:super_admin` route, or
+  in that list. Day-to-day store work (users, reports including P&L, expenses, sales history,
+  returns approval) is gated on `admin,manager`, so an admin keeps all of it.
 - VAT and other tax rates are stored as `0..1` decimals, not percentages.
 - Business logic lives in `app/Services/*`, not in controllers.
 - Prices and discount limits are server-authoritative. `SaleService` prices every
@@ -119,10 +132,46 @@ about this repo being read-only; they no longer apply.)
 - Who may read or reprint a sale is one rule: `Sale::scopeVisibleTo()` (queries) /
   `Sale::canBeSeenBy()` (records) — managerial roles see all, everyone else only their own.
   Receipts, the sale JSON and Sales History all go through it; don't write a new `user_id ===` check.
+- Printing: **inside the NativePHP shell** (`ReceiptPrintService::inNativeShell()`) a receipt, an A4
+  invoice, a reprint and the Settings test print ALWAYS go silently through Electron
+  (`POST /pos/receipts/{sale}/print-thermal|print-a4`, `{printed, desktop}`): to
+  `thermal_printer_name` / `a4_printer_name`, or the Windows default printer when empty (the
+  `printer` key is then left out of the call). There is never a popup or a print dialog there;
+  a failed print is a 502 and the sell screen / Sales History show an inline Retry while the sale
+  stays completed. Outside the shell (a browser tab) the receipt page still opens in a popup and
+  calls `window.print()`. The page printed silently is rendered with `embedded => true` (no
+  buttons, no `window.print()`, Cairo as `data:` URIs through `receipts/_fonts.blade.php`: a
+  `data:` origin cannot fetch the http font files). New print entry points follow the same
+  split: ask `inNativeShell()`, never open a window from the desktop path.
 - Any print that is not the sell screen's first print after a sale (Sales History, the sale
-  detail page, anything new) must open `receipts.print` with `?copy=1&src=<screen>`: that
-  stamps COPY / نسخة on the page and writes the `receipt_reprint` audit row server-side.
-  The copy flag is opt-in by the caller, not enforced by the server.
+  detail page, anything new) must send `?copy=1&src=<screen>` to `receipts.print` (browser) or to
+  the silent `print-thermal` / `print-a4` route (desktop): that stamps COPY / نسخة on the page and
+  writes the `receipt_reprint` audit row server-side, and only for a print that actually went
+  out. The copy flag is opt-in by the caller, not enforced by the server.
+- Failed pages (`App\Support\ErrorPages`, wired in `bootstrap/app.php`): the desktop window has no
+  address bar, so no failed page may be a dead end. Every non-JSON status >= 400 renders the one
+  standalone page `resources/views/errors/page.blade.php` (logo, "Error NNN", title, message, Go
+  home / Go back; inline CSS, no Vite, no database, so it renders when the app itself broke; copy in
+  `lang/*/errors.php`, with a generic fallback for any other status). A message passed to
+  `abort(403, '...')` is shown; exception text never is, and `APP_DEBUG` keeps the stack trace for
+  unhandled exceptions. A 419 (CSRF token no longer matches its session) on a signed-out request
+  redirects to the login page with a notice and a fresh token, a JSON one answers in the user's
+  language, and only a signed-in user sees the error page. The login page also reloads itself before
+  the session lifetime runs out and when restored from the back/forward cache. Add copy for a new
+  status to `errors.codes`; don't add per-status view files.
+- Recurring expenses (Expenses > Recurring, behind the `expenses` feature and `role:admin,manager`):
+  `recurring_expenses` templates (weekly `day_of_week` 1=Mon..7=Sun, monthly `day_of_month` with the
+  month's last day when it is short, yearly = the start date's day and month) are turned into real
+  `expenses` rows only by `RecurringExpenseService::generateDue()`. It is idempotent
+  (`last_generated_for` cursor + unique `(recurring_expense_id, period_date)` on `expenses`, which
+  also holds for soft-deleted rows) and cheap when nothing is due, so it is called from everywhere:
+  the daily `Schedule` entry in `routes/console.php`, app launch (`NativeAppServiceProvider`),
+  every `Login`, and the Generate now button. Under NativePHP the scheduler loop is opt-in and off
+  (`nativephp.scheduler.enabled`), so launch + sign-in are what the desktop build relies on. A
+  generated expense is `paid_from = outside` (never the drawer), has `created_by = null` and shows
+  an Auto badge; deleting a template soft-deletes it so booked expenses keep their link. Editing
+  a template changes future expenses only. Audit: every template create / update / pause / resume /
+  delete and one `recurring_expenses_generated` row per batch.
 
 ## i18n / RTL
 

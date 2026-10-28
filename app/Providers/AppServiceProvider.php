@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Facades\Feature;
 use App\Models\User;
 use App\Services\FeatureService;
+use App\Services\RecurringExpenseService;
 use App\Support\Activation;
 use App\Support\Demo;
 use App\Support\ReleaseEnv;
@@ -46,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
         $this->guardReleaseBuilds();
         $this->repatchNativePhpBeforeBuild();
         $this->startTrialOnFirstVendorLogin();
+        $this->bookRecurringExpensesOnLogin();
 
         // Runs after NativePHP has rewritten the connection to the packaged
         // app's data directory (package providers boot before app providers),
@@ -97,6 +99,26 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(function (Login $event) {
             if ($event->user instanceof User && $event->user->isSuperAdmin()) {
                 Activation::startTrial();
+            }
+        });
+    }
+
+    /**
+     * The till is often closed on the day a recurring expense falls due, so every sign-in books
+     * whatever has come due since. One small query when nothing has; it can never be allowed to
+     * stop anyone signing in.
+     */
+    private function bookRecurringExpensesOnLogin(): void
+    {
+        Event::listen(function (Login $event) {
+            if (! $event->user instanceof User) {
+                return;
+            }
+
+            try {
+                app(RecurringExpenseService::class)->generateDue(actor: $event->user, source: RecurringExpenseService::SOURCE_LOGIN);
+            } catch (\Throwable $e) {
+                report($e);
             }
         });
     }

@@ -41,11 +41,11 @@ class UserRoleKeptOnSaveTest extends TestCase
     {
         Setting::set('tier', 'starter', 'license');
         $super = User::factory()->superAdmin()->create();
-        $owner = User::factory()->admin()->create();
+        $keeper = User::factory()->stock()->create();
 
-        $html = $this->actingAs($super)->get(route('users.edit', $owner))->assertOk()->getContent();
+        $html = $this->actingAs($super)->get(route('users.edit', $keeper))->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression('~<option value="admin" selected>[^<]*\(not in plan\)~', $html);
+        $this->assertMatchesRegularExpression('~<option value="stock" selected>[^<]*\(not in plan\)~', $html);
     }
 
     public function test_a_role_the_plan_does_not_offer_still_cannot_be_assigned_to_someone_else(): void
@@ -54,10 +54,8 @@ class UserRoleKeptOnSaveTest extends TestCase
         $super = User::factory()->superAdmin()->create();
         $cashier = User::factory()->create();
 
-        foreach ([User::ROLE_STOCK, User::ROLE_ADMIN] as $role) {
-            $this->actingAs($super)->put(route('users.update', $cashier), $this->payload($cashier, ['role' => $role]))
-                ->assertSessionHasErrors('role');
-        }
+        $this->actingAs($super)->put(route('users.update', $cashier), $this->payload($cashier, ['role' => User::ROLE_STOCK]))
+            ->assertSessionHasErrors('role');
 
         $this->assertSame(User::ROLE_CASHIER, $cashier->fresh()->role);
     }

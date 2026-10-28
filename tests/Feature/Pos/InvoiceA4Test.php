@@ -292,28 +292,27 @@ class InvoiceA4Test extends TestCase
         config(['nativephp-internal.running' => true, 'nativephp-internal.api_url' => 'http://127.0.0.1:4000/api/']);
     }
 
-    public function test_silent_printing_needs_the_desktop_app_and_a_chosen_printer(): void
+    public function test_silent_printing_is_the_desktop_app_and_needs_no_chosen_printer(): void
     {
         $prints = app(ReceiptPrintService::class);
-        $this->assertFalse($prints->silentA4Available());
-
         Setting::set('a4_printer_name', 'HP LaserJet', 'receipt');
-        $this->assertFalse($prints->silentA4Available());       // printer set, but a browser tab can't do it
+        $this->assertFalse($prints->inNativeShell());           // printer set, but a browser tab can't do it
 
         $this->inDesktopApp();
-        $this->assertTrue($prints->silentA4Available());
+        $this->assertTrue($prints->inNativeShell());
 
         Setting::set('a4_printer_name', '   ', 'receipt');
-        $this->assertFalse($prints->silentA4Available());       // no printer: the print dialog decides
+        $this->assertTrue($prints->inNativeShell());            // no printer: the Windows default one
+        $this->assertSame('', $prints->a4PrinterName());
     }
 
-    public function test_without_silent_printing_the_endpoint_says_nothing_was_printed(): void
+    public function test_outside_the_desktop_app_the_endpoint_says_nothing_was_printed(): void
     {
         Http::fake();
         $sale = $this->simpleSale();
 
         $this->actingAs($this->cashier)->postJson("/pos/receipts/{$sale->id}/print-a4")
-            ->assertOk()->assertExactJson(['printed' => false]);
+            ->assertOk()->assertExactJson(['printed' => false, 'desktop' => false]);
         Http::assertNothingSent();
     }
 
@@ -325,7 +324,7 @@ class InvoiceA4Test extends TestCase
         $sale = $this->discountedSale();
 
         $this->actingAs($this->cashier)->postJson("/pos/receipts/{$sale->id}/print-a4")
-            ->assertOk()->assertExactJson(['printed' => true]);
+            ->assertOk()->assertExactJson(['printed' => true, 'desktop' => true]);
 
         Http::assertSent(function (HttpRequest $request) use ($sale) {
             $html = rawurldecode($request['html']);
@@ -339,18 +338,33 @@ class InvoiceA4Test extends TestCase
                 && str_contains($html, '$49.95')
                 && ! str_contains($html, 'window.print()')            // the app prints it; the page must not print itself
                 && ! str_contains($html, 'class="actions"')           // no toolbar on paper
-                && ! str_contains($html, 'fonts/cairo');              // nothing fetched from a data: origin
+                && ! str_contains($html, 'fonts/cairo')               // no http fetch from a data: origin...
+                && str_contains($html, 'data:font/woff2;base64,');    // ...Cairo travels inside the page
         });
     }
 
-    public function test_a_printer_that_refuses_reports_failure_so_the_dialog_opens(): void
+    public function test_with_no_printer_chosen_the_invoice_goes_to_the_windows_default_printer(): void
+    {
+        $this->inDesktopApp();
+        Http::fake(['*/system/print' => Http::response('OK', 200)]);
+        $sale = $this->simpleSale();
+
+        $this->actingAs($this->cashier)->postJson("/pos/receipts/{$sale->id}/print-a4")
+            ->assertOk()->assertExactJson(['printed' => true, 'desktop' => true]);
+
+        // No printer key at all, so Electron uses its default instead of a device called "".
+        Http::assertSent(fn (HttpRequest $request) => ! array_key_exists('printer', $request->data()) && $request['settings']['silent'] === true);
+    }
+
+    public function test_a_printer_that_refuses_reports_failure_for_the_retry_and_never_the_dialog(): void
     {
         $this->inDesktopApp();
         Setting::set('a4_printer_name', 'Gone Printer', 'receipt');
         Http::fake(['*/system/print' => Http::response('', 500)]);
         $sale = $this->simpleSale();
 
-        $this->actingAs($this->cashier)->postJson("/pos/receipts/{$sale->id}/print-a4")->assertOk()->assertExactJson(['printed' => false]);
+        $this->actingAs($this->cashier)->postJson("/pos/receipts/{$sale->id}/print-a4")
+            ->assertStatus(502)->assertExactJson(['printed' => false, 'desktop' => true]);
     }
 
     public function test_an_unreachable_desktop_shell_reports_failure_too(): void
@@ -360,19 +374,19 @@ class InvoiceA4Test extends TestCase
         Setting::set('a4_printer_name', 'HP LaserJet', 'receipt');
         $sale = $this->simpleSale();
 
-        $this->actingAs($this->cashier)->postJson("/pos/receipts/{$sale->id}/print-a4")->assertOk()->assertExactJson(['printed' => false]);
+        $this->actingAs($this->cashier)->postJson("/pos/receipts/{$sale->id}/print-a4")
+            ->assertStatus(502)->assertExactJson(['printed' => false, 'desktop' => true]);
     }
 
-    public function test_the_sell_screen_gets_the_format_and_whether_a4_prints_directly(): void
+    public function test_the_sell_screen_gets_the_format_and_whether_this_is_the_desktop_app(): void
     {
         $this->actingAs($this->cashier)->get('/pos')->assertOk()
-            ->assertSee('receiptFormat: "thermal"', false)->assertSee('a4Silent: false', false);
+            ->assertSee('receiptFormat: "thermal"', false)->assertSee('desktop: false', false);
 
         Setting::set('receipt_format', 'ask', 'receipt');
-        Setting::set('a4_printer_name', 'HP LaserJet', 'receipt');
-        $this->inDesktopApp();
+        $this->inDesktopApp();                                        // no printer named: it still prints silently
         $this->actingAs($this->cashier)->get('/pos')->assertOk()
-            ->assertSee('receiptFormat: "ask"', false)->assertSee('a4Silent: true', false);
+            ->assertSee('receiptFormat: "ask"', false)->assertSee('desktop: true', false);
     }
 
     public function test_the_post_sale_panel_always_offers_both_formats_and_the_shortcuts(): void
@@ -437,7 +451,7 @@ class InvoiceA4Test extends TestCase
 
         $this->actingAs($admin)->get('/settings?tab=receipt')->assertOk()
             ->assertSee('<select name="settings[a4_printer_name]"', false)
-            ->assertSee('Ask each time (system print dialog)')
+            ->assertSee('Default Windows printer')
             ->assertSee('Epson Receipt')->assertSee('HP LaserJet Pro')
             ->assertSee('Old Printer');                               // a saved printer that is no longer listed stays selectable
     }
@@ -448,5 +462,6 @@ class InvoiceA4Test extends TestCase
 
         $this->assertSame('thermal', Setting::get('receipt_format'));
         $this->assertSame('', Setting::get('a4_printer_name'));
+        $this->assertSame('', Setting::get('thermal_printer_name'));
     }
 }

@@ -59,7 +59,7 @@ class SettingController extends Controller
         'receipt' => [
             'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
             'receipt_header' => 'string', 'receipt_footer' => 'string',
-            'receipt_format' => 'string', 'a4_printer_name' => 'string',
+            'receipt_format' => 'string', 'a4_printer_name' => 'string', 'thermal_printer_name' => 'string',
         ],
         'numbering' => [
             'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
@@ -75,6 +75,13 @@ class SettingController extends Controller
             'rtl' => 'bool', 'dark_mode' => 'bool',
         ],
     ];
+
+    /**
+     * Setting groups only a super_admin may write. The Plan, Permissions and Activation tabs have
+     * routes of their own in the super_admin-only group, so Backup is the one group left that
+     * the shared `settings.update` route could reach.
+     */
+    private const SUPER_ADMIN_GROUPS = ['backup'];
 
     /** What a tax-rate audit entry records (old / new values). */
     private const TAX_AUDITED = ['name', 'name_ar', 'rate', 'is_inclusive', 'is_default', 'is_active'];
@@ -131,14 +138,18 @@ class SettingController extends Controller
             ? ExpenseCategory::withCount(['expenses' => fn ($q) => $q->withTrashed()])->orderBy('kind')->orderBy('sort_order')->get()
             : collect();
 
-        // The installed printers, for the A4 printer dropdown (empty outside the desktop app).
-        $printers = $tab === 'receipt' ? app(ReceiptPrintService::class)->printers() : [];
+        // The installed printers, for the printer dropdowns (empty outside the desktop app).
+        $prints = app(ReceiptPrintService::class);
+        $printers = $tab === 'receipt' ? $prints->printers() : [];
+        $desktop = $prints->inNativeShell();
 
-        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate', 'expenseCategories', 'printers'));
+        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate', 'expenseCategories', 'printers', 'desktop'));
     }
 
     public function update(Request $request): RedirectResponse
     {
+        $this->guardSuperAdminKeys($request);
+
         $group = $request->input('group');
         $data = $request->validate([
             'group' => 'required|in:general,currency,pos,receipt,numbering,loyalty,backup,appearance',
@@ -148,6 +159,7 @@ class SettingController extends Controller
         $request->validate([
             'settings.receipt_format' => ['nullable', \Illuminate\Validation\Rule::in(ReceiptPrintService::FORMATS)],
             'settings.a4_printer_name' => 'nullable|string|max:255',
+            'settings.thermal_printer_name' => 'nullable|string|max:255',
         ] + $this->numericSettingRules(), [
             // A rate of 0 prices everything at 0 LBP and counts every LBP note as $0 tendered.
             'settings.exchange_rate.required' => __('messages.exchange_rate_invalid'),
@@ -206,6 +218,28 @@ class SettingController extends Controller
     }
 
     /**
+     * The same lock the demo build uses, by key as well as by group: `settings.update` writes
+     * whatever known key it is handed, so `group=pos` carrying a Backup key must be refused too.
+     * The client's admin gets a 403; the route itself stays open to them for every other tab.
+     */
+    private function guardSuperAdminKeys(Request $request): void
+    {
+        if ($request->user()->isSuperAdmin()) {
+            return;
+        }
+
+        $locked = array_merge(...array_values(array_intersect_key(self::SETTING_TYPES, array_flip(self::SUPER_ADMIN_GROUPS))));
+        $posted = $request->input('settings');
+
+        abort_if(
+            in_array($request->input('group'), self::SUPER_ADMIN_GROUPS, true)
+                || (is_array($posted) && array_intersect_key($posted, $locked)),
+            403,
+            __('messages.forbidden'),
+        );
+    }
+
+    /**
      * Server-side limits for the settings that hold a number or a document prefix: the ranges
      * the form advertises, and an exchange rate that must be above zero. Every rule is
      * `sometimes`: a tab only posts its own keys. [rules, label lang key]
@@ -256,7 +290,7 @@ class SettingController extends Controller
      * the Receipt tab's typed-but-unsaved width/header/footer. Pure render:
      * nothing is persisted, no receipt number is consumed, nothing is audited.
      */
-    public function testPrintReceipt(Request $request, CurrencyService $currency): View|Response
+    public function testPrintReceipt(Request $request, CurrencyService $currency, ReceiptPrintService $prints): View|Response
     {
         $input = fn (string $key, $default) => $request->input("settings.$key", Setting::get($key, $default));
         $width = (int) $input('receipt_width', 80);
@@ -331,6 +365,18 @@ class SettingController extends Controller
             'autoPrint' => true,
             'isTest' => true,
         ];
+
+        // The desktop app prints it silently, like a real receipt (no popup, no dialog), and answers
+        // with {printed, desktop}; a browser tab still gets the page and prints it itself.
+        if ($prints->inNativeShell()) {
+            $data = ['autoPrint' => false, 'embedded' => true] + $data;
+            $html = ($template = ReceiptRenderer::active())
+                ? ReceiptRenderer::render($template, $sale, $data)
+                : view('receipts.thermal', $data)->render();
+            $printed = $prints->printThermalSilently($html);
+
+            return response()->json(['printed' => $printed, 'desktop' => true], $printed ? 200 : 502);
+        }
 
         // Whatever a real sale would print, this has to print too — checking the
         // layout is the entire point of the button. On Premium that means the

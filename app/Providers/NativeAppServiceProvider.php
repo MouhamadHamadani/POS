@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Setting;
+use App\Services\RecurringExpenseService;
 use App\Support\Demo;
 use App\Support\FakeData;
 use App\Support\SuperAdmin;
@@ -170,6 +171,9 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             // but keeps the settings, so this is what brings the account back. A
             // no-op whenever a super_admin already exists, and in demo builds.
             SuperAdmin::ensure();
+
+            // The app may have been closed on the day a recurring expense fell due: book what is due now.
+            app(RecurringExpenseService::class)->generateDue(source: RecurringExpenseService::SOURCE_LAUNCH);
         } catch (\Throwable $e) {
             // Swallow — we don't want a seed failure to prevent the window from opening.
             // The user can run `php artisan native:migrate` and `php artisan db:seed` manually.

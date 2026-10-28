@@ -561,6 +561,17 @@
                 </div>
             </div>
 
+            {{-- A desktop print that failed: the sale is completed, only the paper is missing. Kept out of the
+                 confirmation panel so it stays visible after "New sale". --}}
+            <div x-show="printError" x-cloak role="alert"
+                 class="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:end-4 sm:max-w-md z-[60] bg-red-600 text-white rounded-lg shadow-xl p-4 text-sm">
+                <p x-text="t('print_failed')"></p>
+                <div class="mt-3 flex gap-2 justify-end">
+                    <button type="button" @click="printError = null" class="px-3 py-1.5 rounded bg-red-700 hover:bg-red-800" x-text="t('dismiss')"></button>
+                    <button type="button" @click="retryPrint()" class="px-3 py-1.5 rounded bg-white text-red-700 font-semibold hover:bg-red-50" x-text="t('retry')"></button>
+                </div>
+            </div>
+
             {{-- Receipt confirmation --}}
             <div x-show="lastSale" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
                 <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-5 text-center">
@@ -602,7 +613,8 @@
                 lbpStep: {{ $lbpStep }},
                 autoPrint: {{ $autoPrint ? 'true' : 'false' }},
                 receiptFormat: @json($receiptFormat),   // thermal | a4 | ask (the receipt_format setting)
-                a4Silent: @json($a4Silent),             // desktop app with an A4 printer chosen: no dialog
+                desktop: @json($desktop),               // packaged app: every print is silent (no popup, no dialog)
+                printError: null,                       // { saleId, format } when a desktop print failed; shows Retry
                 strings: @json(__('pos.ui')),
                 units: @json(__('enums.unit')),
                 tiers: ['retail', 'wholesale', 'vip'],
@@ -670,7 +682,8 @@
                         }
                         if (e.key === 'F12' && this.showPayment) { e.preventDefault(); this.submit(); }
                         // Ctrl+P prints the default format, Ctrl+Shift+P always A4.
-                        if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P') && this.lastSale?.id) {
+                        // In the desktop app the shortcut never falls through to the system print dialog.
+                        if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P') && (this.lastSale?.id || this.desktop)) {
                             e.preventDefault();
                             this.printLast(e.shiftKey ? 'a4' : this.defaultFormat());
                         }
@@ -1456,25 +1469,29 @@
 
                 printLast(format) {
                     if (!this.lastSale?.id) return;
-                    if (format === 'a4') this._printA4(this.lastSale.id);
-                    else this._printReceipt(this.lastSale.id);
+                    this._print(this.lastSale.id, format === 'a4' ? 'a4' : 'thermal');
                 },
 
-                // A4 goes straight to the printer chosen in Settings when the desktop app can do that;
-                // otherwise (or if the printer refuses) the A4 page opens with the system print dialog,
-                // so the user picks the A4 printer instead of the invoice landing on receipt paper.
-                async _printA4(saleId) {
-                    if (this.a4Silent) {
-                        try {
-                            const res = await fetch(`/pos/receipts/${saleId}/print-a4`, {
-                                method: 'POST',
-                                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this._csrf() },
-                            });
-                            if (res.ok && (await res.json()).printed) return;
-                        } catch (e) { /* fall through to the dialog */ }
-                    }
-                    this._printReceipt(saleId, 'a4');
+                // In the desktop app a receipt or invoice goes straight to the printer chosen in Settings (the
+                // Windows default when none is), with no popup and no print dialog. If that fails the sale stays
+                // completed and an inline Retry shows. In a browser tab (development) the receipt page opens in a
+                // popup and calls window.print().
+                async _print(saleId, format) {
+                    this.printError = null;
+                    if (!this.desktop) return this._printReceipt(saleId, format);
+                    try {
+                        const res = await fetch(`/pos/receipts/${saleId}/print-${format === 'a4' ? 'a4' : 'thermal'}`, {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this._csrf() },
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (data.printed) return;
+                        if (data.desktop === false) return this._printReceipt(saleId, format);
+                    } catch (e) { /* unreachable server counts as a failed print */ }
+                    this.printError = { saleId, format };
                 },
+
+                retryPrint() { if (this.printError) this._print(this.printError.saleId, this.printError.format); },
 
                 _printReceipt(saleId, format = 'thermal') {
                     // Open the receipt in a hidden popup. The receipt view auto-calls

@@ -35,4 +35,7 @@ return [
     'copy_note' => 'Reprint — not the original',
     'print' => 'Print',
     'close' => 'Close',
+    'print_failed' => 'The receipt could not be printed. Check that the printer is on and connected, then press Retry.',
+    'retry' => 'Retry',
+    'test_print_sent' => 'Test receipt sent to the printer.',
 ];

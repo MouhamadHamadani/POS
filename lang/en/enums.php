@@ -153,6 +153,20 @@ return [
         'fixed' => 'Fixed expenses',
         'running' => 'Running expenses',
     ],
+    'frequency' => [
+        'weekly' => 'Weekly',
+        'monthly' => 'Monthly',
+        'yearly' => 'Yearly',
+    ],
+    'weekday' => [
+        '1' => 'Monday',
+        '2' => 'Tuesday',
+        '3' => 'Wednesday',
+        '4' => 'Thursday',
+        '5' => 'Friday',
+        '6' => 'Saturday',
+        '7' => 'Sunday',
+    ],
     'paid_from' => [
         'drawer' => 'Cash drawer',
         'outside' => 'Outside the drawer (bank / owner)',

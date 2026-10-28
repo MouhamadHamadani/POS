@@ -95,26 +95,39 @@ class TierEnforcementTest extends TestCase
         $this->tier('starter');
         $this->superAdmin();
         User::factory()->manager()->create();
-
         $this->assertSame(1, License::seatsUsed());
+        $this->assertFalse(License::isAtUserLimit());
+
+        User::factory()->create();
+        $this->assertSame(2, License::seatsUsed());
         $this->assertTrue(License::isAtUserLimit());
     }
 
-    public function test_starter_blocks_a_second_staff_account_bilingually(): void
+    public function test_starter_blocks_a_third_staff_account_bilingually(): void
     {
         $this->tier('starter');
-        $admin = $this->admin(); // the one seat
+        $admin = $this->admin();                          // seat one: the owner...
+        User::factory()->manager()->create();             // ...seat two
 
         $this->actingAs($admin)
             ->post('/users', $this->staffPayload())
-            ->assertSessionHasErrors(['role' => __('plan.user_limit', ['used' => 1, 'max' => 1])]);
+            ->assertSessionHasErrors(['role' => __('plan.user_limit', ['used' => 2, 'max' => 2])]);
 
         $this->assertDatabaseMissing('users', ['username' => 'newperson']);
 
         // Same refusal, in Arabic, for an Arabic-language operator.
         $admin->update(['language' => 'ar']);
         $this->actingAs($admin)->post('/users', $this->staffPayload())
-            ->assertSessionHasErrors(['role' => __('plan.user_limit', ['used' => 1, 'max' => 1], 'ar')]);
+            ->assertSessionHasErrors(['role' => __('plan.user_limit', ['used' => 2, 'max' => 2], 'ar')]);
+    }
+
+    public function test_starter_lets_the_owner_admin_add_one_member_of_staff(): void
+    {
+        $this->tier('starter');
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->post('/users', $this->staffPayload())->assertRedirect(route('users.index'));
+        $this->assertSame(2, License::seatsUsed());
     }
 
     public function test_a_super_admin_cannot_post_past_the_seat_limit_either(): void
@@ -122,6 +135,7 @@ class TierEnforcementTest extends TestCase
         $this->tier('starter');
         $super = $this->superAdmin();
         User::factory()->manager()->create();
+        User::factory()->create();
 
         $this->actingAs($super)->post('/users', $this->staffPayload())
             ->assertSessionHasErrors('role');
@@ -161,16 +175,29 @@ class TierEnforcementTest extends TestCase
 
     // --- Roles ---------------------------------------------------------------
 
-    public function test_starter_offers_only_manager_and_cashier_on_the_user_form(): void
+    public function test_starter_offers_an_admin_only_manager_and_cashier_on_the_user_form(): void
     {
         $this->tier('starter');
 
+        // An admin never mints another admin-tier account, on any plan.
         $this->actingAs($this->admin())->get('/users/create')
             ->assertOk()
             ->assertSee('value="manager"', false)
             ->assertSee('value="cashier"', false)
             ->assertDontSee('value="stock"', false)
             ->assertDontSee('value="admin"', false);
+    }
+
+    public function test_starter_offers_the_super_admin_the_admin_role_but_not_stock(): void
+    {
+        $this->tier('starter');
+
+        $this->actingAs($this->superAdmin())->get('/users/create')
+            ->assertOk()
+            ->assertSee('value="admin"', false)
+            ->assertSee('value="manager"', false)
+            ->assertSee('value="cashier"', false)
+            ->assertDontSee('value="stock"', false);
     }
 
     public function test_starter_refuses_a_crafted_stock_keeper_post(): void

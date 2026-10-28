@@ -8,15 +8,15 @@ use Native\Laravel\Client\Client;
 use Throwable;
 
 /**
- * Which print format a sale uses, what the A4 invoice shows, and how an A4 invoice
- * reaches a named printer.
+ * Which print format a sale uses, what the A4 invoice shows, and how a receipt or an
+ * invoice reaches a printer.
  *
- * The thermal receipt has always been plain `window.print()` in a popup, which
- * opens the system print dialog with the default printer pre-selected. An A4
- * invoice sent to that same default (usually the thermal printer) would come out
- * on receipt paper, so A4 can instead go straight to a printer picked in Settings
- * — but only inside the packaged app, where NativePHP can reach Electron. Anywhere
- * else, and whenever no printer is set, A4 opens the dialog and the user chooses.
+ * Inside the packaged app (the NativePHP shell) everything prints silently through
+ * Electron: to the printer named in Settings (`thermal_printer_name` for the receipt,
+ * `a4_printer_name` for the invoice), or to the Windows default printer when none is
+ * named. There is never a print dialog and never a popup window there. Anywhere else
+ * (a browser tab in development) the receipt page opens in a popup and calls
+ * `window.print()`, as it always did.
  */
 class ReceiptPrintService
 {
@@ -45,17 +45,72 @@ class ReceiptPrintService
         return in_array($requested, [self::FORMAT_THERMAL, self::FORMAT_A4], true) ? $requested : $this->defaultFormat();
     }
 
-    // ---- A4 straight to a printer (packaged app only) ------------------------
+    // ---- straight to a printer (packaged app only) --------------------------
 
+    /** The named A4 printer; '' means the Windows default printer. */
     public function a4PrinterName(): string
     {
         return trim((string) Setting::get('a4_printer_name', ''));
     }
 
-    /** True only inside the NativePHP shell with an A4 printer chosen in Settings. */
-    public function silentA4Available(): bool
+    /** The named receipt printer; '' means the Windows default printer. */
+    public function thermalPrinterName(): string
     {
-        return $this->inNativeShell() && $this->a4PrinterName() !== '';
+        return trim((string) Setting::get('thermal_printer_name', ''));
+    }
+
+    /**
+     * Send finished receipt HTML to the receipt printer. No page size is sent: a roll-paper
+     * driver sizes the page itself, and the page's own CSS sets the width (receipt_width).
+     * False when Electron refused or could not be reached; the caller shows a Retry.
+     */
+    public function printThermalSilently(string $html): bool
+    {
+        return $this->printSilently($html, $this->thermalPrinterName(), ['margins' => ['marginType' => 'none']]);
+    }
+
+    /** Send finished A4 HTML to the invoice printer. False on failure, like the receipt. */
+    public function printA4Silently(string $html): bool
+    {
+        return $this->printSilently($html, $this->a4PrinterName(), ['pageSize' => 'A4']);
+    }
+
+    /**
+     * Electron's own `webContents.print` takes no header or footer unless handed one, so no
+     * URL or date lands on the paper. The printer name is left out when empty, and Electron
+     * then prints to the Windows default printer. Electron loads the markup as a data: URL
+     * without encoding it, so a bare `#` or `%` would cut the page off — hence the
+     * percent-encoding, and fonts must travel inside the page too (see fontDataUri).
+     */
+    private function printSilently(string $html, string $printer, array $settings): bool
+    {
+        if (! $this->inNativeShell()) {
+            return false;
+        }
+
+        try {
+            return app(Client::class)->post('system/print', array_filter([
+                'html' => rawurlencode($html),
+                'printer' => $printer,
+                'settings' => ['silent' => true, 'printBackground' => true] + $settings,
+            ], fn ($v) => $v !== ''))->successful();
+        } catch (Throwable $e) {
+            report($e);
+
+            return false;
+        }
+    }
+
+    /**
+     * A bundled font file as a data: URI. Electron prints the page from a data: URL, whose
+     * origin is opaque, so an http://127.0.0.1/fonts/... @font-face would be refused for want
+     * of CORS and Arabic would fall back to a system font.
+     */
+    public static function fontDataUri(string $file): string
+    {
+        static $cache = [];
+
+        return $cache[$file] ??= 'data:font/woff2;base64,'.base64_encode((string) file_get_contents(public_path('fonts/'.basename($file))));
     }
 
     public function inNativeShell(): bool
@@ -85,32 +140,6 @@ class ReceiptPrintService
             report($e);
 
             return [];
-        }
-    }
-
-    /**
-     * Send finished A4 HTML to the configured printer without a dialog. False when
-     * Electron refused or could not be reached, so the caller can fall back to the
-     * dialog instead of telling the cashier an invoice printed when it did not.
-     */
-    public function printA4Silently(string $html): bool
-    {
-        if (! $this->silentA4Available()) {
-            return false;
-        }
-
-        try {
-            // Electron loads this as a data: URL without encoding it, so a bare `#` or `%`
-            // in the markup would cut the page off — hence the percent-encoding.
-            return app(Client::class)->post('system/print', [
-                'html' => rawurlencode($html),
-                'printer' => $this->a4PrinterName(),
-                'settings' => ['silent' => true, 'pageSize' => 'A4', 'printBackground' => true],
-            ])->successful();
-        } catch (Throwable $e) {
-            report($e);
-
-            return false;
         }
     }
 
