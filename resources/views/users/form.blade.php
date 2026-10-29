@@ -73,7 +73,7 @@
                     <input type="number" step="0.01" min="0" max="100" name="max_discount_pct" dir="ltr"
                            value="{{ old('max_discount_pct', $user->max_discount_pct ?? 0) }}"
                            class="w-full border-gray-300 rounded text-sm" />
-                    <p class="mt-1 text-[11px] text-gray-500">{{ __('pos.users.max_discount_hint') }}</p>
+                    <p class="mt-1 text-[0.6875rem] text-gray-500">{{ __('pos.users.max_discount_hint') }}</p>
                 </div>
 
                 @unless ($isEdit)

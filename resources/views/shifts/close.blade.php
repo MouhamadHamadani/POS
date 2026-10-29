@@ -79,7 +79,7 @@
                                 <input type="number" min="0" step="1" :name="`denominations[lbp][${d}]`" dir="ltr"
                                        x-model.number="lbp[d]"
                                        class="w-20 text-end border-gray-300 rounded text-sm" />
-                                <span class="text-[11px] text-gray-500" dir="ltr" x-text="'= ' + ((lbp[d] || 0) * d).toLocaleString('en-US')"></span>
+                                <span class="text-[0.6875rem] text-gray-500" dir="ltr" x-text="'= ' + ((lbp[d] || 0) * d).toLocaleString('en-US')"></span>
                             </div>
                         </template>
                     </div>

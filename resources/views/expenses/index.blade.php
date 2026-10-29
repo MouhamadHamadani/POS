@@ -115,7 +115,7 @@
                         <td class="p-3">
                             {{ $e->category->localName() }}
                             @if ($e->isAutomatic())
-                                <span class="ms-1 px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700" title="{{ __('expenses.auto_title') }}">{{ __('expenses.auto') }}</span>
+                                <span class="ms-1 px-1.5 py-0.5 rounded text-[0.625rem] bg-blue-100 text-blue-700" title="{{ __('expenses.auto_title') }}">{{ __('expenses.auto') }}</span>
                             @endif
                             <div class="text-xs text-gray-400">{{ $e->category->kindLabel() }}</div>
                         </td>

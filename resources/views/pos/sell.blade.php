@@ -27,7 +27,7 @@
                                     class="px-3 py-1 text-xs bg-gray-100 rounded">{{ __('common.all') }}</button>
                         </div>
 
-                        <p class="text-[11px] text-gray-400 mb-3">
+                        <p class="text-[0.6875rem] text-gray-400 mb-3">
                             {{ __('pos.ui.tip') }}
                         </p>
 
@@ -49,9 +49,9 @@
                                         :disabled="p.track_stock && p.stock_qty <= 0"
                                         class="p-2 bg-white border rounded-lg hover:bg-brand-50 hover:border-brand-300 text-start disabled:opacity-40 disabled:cursor-not-allowed">
                                     <div class="text-xs font-medium text-gray-900 line-clamp-2" x-text="pname(p)"></div>
-                                    <div class="text-[11px] text-gray-500 mt-0.5" x-text="p.sku || p.barcode || ''"></div>
+                                    <div class="text-[0.6875rem] text-gray-500 mt-0.5" x-text="p.sku || p.barcode || ''"></div>
                                     <div class="mt-1 text-sm font-bold text-brand-700"><x-ltr>$<span x-text="priceFor(p).toFixed(2)"></span></x-ltr></div>
-                                    <div class="text-[11px] text-gray-500" x-text="t('stock_line', { qty: Number(p.stock_qty).toFixed(0), unit: unitLabel(p.unit) })"></div>
+                                    <div class="text-[0.6875rem] text-gray-500" x-text="t('stock_line', { qty: Number(p.stock_qty).toFixed(0), unit: unitLabel(p.unit) })"></div>
                                 </button>
                             </template>
                             <div x-show="filtered.length === 0" class="col-span-full text-center text-gray-500 py-6 text-sm">
@@ -69,7 +69,7 @@
                                 <h3 class="font-medium">{{ __('pos.ui.cart') }} (<span x-text="cart.length"></span>)</h3>
                                 <span x-show="priceTier !== 'retail'" x-cloak
                                       :class="priceTier === 'vip' ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800'"
-                                      class="px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase"
+                                      class="px-1.5 py-0.5 rounded text-[0.625rem] font-bold tracking-wide uppercase"
                                       x-text="t(priceTier)"></span>
                             </div>
 
@@ -422,7 +422,10 @@
                  inside itself rather than clipping the header and the Complete button. --}}
             <div x-show="showPayment" x-cloak @keydown.escape.window="showPayment=false"
                  class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5 max-h-full overflow-y-auto">
+                {{-- A column: the form scrolls, the Complete Sale footer does not. In Split, at a larger interface size on a
+                     768 px screen, the form is taller than the window, and the button must not scroll away with it. --}}
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-full flex flex-col">
+                  <div class="p-5 pb-3 overflow-y-auto">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-lg font-bold">{{ __('pos.ui.payment') }}</h3>
                         <button type="button" @click="showPayment=false" class="text-gray-400 hover:text-gray-700 text-xl">×</button>
@@ -520,12 +523,12 @@
                             <div class="flex justify-between items-center">
                                 <span class="font-semibold text-brand-800">{{ __('pos.ui.change_to_return') }}</span>
                                 <div class="flex gap-1">
-                                    <button type="button" @click="setSplit('all_usd')" class="px-2 py-0.5 bg-white border rounded text-[10px]">{{ __('pos.ui.all_usd') }}</button>
-                                    <button type="button" @click="setSplit('all_lbp')" class="px-2 py-0.5 bg-white border rounded text-[10px]">{{ __('pos.ui.all_lbp') }}</button>
+                                    <button type="button" @click="setSplit('all_usd')" class="px-2 py-0.5 bg-white border rounded text-[0.625rem]">{{ __('pos.ui.all_usd') }}</button>
+                                    <button type="button" @click="setSplit('all_lbp')" class="px-2 py-0.5 bg-white border rounded text-[0.625rem]">{{ __('pos.ui.all_lbp') }}</button>
                                 </div>
                             </div>
                             <div>
-                                <label class="block text-[11px] text-gray-600">{{ __('pos.ui.give_usd') }}</label>
+                                <label class="block text-[0.6875rem] text-gray-600">{{ __('pos.ui.give_usd') }}</label>
                                 <input type="number" dir="ltr" step="0.01" min="0" :max="changeUsd().toFixed(2)"
                                        x-model.number="payment.change_usd_out" @input="refreshChangePreview()"
                                        class="w-full border-gray-300 rounded text-sm" />
@@ -537,27 +540,31 @@
                                         <span class="font-medium"><x-ltr>$<span x-text="Number(changePreview.change.change_usd).toFixed(2)"></span></x-ltr></span>
                                     </div>
                                     <template x-if="changePreview.usd_denoms.length">
-                                        <div class="text-[10px] text-gray-500 ps-3" x-text="changePreview.usd_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
+                                        <div class="text-[0.625rem] text-gray-500 ps-3" x-text="changePreview.usd_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
                                     </template>
                                     <div class="flex justify-between">
                                         <span>{{ __('pos.ui.lbp_balance') }}</span>
                                         <span class="font-medium" x-text="formatLbp(Number(changePreview.change.change_lbp))"></span>
                                     </div>
                                     <template x-if="changePreview.lbp_denoms.length">
-                                        <div class="text-[10px] text-gray-500 ps-3" x-text="changePreview.lbp_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
+                                        <div class="text-[0.625rem] text-gray-500 ps-3" x-text="changePreview.lbp_denoms.map(d => d.count + ' × ' + d.label).join(' · ')"></div>
                                     </template>
                                 </div>
                             </template>
                         </div>
 
-                        <div x-show="errorMsg" x-cloak class="text-sm text-red-600 bg-red-50 p-2 rounded" x-text="errorMsg"></div>
-
-                        <button type="button" @click="submit()" :disabled="!canComplete()"
-                                class="w-full py-3 bg-green-600 text-white rounded font-bold hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                            <span x-show="!processing">{{ __('pos.ui.complete_sale') }} (F12)</span>
-                            <span x-show="processing">{{ __('pos.ui.processing') }}</span>
-                        </button>
                     </div>
+                  </div>
+
+                  <div class="px-5 pb-5 pt-3 border-t space-y-2">
+                    <div x-show="errorMsg" x-cloak class="text-sm text-red-600 bg-red-50 p-2 rounded" x-text="errorMsg"></div>
+
+                    <button type="button" @click="submit()" :disabled="!canComplete()"
+                            class="w-full py-3 bg-green-600 text-white rounded font-bold hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                        <span x-show="!processing">{{ __('pos.ui.complete_sale') }} (F12)</span>
+                        <span x-show="processing">{{ __('pos.ui.processing') }}</span>
+                    </button>
+                  </div>
                 </div>
             </div>
 
