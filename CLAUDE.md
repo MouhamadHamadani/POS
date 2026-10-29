@@ -148,6 +148,24 @@ about this repo being read-only; they no longer apply.)
   the silent `print-thermal` / `print-a4` route (desktop): that stamps COPY / نسخة on the page and
   writes the `receipt_reprint` audit row server-side, and only for a print that actually went
   out. The copy flag is opt-in by the caller, not enforced by the server.
+- Two text-size options, kept apart on purpose. **Receipt text size** is the install-wide setting
+  `receipt_font_size` (`small` 0.9 | `normal` 1 | `large` 1.2, `ReceiptPrintService::FONT_SIZES`,
+  validated with `Rule::in`), saved with the rest of the Receipt group. `receipts/thermal` and
+  `receipts/a4` write it as `:root { --fs: N }` and give every font size as `calc(<px or pt> * var(--fs))`,
+  so all text, Cairo included, scales together while the mm layout stays put; a new text size in those
+  two views must use the same calc. A custom print template (`ReceiptRenderer`) is not scaled, and
+  the setting's help text says so. The Settings test print reflects the typed, unsaved size.
+  **Interface size** is per user, never a setting: `users.ui_scale` (90 | 100 | 110 | 125, null = 100,
+  `User::UI_SCALES` / `User::uiScale()`), not mass-assignable, written only by
+  `PATCH /profile/ui-scale` on the signed-in user's own row (the request carries no user id; every
+  role may call it, with no Settings access). The `app` and `pos` layouts print it as
+  `<style>html { font-size: N% }</style>` ahead of the stylesheet via `ui_scale()` (100 for a guest, the
+  login page and a demo build, where the switcher is hidden too), so rem-based Tailwind follows it with
+  no flash and no CSS zoom. Use rem sizes for text (`text-[0.6875rem]`, never `text-[11px]`) or it
+  will not follow. The switcher (`<x-ui-scale-switcher>`) lives in the user menus and on the profile
+  page. Sell screen at 125% on 1366x768: the payment modal is a column whose form scrolls and whose
+  Complete Sale footer does not; the sidebar keeps profile, language and "My preferences" in a user menu
+  so the navigation fits (rows tighten on screens under 820 px tall).
 - Failed pages (`App\Support\ErrorPages`, wired in `bootstrap/app.php`): the desktop window has no
   address bar, so no failed page may be a dead end. Every non-JSON status >= 400 renders the one
   standalone page `resources/views/errors/page.blade.php` (logo, "Error NNN", title, message, Go

@@ -81,7 +81,30 @@ Before, some of these were bare pages with no way out, and the only fix was to c
   above; for "Access denied" say the account's role does not include that screen (see Users).
 - Arabic users see the same pages in Arabic.
 
-## 4. Recurring (automatic) expenses
+## 4. Font sizes: receipt text size and interface size
+
+**Receipt text size** (Settings -> Receipt -> *Receipt text size*: Small / Normal / Large; Admin).
+It scales all the text on the standard small receipt and on the A4 invoice together, in English and
+Arabic; the paper widths (58 / 80 mm) and the layout do not change. A custom receipt template
+(Premium) keeps its own sizes and is not scaled. **Print Test Receipt** shows the size you picked
+before you save it, so try Large on the real printer before committing to it.
+
+**Interface size** is each person's own: *My preferences -> Interface size* (90% / 100% / 110% / 125%) in
+the user menu (click your name at the bottom of the left menu, or at the top right of the sell screen),
+and on the Profile page. Every role can change their own, with no Settings access; it only changes
+that user's screens, saves at once, and is still there after signing out and in. 100% is the standard
+size. It does not apply to the sign-in page or to a demo build, and nobody can set it for someone else.
+Useful on a small or distant screen: at 125% the text and buttons are a quarter bigger.
+
+*Manual, Troubleshooting*: if the screen looks too big or too small after someone else used the
+till, it is their own setting: use My preferences to set yours back.
+
+*Keyboard zoom (Ctrl + / Ctrl -)*: do not document it. The desktop program's own View menu has
+"Zoom In" / "Zoom Out" entries, but in the packaged app they are not connected to anything (the
+menu replaces Electron's default one, and NativePHP offers no zoom role), so Ctrl + / - does nothing.
+This is read from the vendored NativePHP code, not tried on an installed build.
+
+## 5. Recurring (automatic) expenses
 
 **Where.** *Expenses → Recurring* (a tab next to the expense list; same plans and same people as
 Expenses: Admin and Manager).

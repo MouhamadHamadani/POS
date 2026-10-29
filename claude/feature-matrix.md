@@ -62,6 +62,8 @@ Roles come from `routes/web.php` middleware. `super_admin` passes every `role:` 
 | 19d | – Permissions tab | `/settings/permissions` | super_admin | role + `demo:blocked` | — |
 | 19e | – Backup tab | `/settings/backup/*` | super_admin | role + `demo:blocked` | — |
 | 19f | – Plan tab | `/settings/plan`, `/settings/activation*` | super_admin | role + `demo:blocked` | — |
+| 19g | – Receipt tab: Receipt text size (`receipt_font_size`) | `/settings` (`group=receipt`) | admin | role; not a feature key, core on every plan | — |
+| 19h | My preferences: interface size (`users.ui_scale`, per user) | `PATCH /profile/ui-scale` | **every role**, own row only | auth; hidden and 100% in a demo build | — |
 | 20 | Demo reset | `/demo/reset` | any | `demo:only` | demo build |
 
 Dashboard widgets: none is feature-keyed today and none needs to be. Every widget reads
