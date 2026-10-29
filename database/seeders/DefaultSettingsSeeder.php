@@ -43,6 +43,7 @@ class DefaultSettingsSeeder extends Seeder
             ['receipt', 'receipt_format', 'thermal', 'string'],
             ['receipt', 'a4_printer_name', '', 'string'],
             ['receipt', 'thermal_printer_name', '', 'string'],
+            ['receipt', 'receipt_font_size', 'normal', 'string'],
 
             // numbering
             ['numbering', 'receipt_prefix', 'REC-' . date('Y') . '-', 'string'],

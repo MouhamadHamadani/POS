@@ -6,6 +6,10 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>LebaSouk{{ \App\Support\Demo::titleSuffix() }} — {{ $title ?? __('nav.sales') }}</title>
 
+        {{-- The user's own interface size is the root font size, so every rem-based size follows it. It is in the markup,
+             ahead of the stylesheet: no flash of another size. --}}
+        <style>html { font-size: {{ ui_scale() }}%; }</style>
+
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="{{ app()->getLocale() === 'ar' ? 'font-arabic' : 'font-sans' }} antialiased text-gray-900 bg-slate-100 h-screen overflow-hidden">
@@ -55,10 +59,17 @@
                         </button>
 
                         <div x-show="open" @click.outside="open = false" x-cloak
-                             class="absolute end-0 mt-1 w-44 bg-white text-gray-800 rounded-lg shadow-pop py-1 text-sm z-50">
+                             class="absolute end-0 mt-1 w-56 bg-white text-gray-800 rounded-lg shadow-pop py-1 text-sm z-50">
                             <a href="{{ route('profile.edit') }}" class="block px-3 py-2 hover:bg-gray-100">{{ __('Profile') }}</a>
                             <a href="{{ route('dashboard') }}" class="block px-3 py-2 hover:bg-gray-100">{{ __('nav.management') }}</a>
                             <div class="px-3 py-2"><x-lang-switch class="text-gray-600" /></div>
+                            @unless (\App\Support\Demo::enabled())
+                                <div class="px-3 py-2 border-t">
+                                    <div class="mb-1 text-xs font-semibold text-gray-500">{{ __('profile.my_preferences') }}</div>
+                                    <div class="mb-1 text-xs text-gray-500">{{ __('profile.ui_scale') }}</div>
+                                    <x-ui-scale-switcher />
+                                </div>
+                            @endunless
                             @if (\App\Support\Demo::enabled())
                                 <hr class="my-1">
                                 <form method="POST" action="{{ route('demo.reset') }}"

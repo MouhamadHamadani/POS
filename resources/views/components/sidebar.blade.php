@@ -66,8 +66,8 @@
             @endphp
             @if ($allowed)
                 <a href="{{ $path }}"
-                   class="flex items-center gap-3 px-3 py-2 text-sm hover:bg-brand-600 transition border-s-4 {{ $active ? 'bg-brand-600 border-accent-light text-white' : 'border-transparent text-brand-100' }}">
-                    <span class="text-lg flex-shrink-0 w-5 text-center">{{ $icon }}</span>
+                   class="flex items-center gap-3 px-3 py-2 [@media(max-height:820px)]:py-1.5 text-sm hover:bg-brand-600 transition border-s-4 {{ $active ? 'bg-brand-600 border-accent-light text-white' : 'border-transparent text-brand-100' }}">
+                    <span class="text-lg leading-none flex-shrink-0 w-5 text-center">{{ $icon }}</span>
                     <span x-show="open" class="whitespace-nowrap">{{ __("nav.$key") }}</span>
                 </a>
             @endif
@@ -89,19 +89,35 @@
             </form>
         @endif
 
-        <x-lang-switch x-show="open" class="text-brand-200 px-1" />
+        {{-- The user menu: profile, language and "My preferences" (the user's own interface size) live here, not in the
+             sidebar itself, so the navigation keeps the height it needs at a larger interface size. --}}
+        <div x-data="{ menu: false }" class="relative">
+            <button type="button" @click="menu = !menu" :aria-expanded="menu"
+                    class="w-full flex items-center gap-2 text-start hover:text-accent-light"
+                    :title="open ? '' : @js($user?->name)">
+                <div class="w-7 h-7 rounded-full bg-accent text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {{ strtoupper(substr($user?->name ?? '?', 0, 1)) }}
+                </div>
+                <div x-show="open" class="flex-1 overflow-hidden">
+                    <div class="font-medium truncate">{{ $user?->name }}</div>
+                    <div class="text-brand-300 truncate">{{ $user?->roleLabel() }}</div>
+                </div>
+                <svg x-show="open" class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+            </button>
 
-        <a href="{{ route('profile.edit') }}"
-           class="flex items-center gap-2 hover:text-accent-light"
-           :title="open ? '' : @js($user?->name)">
-            <div class="w-7 h-7 rounded-full bg-accent text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                {{ strtoupper(substr($user?->name ?? '?', 0, 1)) }}
+            <div x-show="menu" @click.outside="menu = false" @keydown.escape.window="menu = false" x-cloak
+                 class="absolute bottom-full start-0 mb-2 w-56 bg-white text-gray-800 rounded-lg shadow-pop py-1 text-sm z-50">
+                <a href="{{ route('profile.edit') }}" class="block px-3 py-2 hover:bg-gray-100">{{ __('Profile') }}</a>
+                <div class="px-3 py-2"><x-lang-switch class="text-gray-600" /></div>
+                @unless (\App\Support\Demo::enabled())
+                    <div class="px-3 py-2 border-t">
+                        <div class="mb-1 text-xs font-semibold text-gray-500">{{ __('profile.my_preferences') }}</div>
+                        <div class="mb-1 text-xs text-gray-500">{{ __('profile.ui_scale') }}</div>
+                        <x-ui-scale-switcher />
+                    </div>
+                @endunless
             </div>
-            <div x-show="open" class="overflow-hidden">
-                <div class="font-medium truncate">{{ $user?->name }}</div>
-                <div class="text-brand-300 truncate">{{ $user?->roleLabel() }}</div>
-            </div>
-        </a>
+        </div>
         <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button class="w-full text-start text-brand-200 hover:text-white" :title="open ? '' : @js(__('nav.logout'))">

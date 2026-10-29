@@ -7,6 +7,10 @@
 
         <title>{{ ($title ?? 'LebaSouk') . \App\Support\Demo::titleSuffix() }}</title>
 
+        {{-- The user's own interface size is the root font size, so every rem-based size follows it. It is in the markup,
+             ahead of the stylesheet: no flash of another size. --}}
+        <style>html { font-size: {{ ui_scale() }}%; }</style>
+
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="{{ app()->getLocale() === 'ar' ? 'font-arabic' : 'font-sans' }} antialiased text-gray-900 bg-slate-50">

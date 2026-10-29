@@ -9,6 +9,7 @@
 --}}
 @php
     $embedded = $embedded ?? false;
+    $fontScale = $fontScale ?? 1;   // Settings -> Receipt -> Receipt text size: small 0.9 | normal 1 | large 1.2
     $rtl = app()->getLocale() === 'ar';
     $isDemo = \App\Support\Demo::enabled();
     $banners = \App\Services\ReceiptRenderer::banners(false, $isDemo, $isCopy ?? false);
@@ -35,15 +36,17 @@
 <title>{{ __('invoice.title', [], 'en') }} {{ $sale->receipt_number }}</title>
 <style>
     @include('receipts._fonts', ['embedded' => $embedded])
+    /* Every text size is its pt value times --fs; the mm layout and the pagination script are untouched. */
+    :root { --fs: {{ $fontScale }}; }
     @page { size: A4; margin: 12mm; }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; background: #e5e7eb; color: #111; }
-    body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 10pt; line-height: 1.35; }
+    body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; font-size: calc(10pt * var(--fs)); line-height: 1.35; }
     .ar { display: inline-block; }
     .num { text-align: right; direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
     html[dir=rtl] .num { text-align: left; }
     .muted { color: #555; }
-    .small { font-size: 9pt; }
+    .small { font-size: calc(9pt * var(--fs)); }
     .bold { font-weight: 700; }
 
     /* One .sheet per printed page. The script below fills them from the flow content and numbers them;
@@ -51,32 +54,32 @@
     #invoice { width: 186mm; margin: 8mm auto; background: #fff; padding: 0; }
     .sheet { width: 186mm; height: 272mm; margin: 8mm auto; background: #fff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,.25); }
     .sheet > * { flex: none; }
-    .pageno { margin-top: auto; text-align: center; font-size: 9pt; color: #555; padding-top: 2mm; }
+    .pageno { margin-top: auto; text-align: center; font-size: calc(9pt * var(--fs)); color: #555; padding-top: 2mm; }
 
     .notice { text-align: center; font-weight: 700; border: 1px solid #111; padding: 2mm; margin-bottom: 4mm; }
     .top { display: flex; justify-content: space-between; gap: 10mm; padding-bottom: 4mm; border-bottom: 2px solid #124F4A; }
     .top .biz { flex: 1 1 auto; }
-    .top .biz .name { font-size: 16pt; font-weight: 700; color: #124F4A; }
+    .top .biz .name { font-size: calc(16pt * var(--fs)); font-weight: 700; color: #124F4A; }
     .top .doc { flex: none; min-width: 62mm; text-align: end; }
-    .top .doc .title { font-size: 18pt; font-weight: 700; color: #124F4A; }
+    .top .doc .title { font-size: calc(18pt * var(--fs)); font-weight: 700; color: #124F4A; }
     .customer { margin-top: 4mm; padding: 2.5mm 3mm; border: 1px solid #ccc; border-radius: 1.5mm; }
 
     table.items { width: 100%; border-collapse: collapse; margin-top: 5mm; }
     table.items thead { display: table-header-group; }
-    table.items th { background: #124F4A; color: #fff; padding: 1.8mm 2mm; font-size: 9pt; text-align: start; }
+    table.items th { background: #124F4A; color: #fff; padding: 1.8mm 2mm; font-size: calc(9pt * var(--fs)); text-align: start; }
     table.items td { padding: 1.6mm 2mm; border-bottom: 1px solid #ddd; vertical-align: top; }
     table.items tr { break-inside: avoid; page-break-inside: avoid; }
     table.items .c-n { width: 8mm; }
     table.items .c-code { width: 24mm; }
-    .name-sub { font-size: 8.5pt; color: #666; }
+    .name-sub { font-size: calc(8.5pt * var(--fs)); color: #666; }
 
     .tail { margin-top: 5mm; break-inside: avoid; }
     .totals { margin-inline-start: auto; width: 98mm; border: 1px solid #124F4A; border-radius: 1.5mm; padding: 2mm 3mm; }
     .totals table { width: 100%; border-collapse: collapse; }
     .totals td { padding: 0.7mm 0; vertical-align: top; }
-    .totals tr.grand td { font-size: 12.5pt; font-weight: 700; color: #124F4A; border-top: 1px solid #124F4A; padding-top: 1.5mm; }
+    .totals tr.grand td { font-size: calc(12.5pt * var(--fs)); font-weight: 700; color: #124F4A; border-top: 1px solid #124F4A; padding-top: 1.5mm; }
     .totals tr.sep td { border-top: 1px dashed #999; padding-top: 1.5mm; }
-    .foot { margin-top: 6mm; text-align: center; font-size: 9pt; color: #333; }
+    .foot { margin-top: 6mm; text-align: center; font-size: calc(9pt * var(--fs)); color: #333; }
 
     .actions { position: fixed; top: 0; inset-inline: 0; padding: 2mm; text-align: center; background: #f3f4f6; border-bottom: 1px solid #ccc; direction: ltr; z-index: 5; }
     .actions button { padding: 6px 14px; font-size: 13px; cursor: pointer; }

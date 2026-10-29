@@ -60,6 +60,7 @@ class SettingController extends Controller
             'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
             'receipt_header' => 'string', 'receipt_footer' => 'string',
             'receipt_format' => 'string', 'a4_printer_name' => 'string', 'thermal_printer_name' => 'string',
+            'receipt_font_size' => 'string',
         ],
         'numbering' => [
             'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
@@ -160,6 +161,7 @@ class SettingController extends Controller
             'settings.receipt_format' => ['nullable', \Illuminate\Validation\Rule::in(ReceiptPrintService::FORMATS)],
             'settings.a4_printer_name' => 'nullable|string|max:255',
             'settings.thermal_printer_name' => 'nullable|string|max:255',
+            'settings.receipt_font_size' => ['nullable', Rule::in(array_keys(ReceiptPrintService::FONT_SIZES))],
         ] + $this->numericSettingRules(), [
             // A rate of 0 prices everything at 0 LBP and counts every LBP note as $0 tendered.
             'settings.exchange_rate.required' => __('messages.exchange_rate_invalid'),
@@ -362,6 +364,7 @@ class SettingController extends Controller
             'header' => (string) $input('receipt_header', ''),
             'footer' => (string) $input('receipt_footer', ''),
             'receiptLang' => (string) $input('receipt_language', 'bilingual'),
+            'fontScale' => $prints->fontScale($input('receipt_font_size', null)),
             'autoPrint' => true,
             'isTest' => true,
         ];

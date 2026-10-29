@@ -35,6 +35,13 @@ class User extends Authenticatable
         self::ROLE_STOCK => 'Stock Keeper',
     ];
 
+    /** Interface size choices, as a percentage of the browser's root font size. NULL / anything else is 100. */
+    public const UI_SCALES = [90, 100, 110, 125];
+
+    /**
+     * Not in $fillable on purpose: the only writer is ProfileController::updateUiScale, which sets
+     * it on the signed-in user alone. A user create / edit form can never carry it.
+     */
     protected $fillable = [
         'uuid',
         'name',
@@ -64,6 +71,7 @@ class User extends Authenticatable
             'pin' => 'hashed',
             'is_active' => 'boolean',
             'max_discount_pct' => 'decimal:2',
+            'ui_scale' => 'integer',
         ];
     }
 
@@ -72,6 +80,12 @@ class User extends Authenticatable
         static::creating(function (User $user) {
             $user->uuid ??= (string) Str::uuid();
         });
+    }
+
+    /** This user's interface size in percent: their own choice, or 100. */
+    public function uiScale(): int
+    {
+        return in_array($this->ui_scale, self::UI_SCALES, true) ? $this->ui_scale : 100;
     }
 
     public function hasRole(string ...$roles): bool

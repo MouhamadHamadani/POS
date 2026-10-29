@@ -25,6 +25,17 @@ class ReceiptPrintService
     public const FORMAT_ASK = 'ask';
     public const FORMATS = [self::FORMAT_THERMAL, self::FORMAT_A4, self::FORMAT_ASK];
 
+    /** `receipt_font_size` setting => the multiplier every size on the built-in receipt and invoice is scaled by. */
+    public const FONT_SIZES = ['small' => 0.9, 'normal' => 1.0, 'large' => 1.2];
+
+    /** The text-size multiplier for a stored (or just typed) `receipt_font_size`; anything unrecognised is normal. */
+    public function fontScale(?string $size = null): float
+    {
+        $size ??= (string) Setting::get('receipt_font_size', 'normal');
+
+        return self::FONT_SIZES[$size] ?? 1.0;
+    }
+
     /** The `receipt_format` setting; anything unrecognised reads as thermal. */
     public function formatSetting(): string
     {

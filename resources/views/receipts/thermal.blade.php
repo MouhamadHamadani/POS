@@ -6,6 +6,7 @@
     $isDemo = \App\Support\Demo::enabled();
     $isTest = $isTest ?? false; // Settings → Receipt test print; real sales never pass it
     $isCopy = $isCopy ?? false; // ?copy=1: a reprint from Sales History — see ReceiptController
+    $fontScale = $fontScale ?? 1;   // Settings -> Receipt -> Receipt text size: small 0.9 | normal 1 | large 1.2
     $embedded = $embedded ?? false; // printed silently by the desktop app from a data: URL: no buttons, fonts inline
 
     // A label (or value) in the receipt language(s). Bilingual prints "English / العربية";
@@ -39,24 +40,26 @@
 <style>
     /* Cairo is bundled (public/fonts) so Arabic prints with no network; Courier New has no Arabic glyphs. */
     @include('receipts._fonts', ['embedded' => $embedded])
+    /* Every size below is its px value times --fs, so the text scales together and the mm layout stays put. */
+    :root { --fs: {{ $fontScale }}; }
     @page { size: {{ $width }}mm auto; margin: 0; }
     html, body { margin: 0; padding: 0; background: white; font-family: 'Cairo', 'Courier New', monospace; }
     /* border-box: the paper is exactly receipt_width wide, so the padding must sit inside it or the right edge is cut. */
-    body { box-sizing: border-box; width: {{ $width }}mm; padding: 4mm; font-size: 11px; color: #111; }
+    body { box-sizing: border-box; width: {{ $width }}mm; padding: 4mm; font-size: calc(11px * var(--fs)); color: #111; }
     .center { text-align: center; }
     /* Amounts: left-to-right, isolated, and always on the same (end) edge of the line. */
     .amt    { text-align: right; direction: ltr; unicode-bidi: isolate; white-space: nowrap; padding-inline-start: 2mm; }
     html[dir=rtl] .amt { text-align: left; }
     .ar     { display: inline-block; }
-    .name-ar { font-size: 10px; }
-    .small  { font-size: 10px; }
+    .name-ar { font-size: calc(10px * var(--fs)); }
+    .small  { font-size: calc(10px * var(--fs)); }
     .bold   { font-weight: bold; }
     hr { border: none; border-top: 1px dashed #555; margin: 3mm 0; }
-    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    table { width: 100%; border-collapse: collapse; font-size: calc(11px * var(--fs)); }
     td { padding: 1mm 0; vertical-align: top; }
     .item-row td { padding-top: 0.5mm; padding-bottom: 0.5mm; }
     .totals td { padding: 0.5mm 0; }
-    .grand { font-size: 13px; font-weight: bold; }
+    .grand { font-size: calc(13px * var(--fs)); font-weight: bold; }
     .actions { padding: 10mm 0; text-align: center; direction: ltr; }
     .actions button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
     @media print { .actions { display: none; } }

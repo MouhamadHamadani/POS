@@ -17,6 +17,15 @@
             @include('profile.partials.update-profile-information-form')
         </section>
 
+        @unless (\App\Support\Demo::enabled())
+            <section class="bg-white rounded-lg shadow-card p-6">
+                <h3 class="font-semibold text-gray-900 mb-1">{{ __('profile.my_preferences') }}</h3>
+                <p class="text-sm text-gray-500 mb-4">{{ __('profile.ui_scale_help') }}</p>
+                <div class="mb-1 text-sm font-medium text-gray-700">{{ __('profile.ui_scale') }}</div>
+                <x-ui-scale-switcher />
+            </section>
+        @endunless
+
         <section class="bg-white rounded-lg shadow-card p-6">
             <h3 class="font-semibold text-gray-900 mb-4">{{ __('profile.change_password') }}</h3>
             @include('profile.partials.update-password-form')

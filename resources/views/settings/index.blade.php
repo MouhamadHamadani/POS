@@ -244,6 +244,15 @@
                             <div class="text-xs text-gray-500 mt-1">{{ __('settings.receipt_format_help') }}</div>
                         </div>
                         <div>
+                            <label class="block text-xs text-gray-500">{{ __('settings.receipt_font_size') }}</label>
+                            <select name="settings[receipt_font_size]" class="w-full border-gray-300 rounded text-sm">
+                                @foreach (array_keys(\App\Services\ReceiptPrintService::FONT_SIZES) as $fs)
+                                    <option value="{{ $fs }}" @selected($get('receipt_font_size', 'normal') === $fs)>{{ __("settings.receipt_font_size_options.$fs") }}</option>
+                                @endforeach
+                            </select>
+                            <div class="text-xs text-gray-500 mt-1">{{ __('settings.receipt_font_size_help') }}</div>
+                        </div>
+                        <div>
                             <label class="block text-xs text-gray-500">{{ __('settings.thermal_printer') }}</label>
                             @php $thermalPrinter = $get('thermal_printer_name'); @endphp
                             @if (count($printers))

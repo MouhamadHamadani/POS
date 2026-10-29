@@ -301,6 +301,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/pin', [ProfileController::class, 'updatePin'])->name('profile.pin');
+    // Every role may set its own interface size, with no Settings access: the route takes no user id.
+    Route::patch('/profile/ui-scale', [ProfileController::class, 'updateUiScale'])->name('profile.ui-scale');
 });
 
 require __DIR__.'/auth.php';

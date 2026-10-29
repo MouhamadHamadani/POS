@@ -100,6 +100,13 @@ return [
     'a4_printer_ask' => 'Default Windows printer',
     'a4_printer_help' => 'A4 invoices print straight to this printer with no dialog. Leave "Default Windows printer" to use the printer Windows has set as default. Direct printing works only in the installed desktop app.',
     'a4_printer_text_help' => 'The list of installed printers appears in the desktop app. Type the printer name exactly as Windows shows it, or leave empty for the default Windows printer.',
+    'receipt_font_size' => 'Receipt text size',
+    'receipt_font_size_options' => [
+        'small' => 'Small',
+        'normal' => 'Normal',
+        'large' => 'Large',
+    ],
+    'receipt_font_size_help' => 'Scales all the text on the standard small receipt and the A4 invoice together. A custom receipt template (Premium) keeps its own sizes and is not scaled. The test print shows the size you pick before you save it.',
     'thermal_printer' => 'Receipt printer',
     'thermal_printer_ask' => 'Default Windows printer',
     'thermal_printer_help' => 'Receipts print straight to this printer after payment, with no dialog. Leave "Default Windows printer" to use the printer Windows has set as default. Direct printing works only in the installed desktop app.',

@@ -12,4 +12,7 @@ return [
     'current_password' => 'Current password',
     'new_pin' => 'New 4-digit PIN',
     'save_pin' => 'Save PIN',
+    'my_preferences' => 'My preferences',
+    'ui_scale' => 'Interface size',
+    'ui_scale_help' => 'Makes text and buttons smaller or larger for your account only. Other users keep their own size. 100% is the standard size.',
 ];

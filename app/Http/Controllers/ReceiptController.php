@@ -138,6 +138,7 @@ class ReceiptController extends Controller
             'header' => (string) Setting::get('receipt_header', ''),
             'footer' => (string) Setting::get('receipt_footer', ''),
             'receiptLang' => (string) Setting::get('receipt_language', 'bilingual'),
+            'fontScale' => $this->prints->fontScale(),
             'autoPrint' => $request->boolean('auto', true),
             'isCopy' => $request->boolean('copy'),
         ];
