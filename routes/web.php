@@ -149,6 +149,7 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/purchase-orders/{purchase}', [PurchaseOrderController::class, 'update'])->name('purchases.update');
             Route::post('/purchase-orders/{purchase}/transition', [PurchaseOrderController::class, 'transition'])->name('purchases.transition');
             Route::post('/purchase-orders/{purchase}/receive', [PurchaseOrderController::class, 'receive'])->name('purchases.receive');
+            Route::post('/purchase-orders/{purchase}/confirm', [PurchaseOrderController::class, 'confirm'])->name('purchases.confirm');
         });
     });
 

@@ -19,8 +19,11 @@ class PurchaseOrder extends Model
     public const STATUS_CLOSED = 'closed';
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const TYPE_ITEMIZED = 'itemized';
+    public const TYPE_AMOUNT_ONLY = 'amount_only';
+
     protected $fillable = [
-        'uuid', 'po_number', 'supplier_id', 'user_id', 'status',
+        'uuid', 'po_number', 'supplier_id', 'user_id', 'status', 'type',
         'subtotal_usd', 'tax_amount_usd', 'shipping_usd', 'total_usd',
         'expected_at', 'received_at', 'supplier_reference', 'notes',
     ];
@@ -48,6 +51,12 @@ class PurchaseOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    /** No lines, only an amount owed; confirmed instead of received. */
+    public function isAmountOnly(): bool
+    {
+        return $this->type === self::TYPE_AMOUNT_ONLY;
     }
 
     public function statusLabel(): string

@@ -27,4 +27,5 @@ return [
     'type' => 'Type',
     'yes' => 'Yes',
     'no' => 'No',
+    'close' => 'Close',
 ];

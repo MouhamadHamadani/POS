@@ -15,6 +15,9 @@
                     };
                 @endphp
                 <span class="ms-2 text-xs px-2 py-0.5 rounded {{ $color }}">{{ $po->statusLabel() }}</span>
+                @if ($po->isAmountOnly())
+                    <span class="ms-1 text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800">{{ __('purchases.type_amount_only') }}</span>
+                @endif
             </h2>
             <div class="flex gap-2">
                 @if (in_array($po->status, ['draft','sent']))
@@ -34,15 +37,30 @@
             <div><dt class="text-xs text-gray-500">{{ __('purchases.created_by') }}</dt><dd>{{ $po->user?->name }}</dd></div>
             <div><dt class="text-xs text-gray-500">{{ __('purchases.created') }}</dt><dd><x-ltr>{{ $po->created_at->format('Y-m-d') }}</x-ltr></dd></div>
             <div><dt class="text-xs text-gray-500">{{ __('suppliers.expected') }}</dt><dd>@if ($po->expected_at)<x-ltr>{{ $po->expected_at->format('Y-m-d') }}</x-ltr>@else — @endif</dd></div>
-            <div><dt class="text-xs text-gray-500">{{ __('purchases.subtotal') }}</dt><dd><x-ltr>${{ number_format((float) $po->subtotal_usd, 2) }}</x-ltr></dd></div>
-            <div><dt class="text-xs text-gray-500">{{ __('purchases.tax') }}</dt><dd><x-ltr>${{ number_format((float) $po->tax_amount_usd, 2) }}</x-ltr></dd></div>
-            <div><dt class="text-xs text-gray-500">{{ __('purchases.shipping') }}</dt><dd><x-ltr>${{ number_format((float) $po->shipping_usd, 2) }}</x-ltr></dd></div>
-            <div><dt class="text-xs text-gray-500">{{ __('dashboard.total') }}</dt><dd class="font-bold text-brand-700"><x-ltr>${{ number_format((float) $po->total_usd, 2) }}</x-ltr></dd></div>
+            @if ($po->isAmountOnly())
+                <div><dt class="text-xs text-gray-500">{{ __('purchases.amount') }}</dt><dd class="font-bold text-brand-700"><x-ltr>${{ number_format((float) $po->total_usd, 2) }}</x-ltr></dd></div>
+            @else
+                <div><dt class="text-xs text-gray-500">{{ __('purchases.subtotal') }}</dt><dd><x-ltr>${{ number_format((float) $po->subtotal_usd, 2) }}</x-ltr></dd></div>
+                <div><dt class="text-xs text-gray-500">{{ __('purchases.tax') }}</dt><dd><x-ltr>${{ number_format((float) $po->tax_amount_usd, 2) }}</x-ltr></dd></div>
+                <div><dt class="text-xs text-gray-500">{{ __('purchases.shipping') }}</dt><dd><x-ltr>${{ number_format((float) $po->shipping_usd, 2) }}</x-ltr></dd></div>
+                <div><dt class="text-xs text-gray-500">{{ __('dashboard.total') }}</dt><dd class="font-bold text-brand-700"><x-ltr>${{ number_format((float) $po->total_usd, 2) }}</x-ltr></dd></div>
+            @endif
         </div>
 
+        @if ($po->isAmountOnly())
+            <p class="text-xs text-gray-500">{{ __('purchases.amount_only_note') }}</p>
+        @endif
+
         @if (in_array($po->status, ['draft','sent']))
-            <div class="bg-white rounded-lg shadow-card p-4 flex gap-2 items-center text-sm">
+            <div class="bg-white rounded-lg shadow-card p-4 flex flex-wrap gap-2 items-center text-sm">
                 <span class="text-gray-600">{{ __('purchases.actions_label') }}</span>
+                @if ($po->isAmountOnly())
+                    <form method="POST" action="{{ route('purchases.confirm', $po) }}">
+                        @csrf
+                        <button class="px-3 py-1.5 bg-success text-white rounded text-xs hover:bg-green-700"
+                                onclick="return confirm(@js(__('purchases.confirm_amount_prompt', ['amount' => '$' . number_format((float) $po->total_usd, 2), 'supplier' => $po->supplier->name])))">{{ __('purchases.confirm_amount') }}</button>
+                    </form>
+                @endif
                 @if ($po->status === 'draft')
                     <form method="POST" action="{{ route('purchases.transition', $po) }}">
                         @csrf <input type="hidden" name="to" value="sent">
@@ -65,6 +83,7 @@
             </div>
         @endif
 
+        @unless ($po->isAmountOnly())
         <div class="bg-white rounded-lg shadow-card p-6">
             <h3 class="font-semibold mb-3 text-sm">{{ __('purchases.items') }}</h3>
             <table class="min-w-full text-sm">
@@ -97,8 +116,9 @@
                 </tbody>
             </table>
         </div>
+        @endunless
 
-        @if (in_array($po->status, ['draft','sent','partial']))
+        @if (in_array($po->status, ['draft','sent','partial']) && ! $po->isAmountOnly())
             <div class="bg-white rounded-lg shadow-card p-6">
                 <h3 class="font-semibold mb-3 text-sm">{{ __('purchases.receive_goods') }}</h3>
                 <form method="POST" action="{{ route('purchases.receive', $po) }}">

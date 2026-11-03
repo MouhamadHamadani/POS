@@ -40,9 +40,13 @@
             'cost_usd' => $p->cost_usd,
             'tax' => $p->tax ? ['rate' => $p->tax->rate] : null,
         ])->values();
+
+        $poType = old('type', $po->type ?? \App\Models\PurchaseOrder::TYPE_ITEMIZED);
+        // Same unit list as the product form.
+        $units = ['pcs', 'kg', 'g', 'L', 'mL', 'box', 'pair', 'set', 'm'];
     @endphp
 
-    <div class="py-6 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" x-data="poForm()">
+    <div class="py-6 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" x-data="poForm()" @keydown.escape.window="quick.open = false">
         @if ($errors->any())
             <div class="p-3 bg-red-50 text-red-700 rounded text-sm mb-4">
                 <ul class="list-disc list-inside">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
@@ -52,6 +56,20 @@
         <form method="POST" action="{{ $isEdit ? route('purchases.update', $po) : route('purchases.store') }}" class="space-y-4">
             @csrf
             @if ($isEdit) @method('PUT') @endif
+
+            <div class="bg-white rounded-lg shadow-card p-4">
+                <div class="text-xs font-medium text-gray-600 mb-2">{{ __('purchases.type_label') }}</div>
+                <input type="hidden" name="type" :value="type">
+                <div class="inline-flex rounded border border-gray-300 overflow-hidden text-sm" role="group">
+                    <button type="button" @click="setType('itemized')" :aria-pressed="type === 'itemized'"
+                            :class="type === 'itemized' ? 'bg-brand-700 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                            class="px-4 py-2">{{ __('purchases.type_itemized') }}</button>
+                    <button type="button" @click="setType('amount_only')" :aria-pressed="type === 'amount_only'"
+                            :class="type === 'amount_only' ? 'bg-brand-700 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                            class="px-4 py-2 border-s border-gray-300">{{ __('purchases.type_amount_only') }}</button>
+                </div>
+                <p x-show="type === 'amount_only'" style="display: none" class="text-xs text-gray-500 mt-2">{{ __('purchases.amount_only_hint') }}</p>
+            </div>
 
             <div class="bg-white rounded-lg shadow-card p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -78,9 +96,15 @@
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('purchases.supplier_reference') }}</label>
                     <input type="text" name="supplier_reference" dir="ltr" value="{{ old('supplier_reference', $po->supplier_reference) }}" class="w-full border-gray-300 rounded text-sm" />
                 </div>
-                <div>
+                {{-- Disabled inputs are neither validated by the browser nor posted, so each type sends only its own fields. --}}
+                <div x-show="type === 'itemized'">
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('purchases.shipping_usd') }}</label>
-                    <input type="number" step="0.01" min="0" name="shipping_usd" dir="ltr" value="{{ old('shipping_usd', $po->shipping_usd ?? 0) }}" class="w-full border-gray-300 rounded text-sm" />
+                    <input type="number" step="0.01" min="0" name="shipping_usd" dir="ltr" value="{{ old('shipping_usd', $po->shipping_usd ?? 0) }}" :disabled="type !== 'itemized'" class="w-full border-gray-300 rounded text-sm" />
+                </div>
+                <div x-show="type === 'amount_only'" style="display: none">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('purchases.expected_amount_usd') }} *</label>
+                    <input type="number" step="0.01" min="0.01" name="expected_amount_usd" dir="ltr" required :disabled="type !== 'amount_only'"
+                           value="{{ old('expected_amount_usd', $po->isAmountOnly() ? (float) $po->total_usd : '') }}" class="w-full border-gray-300 rounded text-sm" />
                 </div>
                 <div class="md:col-span-3">
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('common.notes') }}</label>
@@ -88,10 +112,12 @@
                 </div>
             </div>
 
+            {{-- x-if, not x-show: an amount-only PO posts no lines at all. The lines stay in Alpine state if the type is switched back. --}}
+            <template x-if="type === 'itemized'">
             <div class="bg-white rounded-lg shadow-card p-6">
-                <div class="flex justify-between items-center mb-3">
+                <div class="flex flex-wrap gap-2 justify-between items-center mb-3">
                     <h3 class="font-semibold text-sm">{{ __('purchases.line_items') }}</h3>
-                    <div class="flex gap-2 items-center">
+                    <div class="flex flex-wrap gap-2 items-center">
                         <select x-model.number="picker" class="border-gray-300 rounded text-sm">
                             <option value="">{{ __('purchases.add_product') }}</option>
                             <template x-for="p in products" :key="p.id">
@@ -99,6 +125,7 @@
                             </template>
                         </select>
                         <button type="button" @click="addLine()" class="px-3 py-1.5 text-xs bg-brand-700 text-white rounded">{{ __('common.add') }}</button>
+                        <button type="button" @click="openQuick()" class="px-3 py-1.5 text-xs bg-gray-100 text-gray-800 rounded hover:bg-gray-200">{{ __('products.new_product') }}</button>
                     </div>
                 </div>
 
@@ -150,6 +177,7 @@
                     </tfoot>
                 </table>
             </div>
+            </template>
 
             <div class="flex justify-end gap-2">
                 <a href="{{ route('purchases.index') }}" class="px-4 py-2 bg-gray-100 rounded text-sm">{{ __('common.cancel') }}</a>
@@ -158,6 +186,71 @@
                 </button>
             </div>
         </form>
+
+        {{-- "+ New product": outside the PO form so its fields are never posted with the order. --}}
+        <div x-show="quick.open" style="display: none" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-bold">{{ __('products.new_product_title') }}</h3>
+                    <button type="button" @click="quick.open = false" class="text-gray-400 hover:text-gray-700 text-xl" aria-label="{{ __('common.close') }}">&times;</button>
+                </div>
+
+                @if ($categories->isEmpty())
+                    <p class="text-sm text-gray-700">{{ __('purchases.quick_no_categories') }}</p>
+                    <a href="{{ route('categories.index') }}" target="_blank" class="inline-block mt-2 text-sm text-brand-600 hover:underline">{{ __('products.manage_categories') }}</a>
+                @else
+                    <form @submit.prevent="saveQuick()" class="space-y-3 text-sm">
+                        <p class="text-xs text-gray-500">{{ __('purchases.quick_hint') }}</p>
+                        <div x-show="quickErrors().length" class="p-2 bg-red-50 text-red-700 rounded text-xs">
+                            <ul class="list-disc list-inside"><template x-for="e in quickErrors()" :key="e"><li x-text="e"></li></template></ul>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('categories.name_en') }} *</label>
+                            <input type="text" x-ref="quickName" x-model="quick.form.name" required maxlength="255" dir="auto" class="w-full border-gray-300 rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('categories.name_ar') }}</label>
+                            <input type="text" x-model="quick.form.name_ar" maxlength="255" dir="rtl" class="w-full border-gray-300 rounded text-sm">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('products.category') }} *</label>
+                                <select x-model.number="quick.form.category_id" required class="w-full border-gray-300 rounded text-sm">
+                                    @foreach ($categories as $c)
+                                        <option value="{{ $c->id }}">{{ $c->localName() }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('reports.cols.unit') }}</label>
+                                <select x-model="quick.form.unit" class="w-full border-gray-300 rounded text-sm">
+                                    @foreach ($units as $u)
+                                        <option value="{{ $u }}">{{ __("enums.unit.$u") }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('purchases.cost_usd') }}</label>
+                                <input type="number" step="0.01" min="0" x-model.number="quick.form.cost_usd" dir="ltr" class="w-full border-gray-300 rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('products.tax_rate') }}</label>
+                                <select x-model.number="quick.form.tax_id" class="w-full border-gray-300 rounded text-sm">
+                                    <option value="">{{ __('products.no_tax') }}</option>
+                                    @foreach ($taxes as $t)
+                                        <option value="{{ $t->id }}">{{ app()->getLocale() === 'ar' && $t->name_ar ? $t->name_ar : $t->name }} ({{ number_format((float) $t->rate * 100, 2) }}%)</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-2">
+                            <button type="button" @click="quick.open = false" class="px-4 py-2 bg-gray-100 rounded text-sm">{{ __('common.cancel') }}</button>
+                            <button type="submit" :disabled="quick.saving" class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800 disabled:opacity-50">{{ __('purchases.quick_save') }}</button>
+                        </div>
+                    </form>
+                @endif
+            </div>
+        </div>
     </div>
 
     @push('scripts')
@@ -167,6 +260,53 @@
                 products: @json($productsForJs),
                 lines: @json($itemsForJs),
                 picker: '',
+                type: @js($poType === 'amount_only' ? 'amount_only' : 'itemized'),
+                quick: { open: false, saving: false, errors: {}, form: {} },
+                // Itemized -> amount only drops the lines on save, so ask before switching.
+                setType(t) {
+                    if (t === this.type) return;
+                    if (t === 'amount_only' && this.lines.length && !confirm(@js(__('purchases.confirm_switch_amount_only')))) return;
+                    this.type = t;
+                },
+                openQuick() {
+                    this.quick.form = {
+                        name: '', name_ar: '', unit: 'pcs', cost_usd: '',
+                        category_id: @js($categories->first()?->id),
+                        tax_id: @js($defaultTaxId ?? ''),
+                    };
+                    this.quick.errors = {};
+                    this.quick.open = true;
+                    this.$nextTick(() => this.$refs.quickName?.focus());
+                },
+                quickErrors() { return Object.values(this.quick.errors).flat(); },
+                async saveQuick() {
+                    this.quick.saving = true;
+                    this.quick.errors = {};
+                    try {
+                        const res = await fetch(@js(route('products.quick-store')), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({ ...this.quick.form, tax_id: this.quick.form.tax_id || null, cost_usd: this.quick.form.cost_usd === '' ? null : this.quick.form.cost_usd }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            this.quick.errors = data.errors || { _: [data.message || @js(__('purchases.quick_failed'))] };
+                            return;
+                        }
+                        this.products.push(data);
+                        this.picker = data.id;
+                        this.addLine();
+                        this.quick.open = false;
+                    } catch (e) {
+                        this.quick.errors = { _: [@js(__('purchases.quick_failed'))] };
+                    } finally {
+                        this.quick.saving = false;
+                    }
+                },
                 addLine() {
                     const id = Number(this.picker);
                     if (!id) return;
