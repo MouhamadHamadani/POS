@@ -22,6 +22,8 @@ return [
     'search_placeholder' => 'Name, SKU, barcode',
     'category' => 'Category',
     'low_stock' => 'Low stock',
+    'incomplete' => 'Incomplete',
+    'incomplete_hint' => 'Created from a purchase order without a sell price. It is not offered at the till until it is saved with a price.',
     'image' => 'Image',
     'sku_barcode' => 'SKU / Barcode',
     'price_usd' => 'Price (USD)',

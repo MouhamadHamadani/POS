@@ -51,6 +51,10 @@ class ProductController extends Controller
             $q->whereColumn('stock_qty', '<=', 'min_stock')->where('track_stock', true);
         }
 
+        if ($request->query('incomplete') === '1') {
+            $q->where('is_incomplete', true);
+        }
+
         $products = $q->orderBy('name')->paginate(25)->withQueryString();
         $categories = Category::orderBy('sort_order')->get(['id', 'name', 'name_ar']);
 
@@ -178,6 +182,11 @@ class ProductController extends Controller
         // silently overwrite a sale that landed since the page loaded and leave
         // no trace in the movement log — stock only changes through adjustStock().
         unset($data['stock_qty']);
+
+        // A PO quick-create becomes sellable the moment it is saved with a sell price.
+        if ($product->is_incomplete && (float) $data['price_usd'] > 0) {
+            $data['is_incomplete'] = false;
+        }
 
         $old = $product->only(array_keys($data));
         $product->update($data);

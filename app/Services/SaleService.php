@@ -364,6 +364,10 @@ class SaleService
             if (!$product) {
                 throw ValidationException::withMessages(['cart' => __('messages.product_missing', ['id' => $row['product_id']])]);
             }
+            // A PO quick-create has no sell price yet; the sell screen never lists it, and a posted id is refused too.
+            if ($product->is_incomplete) {
+                throw ValidationException::withMessages(['cart' => __('messages.product_incomplete', ['product' => $product->localName()])]);
+            }
 
             $qty = (float) ($row['qty'] ?? 1);
             $unitPrice = $product->priceForGroup($tier);

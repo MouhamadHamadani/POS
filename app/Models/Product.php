@@ -25,7 +25,7 @@ class Product extends Model
         'price_lbp', 'cost_lbp',
         'stock_qty', 'min_stock', 'max_stock', 'unit', 'location',
         'type', 'is_active', 'is_taxable', 'allow_discount',
-        'track_stock', 'force_lbp_price', 'created_by',
+        'track_stock', 'force_lbp_price', 'created_by', 'is_incomplete',
     ];
 
     protected $casts = [
@@ -43,6 +43,7 @@ class Product extends Model
         'allow_discount' => 'boolean',
         'track_stock' => 'boolean',
         'force_lbp_price' => 'boolean',
+        'is_incomplete' => 'boolean',
     ];
 
     public function category(): BelongsTo
@@ -73,6 +74,15 @@ class Product extends Model
     public function adjustments(): HasMany
     {
         return $this->hasMany(InventoryAdjustment::class);
+    }
+
+    /**
+     * What the sell screen may offer: active, and not a PO quick-create still waiting for its
+     * sell price (it would otherwise ring up at $0).
+     */
+    public function scopeSellable($query)
+    {
+        return $query->where('is_active', true)->where('is_incomplete', false);
     }
 
     public function getLocalNameAttribute(): string

@@ -48,6 +48,10 @@
                         <input type="checkbox" name="low_stock" value="1" @checked(request('low_stock'))>
                         {{ __('products.low_stock') }}
                     </label>
+                    <label class="text-xs text-gray-500 flex items-center gap-1">
+                        <input type="checkbox" name="incomplete" value="1" @checked(request('incomplete'))>
+                        {{ __('products.incomplete') }}
+                    </label>
                     <button class="ms-auto px-3 py-1.5 bg-gray-800 text-white rounded text-xs">{{ __('common.filter') }}</button>
                 </div>
             </form>
@@ -107,6 +111,9 @@
                                     <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">{{ __('common.active') }}</span>
                                 @else
                                     <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{{ __('common.inactive') }}</span>
+                                @endif
+                                @if ($p->is_incomplete)
+                                    <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded" title="{{ __('products.incomplete_hint') }}">{{ __('products.incomplete') }}</span>
                                 @endif
                             </td>
                             <td class="p-3 text-end">

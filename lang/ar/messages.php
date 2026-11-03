@@ -93,6 +93,7 @@ return [
     'credit_customer_required' => 'يجب تحديد زبون للبيع بالدَّين.',
     'credit_limit_exceeded' => 'تم تجاوز سقف الدَّين للزبون.',
     'product_missing' => 'المنتج رقم :id غير موجود.',
+    'product_incomplete' => 'لا يوجد سعر بيع لـ :product بعد. حدّده في المنتجات قبل بيعه.',
     'sale_already_voided' => 'عملية البيع ملغاة مسبقاً.',
     'recurring_created' => 'تم حفظ المصروف المتكرر.',
     'recurring_updated' => 'تم تحديث المصروف المتكرر. يسري على المصاريف التي تُسجَّل من الآن فصاعداً.',

@@ -34,7 +34,7 @@ class PosController extends Controller
         }
 
         $products = Product::with('tax:id,rate,is_inclusive')
-            ->where('is_active', true)
+            ->sellable()
             ->orderBy('name')
             ->get($columns);
 
@@ -61,7 +61,7 @@ class PosController extends Controller
     public function products(Request $request): JsonResponse
     {
         $q = Product::with('tax:id,rate')
-            ->where('is_active', true);
+            ->sellable();
 
         if ($search = $request->query('search')) {
             $q->where(function ($w) use ($search) {
@@ -115,7 +115,7 @@ class PosController extends Controller
         }
         $product = Product::with('tax:id,rate,is_inclusive')
             ->where('barcode', $code)
-            ->where('is_active', true)
+            ->sellable()
             ->first();
         if (!$product) {
             return response()->json(['error' => __('messages.product_not_found')], 404);

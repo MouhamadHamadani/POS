@@ -93,6 +93,7 @@ return [
     'credit_customer_required' => 'A customer is required for credit sales.',
     'credit_limit_exceeded' => 'Customer credit limit exceeded.',
     'product_missing' => 'Product #:id not found.',
+    'product_incomplete' => ':product has no sell price yet. Set it in Products before selling it.',
     'sale_already_voided' => 'Sale is already voided.',
     'recurring_created' => 'Recurring expense saved.',
     'recurring_updated' => 'Recurring expense updated. It applies to the expenses booked from now on.',

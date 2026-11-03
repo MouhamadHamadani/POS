@@ -22,6 +22,8 @@ return [
     'search_placeholder' => 'الاسم، SKU، الباركود',
     'category' => 'الفئة',
     'low_stock' => 'مخزون منخفض',
+    'incomplete' => 'غير مكتمل',
+    'incomplete_hint' => 'أُنشئ من أمر شراء بدون سعر بيع. لا يظهر على شاشة البيع حتى يُحفظ بسعر.',
     'image' => 'الصورة',
     'sku_barcode' => 'SKU / الباركود',
     'price_usd' => 'السعر (دولار)',
