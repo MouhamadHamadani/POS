@@ -98,6 +98,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/products', [ProductController::class, 'index'])->name('products.index');
         Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
         Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+        // The PO form's "+ New product" modal (JSON). Before /products/{product} so 'quick' is never an id.
+        Route::post('/products/quick', [ProductController::class, 'quickStore'])->name('products.quick-store');
         Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
         Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');

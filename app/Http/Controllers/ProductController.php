@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\QuickStoreProductRequest;
 use App\Http\Requests\StoreProductRequest;
 use App\Models\AuditLog;
 use App\Models\Category;
@@ -159,6 +160,48 @@ class ProductController extends Controller
         AuditLog::record($request->user()->id, 'create', Product::class, $product->id, null, $data + ['stock_qty' => $opening]);
 
         return redirect()->route('products.index')->with('success', __('messages.product_created', ['name' => $product->localName()]));
+    }
+
+    /**
+     * "+ New product" on the purchase order form. The product exists to be ordered and received;
+     * it has no sell price yet, so it is flagged incomplete and stays off the sell screen until
+     * it is saved with one. The JSON matches the PO form's product list.
+     */
+    public function quickStore(QuickStoreProductRequest $request): JsonResponse
+    {
+        $data = $request->validated() + ['unit' => null, 'cost_usd' => null, 'tax_id' => null, 'name_ar' => null];
+
+        $product = Product::create([
+            'name' => $data['name'],
+            'name_ar' => $data['name_ar'],
+            'category_id' => $data['category_id'],
+            'tax_id' => $data['tax_id'],
+            'unit' => $data['unit'] ?: 'pcs',
+            'cost_usd' => $data['cost_usd'] ?? 0,
+            'price_usd' => 0,
+            'barcode' => $this->barcodes->generateUniqueEan13(),
+            'type' => Product::TYPE_SIMPLE,
+            'track_stock' => true,
+            'is_active' => true,
+            'is_taxable' => (bool) $data['tax_id'],
+            'is_incomplete' => true,
+            'created_by' => $request->user()->id,
+        ]);
+
+        AuditLog::record($request->user()->id, 'create', Product::class, $product->id, null, $product->only([
+            'name', 'name_ar', 'category_id', 'tax_id', 'unit', 'cost_usd', 'price_usd', 'barcode', 'is_incomplete',
+        ]) + ['source' => 'purchase_order_form']);
+
+        $product->load('tax:id,rate');
+
+        return response()->json([
+            'id' => $product->id,
+            'name' => $product->localName(),
+            'sku' => $product->sku,
+            'cost_usd' => $product->cost_usd,
+            'tax' => $product->tax ? ['rate' => $product->tax->rate] : null,
+            'unit' => $product->unit,
+        ], 201);
     }
 
     public function update(StoreProductRequest $request, Product $product): RedirectResponse
