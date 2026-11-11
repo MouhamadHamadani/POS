@@ -111,7 +111,8 @@ class SaleService
                 if (!$p->track_stock || $p->type === Product::TYPE_BUNDLE) {
                     continue;
                 }
-                $requested[$p->id] = ($requested[$p->id] ?? 0) + (float) $line['qty'];
+                // In packs: two lines of one product (a pack line and a package line) draw on the same stock.
+                $requested[$p->id] = ($requested[$p->id] ?? 0) + (float) $line['qty'] * $line['multiplier'];
             }
             foreach ($requested as $pid => $needed) {
                 $product = Product::find($pid);
@@ -212,9 +213,14 @@ class SaleService
                     'product_name' => $line['product']->name,
                     'product_sku' => $line['product']->sku,
                     'qty' => $line['qty'],
+                    'sale_unit' => $line['unit'],
+                    'unit_multiplier' => $line['multiplier'],
+                    'base_qty' => $line['qty'] * $line['multiplier'],
                     'unit_price_usd' => $line['unit_price'],
                     'price_tier' => $tier,
-                    'cost_usd' => $line['product']->cost_usd,
+                    // The cost of ONE SALE UNIT (a package costs its packs), so every `qty * cost_usd` margin and COGS
+                    // sum stays right without knowing about units. The product's own cost_usd stays per pack.
+                    'cost_usd' => $line['multiplier'] == 1.0 ? $line['product']->cost_usd : round((float) $line['product']->cost_usd * $line['multiplier'], 4),
                     'discount_pct' => $line['discount_pct'],
                     'discount_amount_usd' => $line['discount_amount'],
                     'tax_rate' => $line['tax_rate'],
@@ -224,7 +230,7 @@ class SaleService
                     'note' => $line['note'] ?? null,
                 ]);
 
-                $this->inventory->deductForSale($line['product'], (float) $line['qty'], $userId, $sale->id);
+                $this->inventory->deductForSale($line['product'], (float) $line['qty'] * $line['multiplier'], $userId, $sale->id);
             }
 
             // The itemised record, beside the flat columns above (which stay the drawer's ledger).
@@ -253,7 +259,7 @@ class SaleService
                 'discount_total' => $totals['discount'],
                 'cart_discount' => $totals['cart_discount'],
                 'max_line_discount_pct' => $totals['max_line_discount_pct'],
-            ]);
+            ] + $this->unitsForAudit($totals['lines']));
 
             return $sale->load('items', 'customer', 'payments');
         });
@@ -366,7 +372,14 @@ class SaleService
             }
 
             $qty = (float) ($row['qty'] ?? 1);
-            $unitPrice = $product->priceForGroup($tier);
+            // Packaging: the server decides unit, price and packs-per-unit; the client only names the unit.
+            $unit = $row['sale_unit'] ?? Product::UNIT_PACK;
+            if (! $product->supportsUnit($unit)) {
+                throw ValidationException::withMessages([
+                    "cart.$i.sale_unit" => __('packaging.errors.unit_not_supported', ['product' => $product->localName(), 'unit' => __('packaging.unit.'.$unit)]),
+                ]);
+            }
+            $unitPrice = $product->priceForUnit($unit, $tier);
             $discountPct = (float) ($row['discount_pct'] ?? 0);
             $discountAmt = (float) ($row['discount_amount'] ?? 0);
 
@@ -387,6 +400,8 @@ class SaleService
             $lines[$i] = [
                 'product' => $product,
                 'qty' => $qty,
+                'unit' => $unit,
+                'multiplier' => $product->multiplierFor($unit),
                 'unit_price' => $unitPrice,
                 'discount_pct' => $discountPct,
                 'gross' => $gross,
@@ -459,6 +474,8 @@ class SaleService
             $out[] = [
                 'product' => $product,
                 'qty' => $l['qty'],
+                'unit' => $l['unit'],
+                'multiplier' => $l['multiplier'],
                 'unit_price' => $l['unit_price'],
                 'discount_pct' => $l['discount_pct'],
                 'discount_amount' => $disc,
@@ -543,6 +560,25 @@ class SaleService
 
             return $sale->fresh();
         });
+    }
+
+    /**
+     * What the audit row says about units: nothing for an all-pack sale (its payload stays as it always was),
+     * otherwise one entry per line that was not sold as a pack.
+     */
+    private function unitsForAudit(array $lines): array
+    {
+        $packaged = array_values(array_filter($lines, fn ($l) => $l['unit'] !== Product::UNIT_PACK));
+        if ($packaged === []) {
+            return [];
+        }
+
+        return ['units' => array_map(fn ($l) => [
+            'product_id' => $l['product']->id,
+            'unit' => $l['unit'],
+            'qty' => (float) $l['qty'],
+            'packs' => (float) $l['qty'] * $l['multiplier'],
+        ], $packaged)];
     }
 
     private function nextReceiptNumber(): string

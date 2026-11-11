@@ -144,11 +144,12 @@
                         @endfeature
 
                         <div class="divide-y max-h-[40vh] overflow-y-auto">
-                            <template x-for="(line, idx) in cart" :key="line.product_id">
+                            <template x-for="(line, idx) in cart" :key="line.product_id + ':' + line.sale_unit">
                                 <div class="p-2 flex items-center gap-2 text-sm" :class="{ 'bg-brand-50': idx === lastScannedIndex }">
                                     <div class="flex-1 min-w-0">
                                         <button type="button" @click="openLineEditor(idx)" :title="t('discount') + ' (F8)'"
                                                 class="font-medium text-start hover:underline" x-text="line.name"></button>
+                                        @include('pos._packaging-badge')
                                         <div class="text-xs text-gray-500">
                                             <span dir="ltr" class="inline-block">
                                                 <x-ltr>$<span x-text="Number(line.unit_price).toFixed(2)"></span></x-ltr>
@@ -228,6 +229,8 @@
                     </div>
                 </div>
             </div>
+
+            @include('pos._packaging-modal')
 
             {{-- Customer picker: typeahead over existing customers, plus inline quick-add --}}
             <div x-show="showCustomerModal" x-cloak @keydown.escape.window="showCustomerModal=false"
@@ -612,8 +615,11 @@
 
     @push('scripts')
     <script>
+        @include('pos._packaging-js')
+
         function posApp() {
             return {
+                ...posPackaging(),
                 allProducts: @json($products),
                 categories: @json($categories),
                 exchangeRate: {{ $exchangeRate }},
@@ -716,7 +722,7 @@
 
                 anyModalOpen() {
                     return this.showCustomerModal || this.showHoldModal || this.showHeldList
-                        || this.showPayment || this.editor.open || !!this.lastSale;
+                        || this.showPayment || this.editor.open || !!this.lastSale || this.pkg.open;
                 },
 
                 async refreshHeldCount() {
@@ -850,6 +856,7 @@
                                 cart: this.cart.map(l => ({
                                     product_id: l.product_id,
                                     qty: l.qty,
+                                    sale_unit: l.sale_unit,
                                     discount_pct: l.discount_pct,
                                     discount_amount: l.discount_amount,
                                     note: l.note,
@@ -911,7 +918,7 @@
                         const cart = [];
                         for (const line of data.cart || []) {
                             const p = this.allProducts.find(pp => pp.id === line.product_id);
-                            if (!p) continue;
+                            if (!p || this.pkgDropped(p, line)) continue;
                             cart.push(this.makeLine(p, Number(line.qty), line));
                         }
                         this.cart = cart;
@@ -964,18 +971,18 @@
                     if (/^\d{1,4}$/.test(raw)
                         && this.lastScannedIndex !== null
                         && this.cart[this.lastScannedIndex]
-                        && !this.allProducts.some(p => p.barcode === raw)) {
+                        && !this.allProducts.some(p => p.barcode === raw || (p.carton_barcode && p.carton_barcode === raw))) {
                         this.setQty(this.lastScannedIndex, parseInt(raw, 10));
                         this.search = '';
                         this.filter();
                         return;
                     }
 
-                    const hit = this.allProducts.find(p => p.barcode === raw);
-                    if (hit) { this.addToCart(hit); this.search = ''; this.filter(); return; }
+                    const hit = this.allProducts.find(p => p.barcode === raw || (p.carton_barcode && p.carton_barcode === raw));
+                    if (hit) { this.pkgScanHit(hit, raw); this.search = ''; this.filter(); return; }
                     fetch(`/pos/api/barcode?code=${encodeURIComponent(raw)}`, { headers: { Accept: 'application/json' }})
                         .then(r => r.ok ? r.json() : Promise.reject())
-                        .then(p => { this.addToCart(p); this.search = ''; this.filter(); })
+                        .then(p => { this.pkgScanHit(p, raw); this.search = ''; this.filter(); })
                         .catch(() => {
                             this.errorMsg = this.t('barcode_not_found', { code: raw });
                             setTimeout(() => { this.errorMsg = ''; }, 3000);
@@ -983,25 +990,26 @@
                         });
                 },
 
-                addToCart(p) {
+                // `unit` is pack | package | carton. Left out (a tile tap, a pack scan) a packaged product asks which first.
+                addToCart(p, unit) {
+                    if (unit === undefined && this.pkgAsk(p)) return;
+                    unit = unit || 'pack';
                     if (p.track_stock && p.stock_qty <= 0) {
                         this.errorMsg = this.t('out_of_stock', { name: this.pname(p) });
                         setTimeout(() => { this.errorMsg = ''; }, 2500);
                         return;
                     }
-                    const existing = this.cart.find(l => l.product_id === p.id);
-                    if (existing) {
-                        if (!this.canAdd(existing, 1)) {
-                            this.errorMsg = this.t('only_in_stock', { qty: p.stock_qty, unit: this.unitLabel(p.unit), name: this.pname(p) });
-                            setTimeout(() => { this.errorMsg = ''; }, 2500);
-                            return;
-                        }
-                        existing.qty += 1;
-                    } else {
-                        this.cart.push(this.makeLine(p));
+                    const existing = this.cart.find(l => l.product_id === p.id && l.sale_unit === unit);
+                    const line = existing || this.makeLine(p, 0, { sale_unit: unit });
+                    if (!this.canAdd(line, 1)) {
+                        this.errorMsg = this.t('only_in_stock', { qty: p.stock_qty, unit: this.unitLabel(p.unit), name: this.pname(p) });
+                        setTimeout(() => { this.errorMsg = ''; }, 2500);
+                        return;
                     }
+                    if (existing) existing.qty += 1;
+                    else { line.qty = 1; this.cart.push(line); }
                     this.recompute();
-                    this.lastScannedIndex = this.cart.findIndex(l => l.product_id === p.id);
+                    this.lastScannedIndex = this.cart.findIndex(l => l.product_id === p.id && l.sale_unit === unit);
                 },
 
                 // --- price lists -------------------------------------------------
@@ -1036,15 +1044,17 @@
 
                 // The one place a cart line is built (add, recall) so both price and discount rules stay together.
                 makeLine(p, qty = 1, saved = {}) {
-                    const tp = this.tierPrices(p);
+                    const unit = saved.sale_unit || 'pack', mult = this.pkgMult(p, unit);
+                    const tp = this.pkgTierPrices(p, unit); // = tierPrices(p) for a pack
                     return {
                         product_id: p.id, name: this.pname(p),
+                        sale_unit: unit, unit_multiplier: mult, can_toggle: this.pkgSupports(p, 'package'),
                         unit_price: tp[this.priceTier], retail_price: tp.retail, tier_prices: tp,
                         qty,
                         discount_pct: Number(saved.discount_pct || 0),
                         discount_amount: Number(saved.discount_amount || 0),
                         allow_discount: p.allow_discount === undefined ? true : !!p.allow_discount,
-                        cost_usd: p.cost_usd == null ? null : Number(p.cost_usd), // managers only
+                        cost_usd: p.cost_usd == null ? null : Number(p.cost_usd) * mult, // managers only; per sale unit
                         tax_rate: p.tax ? Number(p.tax.rate) : 0, is_taxable: !!p.is_taxable,
                         tax_inclusive: p.tax ? !!p.tax.is_inclusive : false,
                         track_stock: !!p.track_stock,
@@ -1056,17 +1066,17 @@
 
                 canAdd(line, by) {
                     if (!line.track_stock) return true;
-                    return (line.qty + by) <= line.stock_available;
+                    return this.pkgBase(line, line.qty + by) <= line.stock_available; // in packs, with the product's other lines
                 },
 
                 setQty(i, qty) {
                     const line = this.cart[i];
                     if (!line) return;
                     this.lastScannedIndex = i;
-                    if (line.track_stock && qty > line.stock_available) {
+                    if (line.track_stock && this.pkgBase(line, qty) > line.stock_available) {
                         this.errorMsg = this.t('only_in_stock', { qty: line.stock_available, unit: this.unitLabel(line.unit), name: line.name });
                         setTimeout(() => { this.errorMsg = ''; }, 2500);
-                        qty = line.stock_available;
+                        qty = this.pkgMax(line);
                     }
                     if (qty < 1) qty = 1;
                     line.qty = qty;
@@ -1087,10 +1097,10 @@
                 onQtyChange(i) {
                     this.lastScannedIndex = i;
                     const line = this.cart[i];
-                    if (line.track_stock && line.qty > line.stock_available) {
+                    if (line.track_stock && this.pkgBase(line, line.qty) > line.stock_available) {
                         this.errorMsg = this.t('only_in_stock', { qty: line.stock_available, unit: this.unitLabel(line.unit), name: line.name });
                         setTimeout(() => { this.errorMsg = ''; }, 2500);
-                        line.qty = line.stock_available;
+                        line.qty = this.pkgMax(line);
                     }
                     if (line.qty < 0.0001) line.qty = 1;
                     this.recompute();
@@ -1432,6 +1442,7 @@
                                 cart: this.cart.map(l => ({
                                     product_id: l.product_id,
                                     qty: l.qty,
+                                    sale_unit: l.sale_unit,
                                     discount_pct: l.discount_pct,
                                     discount_amount: l.discount_amount,
                                 })),
@@ -1457,7 +1468,7 @@
                         // decrement local stock so UI reflects reality without refresh
                         for (const item of data.items || []) {
                             const p = this.allProducts.find(pp => pp.id === item.product_id);
-                            if (p && p.track_stock) p.stock_qty = Number(p.stock_qty) - Number(item.qty);
+                            if (p && p.track_stock) p.stock_qty = Number(p.stock_qty) - Number(item.base_qty ?? item.qty); // packs
                         }
                         this.filter();
                         // "Ask" prints nothing until the cashier picks a format on the panel.

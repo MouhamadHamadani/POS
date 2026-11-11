@@ -21,6 +21,8 @@ class SaleController extends Controller
             'cart' => 'required|array|min:1',
             'cart.*.product_id' => 'required|integer|exists:products,id',
             'cart.*.qty' => 'required|numeric|min:0.0001',
+            // pack | package | carton. Only the NAME of the unit: its price and size are the server's (SaleService).
+            'cart.*.sale_unit' => ['nullable', Rule::in(\App\Models\Product::SALE_UNITS)],
             // No cart.*.unit_price: the server prices every line (SaleService).
             'cart.*.discount_pct' => 'nullable|numeric|min:0|max:100',
             'cart.*.discount_amount' => 'nullable|numeric|min:0',

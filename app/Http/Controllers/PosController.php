@@ -27,6 +27,7 @@ class PosController extends Controller
             'stock_qty', 'unit', 'type',
             'is_taxable', 'allow_discount', 'track_stock',
         ];
+        $columns = array_merge($columns, Product::packagingColumns()); // empty unless POS_PACKAGING is on
         // Cost only goes to the browser of someone who may see margins; it
         // powers the "below cost" warning on the sell screen.
         if ($user->isManagerial()) {
@@ -114,12 +115,15 @@ class PosController extends Controller
             return response()->json(['error' => __('messages.no_barcode')], 422);
         }
         $product = Product::with('tax:id,rate,is_inclusive')
-            ->where('barcode', $code)
+            ->where(fn ($q) => $q->where('barcode', $code)
+                ->when(Product::packagingEnabled(), fn ($w) => $w->orWhere('carton_barcode', $code)))
             ->where('is_active', true)
             ->first();
         if (!$product) {
             return response()->json(['error' => __('messages.product_not_found')], 404);
         }
+        // Which of the product's barcodes was scanned: the till adds a carton line for 'carton', asks pack/package for 'pack'.
+        $product->setAttribute('barcode_kind', Product::packagingEnabled() && $product->carton_barcode === $code ? 'carton' : 'pack');
         return response()->json($this->hideCostFrom($request, $product));
     }
 

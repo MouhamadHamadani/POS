@@ -27,7 +27,7 @@ class HeldSaleController extends Controller
         // A hold stores no prices (the server prices at checkout), so the list's
         // subtotal is worked out from today's prices on each hold's price list.
         $products = Product::whereIn('id', $holds->flatMap(fn (HeldSale $h) => array_column((array) $h->cart, 'product_id')))
-            ->get(['id', 'price_usd', 'wholesale_price_usd', 'vip_price_usd'])
+            ->get(array_merge(['id', 'price_usd', 'wholesale_price_usd', 'vip_price_usd'], Product::packagingColumns(), ['type']))
             ->keyBy('id');
 
         return response()->json(
@@ -50,6 +50,7 @@ class HeldSaleController extends Controller
             'cart' => 'required|array|min:1',
             'cart.*.product_id' => 'required|integer|exists:products,id',
             'cart.*.qty' => 'required|numeric|min:0.0001',
+            'cart.*.sale_unit' => ['nullable', Rule::in(Product::SALE_UNITS)],
             // No cart.*.unit_price: a hold keeps no prices, the sell screen
             // re-prices from current product data on recall.
             'cart.*.discount_pct' => 'nullable|numeric|min:0|max:100',
@@ -138,7 +139,10 @@ class HeldSaleController extends Controller
     {
         $total = 0;
         foreach ((array) $hold->cart as $line) {
-            $price = $products->get($line['product_id'] ?? 0)?->priceForGroup($hold->price_tier) ?? 0;
+            $product = $products->get($line['product_id'] ?? 0);
+            $unit = $line['sale_unit'] ?? Product::UNIT_PACK;
+            // A unit the product no longer sells is shown at the pack price, like the till drops the line on recall.
+            $price = $product ? $product->priceForUnit($product->supportsUnit($unit) ? $unit : Product::UNIT_PACK, $hold->price_tier) : 0;
             $qty = (float) ($line['qty'] ?? 0);
             $total += $price * $qty;
         }
