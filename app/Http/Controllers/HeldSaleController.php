@@ -135,7 +135,8 @@ class HeldSaleController extends Controller
     /** @return array{0: list<array>, 1: list<string>} the lines still sellable, and the names of those dropped */
     private function liveLines(array $cart): array
     {
-        $variants = ProductVariant::with('product')
+        // withTrashed(): a deleted variant is named in the message too.
+        $variants = ProductVariant::withTrashed()->with('product')
             ->whereIn('id', array_filter(array_column($cart, 'product_variant_id')))
             ->get()->keyBy('id');
 
@@ -144,7 +145,7 @@ class HeldSaleController extends Controller
             $id = $line['product_variant_id'] ?? null;
             if ($id === null) {
                 $kept[] = $line;
-            } elseif (($v = $variants->get($id)) && $v->is_active) {
+            } elseif (($v = $variants->get($id)) && ! $v->trashed() && $v->is_active) {
                 $kept[] = $line;
             } else {
                 $dropped[] = $v?->displayName() ?? __('products.variants.err_variant_missing');

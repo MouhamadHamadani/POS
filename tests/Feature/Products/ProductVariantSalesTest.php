@@ -265,6 +265,7 @@ class ProductVariantSalesTest extends TestCase
         $this->assertNull($recalled->json('cart.0.product_variant_id'));
         $this->assertCount(2, $recalled->json('dropped'));
         $this->assertContains('Soap — Red', $recalled->json('dropped'));
+        $this->assertContains('Soap — Blue', $recalled->json('dropped')); // a deleted variant is named too
     }
 
     // --- the invariant -------------------------------------------------------------------------
