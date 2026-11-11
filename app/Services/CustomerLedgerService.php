@@ -397,6 +397,36 @@ class CustomerLedgerService
 
     // ------------------------------------------------------------------ reads
 
+    /**
+     * A sale's side of the debt book for the sale detail page, or null when nothing of it went on account.
+     * `outstanding` is null for a sale from before the book (it has no ledger lines: its debt is in the
+     * customer's opening balance), so the page can say so instead of showing a made-up $0.
+     *
+     * @return array{credit:float,due_date:?Carbon,outstanding:?float,paid:float,overdue:bool,payments:Collection}|null
+     */
+    public function saleDebt(Sale $sale): ?array
+    {
+        if ((float) $sale->amount_credit_usd <= 0) {
+            return null;
+        }
+
+        $entries = CustomerLedgerEntry::where('sale_id', $sale->id)->get();
+        $outstanding = $entries->isEmpty() ? null : max(0.0, round((float) $entries->sum('amount_usd'), 4));
+        $payments = $entries->whereIn('type', [CustomerLedgerEntry::TYPE_PAYMENT, CustomerLedgerEntry::TYPE_WRITE_OFF])
+            ->sortBy(fn ($e) => [$e->entry_date, $e->id])
+            ->load('payment')
+            ->values();
+
+        return [
+            'credit' => round((float) $sale->amount_credit_usd, 4),
+            'due_date' => $sale->due_date,
+            'outstanding' => $outstanding,
+            'paid' => round((float) $payments->reject(fn ($e) => $e->payment?->isVoided())->sum(fn ($e) => -(float) $e->amount_usd), 4),
+            'overdue' => $outstanding !== null && $outstanding > self::SETTLED && $sale->due_date && $sale->due_date->lt(Carbon::today()),
+            'payments' => $payments,
+        ];
+    }
+
     /** How much of the customer's debt is past its due date (due today is not past). */
     public function overdueOf(Customer|int $customer): float
     {
