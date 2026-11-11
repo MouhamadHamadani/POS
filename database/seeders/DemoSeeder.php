@@ -65,7 +65,56 @@ class DemoSeeder extends Seeder
         $categories = $this->categories();
         $this->products($categories, $admin);
         $this->customers();
+        $this->debts();
         $this->storefront();
+    }
+
+    /**
+     * The debt book, so the demo shows it: Salma owes on two receipts, the older one already past its due date, and
+     * has paid part of the newer one by bank transfer. Rung up through the real services (never raw rows), so the
+     * ledger, the cached balance and the receipts are exactly what a client's install would hold. Skipped where the
+     * template is built without the feature.
+     */
+    private function debts(): void
+    {
+        $customer = Customer::where('phone', '+961 70 000 002')->first();
+        $manager = User::where('username', 'demo_manager')->first();
+        if (! $customer || ! $manager || ! feature('customer_credit') || \App\Models\Sale::exists()) {
+            return;
+        }
+
+        $sales = app(\App\Services\SaleService::class);
+        $line = fn (string $sku, float $qty) => ['product_id' => Product::where('sku', $sku)->value('id'), 'qty' => $qty];
+        // Everything on the tab. The total is priced by the service itself; the till would send it rounded to cents.
+        $onAccount = function (array $cart) use ($sales, $customer, $manager) {
+            $total = round($sales->totalsFromCart($cart, $customer)['total'], 2);
+            $sales->process($cart, ['amount_credit' => $total], $manager, null, $customer->id);
+        };
+
+        // Sales without a shift are legal while "require an open shift" is off; put the setting back as it was.
+        $requireShift = Setting::get('require_shift', true);
+        Setting::set('require_shift', false, 'pos', 'bool');
+
+        try {
+            // 45 days ago on the default 30 days of credit: due 15 days ago.
+            \Carbon\Carbon::setTestNow(now()->subDays(45));
+            $onAccount([$line('DEMO-COFF-200', 6), $line('DEMO-OIL-1L', 4)]);
+
+            \Carbon\Carbon::setTestNow(now()->addDays(35)); // 10 days ago: not due for another 20 days
+            $onAccount([$line('DEMO-NUTS-200', 3), $line('DEMO-BRZK-250', 2)]);
+
+            \Carbon\Carbon::setTestNow(now()->addDays(7));  // 3 days ago: Salma pays $15 of it
+            app(\App\Services\CustomerLedgerService::class)->recordPayment(
+                $customer,
+                ['amount' => 15, 'method' => 'bank_transfer', 'reference' => 'Demo transfer', 'notes' => 'Part payment (demo)', 'allocations' => [[
+                    'sale_id' => \App\Models\Sale::orderByDesc('id')->value('id'), 'amount_usd' => 15,
+                ]]],
+                $manager,
+            );
+        } finally {
+            \Carbon\Carbon::setTestNow();
+            Setting::set('require_shift', $requireShift, 'pos', 'bool');
+        }
     }
 
     private function users(): User

@@ -31,6 +31,8 @@ class ReportController extends Controller
             'byPayment' => $breakdown['payments'],
             // The channel split exists only with the sales_channels feature.
             'byChannel' => feature('sales_channels') ? $breakdown['channels'] : null,
+            // Payments received on past credit sales: not revenue, so a section of their own (never in the totals above).
+            'collected' => $this->reports->debtCollected($from, $to),
         ]);
 
         return $this->respond($request, 'reports.daily-sales', $payload, 'daily_sales', function () use ($data) {

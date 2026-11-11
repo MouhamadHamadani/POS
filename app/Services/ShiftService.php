@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CashMovement;
+use App\Models\CustomerPayment;
 use App\Models\Expense;
 use App\Models\ReturnTransaction;
 use App\Models\Sale;
@@ -28,7 +29,8 @@ class ShiftService
     /**
      * Cash is counted per physical currency. Sales add what was tendered less the
      * change handed back; a cash movement adds to or takes from the drawer in the
-     * currency it was handled in. Customer payments are not counted here.
+     * currency it was handled in; a cash repayment of a customer's debt adds to the drawer in
+     * the currency it was taken in, in the shift that took it (voided ones excluded).
      *
      * The drawer holds the cash of every sale that was not voided, refunded sales
      * included, less the cash refunds paid back for those sales (counted as cash out, in
@@ -63,8 +65,14 @@ class ShiftService
             ->filter(fn ($m) => $m->type === $type && strtolower($m->currency) === $currency)
             ->sum($currency === 'usd' ? 'amount_usd' : 'amount_lbp');
 
-        $inUsd = round($salesUsd + $moved(CashMovement::TYPE_IN, 'usd'), 2);
-        $inLbp = round($salesLbp + $moved(CashMovement::TYPE_IN, 'lbp'), 0);
+        // Customers paying down what they owe, in cash: USD into the USD drawer, LBP into the LBP drawer, in the shift
+        // that took it. Card, Wish and bank repayments never touch the drawer, and a voided repayment is not here.
+        $repayments = CustomerPayment::drawerCash()->where('shift_id', $shift->id)->get(['currency', 'amount']);
+        $debtUsd = (float) $repayments->where('currency', 'USD')->sum('amount');
+        $debtLbp = (float) $repayments->where('currency', 'LBP')->sum('amount');
+
+        $inUsd = round($salesUsd + $moved(CashMovement::TYPE_IN, 'usd') + $debtUsd, 2);
+        $inLbp = round($salesLbp + $moved(CashMovement::TYPE_IN, 'lbp') + $debtLbp, 0);
         $outUsd = round($moved(CashMovement::TYPE_OUT, 'usd') + $refunded('cash_usd', 'refund_amount_usd'), 2);
         $outLbp = round($moved(CashMovement::TYPE_OUT, 'lbp') + $refunded('cash_lbp', 'refund_amount_lbp'), 0);
 
@@ -73,6 +81,8 @@ class ShiftService
             'total_revenue_usd' => round((float) $sales->sum('total_usd'), 2),
             'cash_in_usd' => $inUsd,
             'cash_in_lbp' => $inLbp,
+            'debt_cash_usd' => round($debtUsd, 2),
+            'debt_cash_lbp' => round($debtLbp, 0),
             'cash_out_usd' => $outUsd,
             'cash_out_lbp' => $outLbp,
             'expected_usd' => round((float) $shift->opening_cash_usd + $inUsd - $outUsd, 4),
@@ -103,6 +113,26 @@ class ShiftService
             'card_usd' => round((float) ($sums[SalePayment::METHOD_CARD] ?? 0), 2),
             'wish_usd' => round((float) ($sums[SalePayment::METHOD_WISH] ?? 0), 2),
         ];
+    }
+
+    /**
+     * Debt repayments this shift took, by method: for the read-only panel on the close screen. Cash is already
+     * inside totals() (it is in the drawer); card, Wish and bank transfers are listed for reconciling elsewhere.
+     * Voided repayments are left out.
+     *
+     * @return Collection<int, array{method:string,currency:string,count:int,amount:float,usd:float}>
+     */
+    public function debtCollected(Shift $shift): Collection
+    {
+        return CustomerPayment::query()
+            ->where('shift_id', $shift->id)->where('kind', CustomerPayment::KIND_PAYMENT)->whereNull('voided_at')
+            ->groupBy('method', 'currency')->orderBy('method')
+            ->selectRaw('method, currency, COUNT(*) AS n, SUM(amount) AS amount, SUM(amount_usd) AS usd')
+            ->get()
+            ->map(fn ($r) => [
+                'method' => $r->method, 'currency' => $r->currency, 'count' => (int) $r->n,
+                'amount' => round((float) $r->amount, 4), 'usd' => round((float) $r->usd, 4),
+            ]);
     }
 
     /** Expenses paid out of this shift's drawer, oldest first. */

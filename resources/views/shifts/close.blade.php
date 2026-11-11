@@ -29,6 +29,22 @@
                 </div>
             @endif
 
+            {{-- Customers paying down what they owed, by method. Cash is already inside the expected figures above. --}}
+            @if ($debtCollected->isNotEmpty())
+                <div class="mb-6 p-3 bg-gray-50 border rounded">
+                    <h4 class="text-sm font-semibold">{{ __('debts.shift_title') }}</h4>
+                    <p class="text-xs text-gray-500 mb-2">{{ __('debts.shift_help') }}</p>
+                    <dl class="grid grid-cols-2 gap-3 text-sm">
+                        @foreach ($debtCollected as $d)
+                            <div>
+                                <dt class="text-gray-500">{{ __("enums.debt_method.{$d['method']}") }}@if ($d['currency'] === 'LBP') ({{ __('shifts.lbp') }})@endif · <x-ltr>{{ $d['count'] }}</x-ltr></dt>
+                                <dd class="font-medium"><x-ltr>{{ $d['currency'] === 'LBP' ? number_format($d['amount']).' '.__('shifts.lbp') : '$'.number_format($d['amount'], 2) }}</x-ltr></dd>
+                            </div>
+                        @endforeach
+                    </dl>
+                </div>
+            @endif
+
             @if ($expenses->isNotEmpty())
                 <div class="mb-6">
                     <h4 class="text-sm font-semibold mb-2">{{ __('shifts.drawer_expenses') }}</h4>

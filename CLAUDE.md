@@ -95,6 +95,25 @@ about this repo being read-only; they no longer apply.)
   the `sales_channels` feature (Standard+): off means the server forces on-site
   (`Sale::resolveChannel`) and the till toggle, History filter and report section are hidden, while
   stored values stay readable.
+- Debt book (selling on account): `App\Services\CustomerLedgerService` is the ONLY writer of
+  `customers.balance`, which is a cache of `customer_ledger_entries` (signed USD rows, append-only: a
+  mistake is a reversing row, never an update or delete). A receipt owes the sum of the entries with its
+  `sale_id`; entries with no sale are one "pot" (a balance from before the book, store credit from a return).
+  `customers:reconcile-balances [--fix]` finds drift. Debt is USD-denominated: an LBP repayment stores the LBP
+  amount, the rate and the USD it came to, so devaluation never changes what is owed. "Pay now / pay later" is
+  just a split payment whose `credit` line goes on the ledger (`SaleService` -> `recordCreditSale`), with a
+  `sales.due_date` (the customer's `payment_terms_days`, else Settings `default_credit_days`) and
+  `sales.customer_balance_after_usd` (frozen so a reprint prints what the original did). Repayments are
+  COLLECTIONS, not revenue: revenue stays on the sale's day, and repayments appear only in the shift's drawer
+  (cash, by currency, in the shift that took them), the shift-close panel and the daily-sales "Debt collected"
+  section, never in revenue, the payment-method section or the P&L. Returns refunded to the account pay the
+  returned sale's debt first (`applyReturnCredit`), and a sale that still owes accepts only an account credit or
+  an exchange. Voiding a credit sale is refused while a live repayment is applied to it (void the payment first).
+  Gated by the `customer_credit` feature (Standard+, requires `loyalty`): it hides the till option, sidebar item,
+  dashboard tile and report card, and the server refuses `amount_credit` (never drops it), but the `/debts`
+  routes carry NO feature key, so money already owed can always be collected. `/debts` is open to
+  cashier + manager + admin (a cashier sees the items only of sales they may see: `Sale::canBeSeenBy`); voiding
+  a repayment, writing off and moving a due date are manager+ and audited; `/customers/*` stays admin + manager.
 - Variants: a product's variants are other barcodes of the SAME product (a colour, a scent): same price,
   cost, tax and category (all read from the parent; `product_variants.price_modifier` stays 0 and is never
   read), own barcode, own label (`label` / `label_ar`, `ProductVariant::displayName()`) and own stock. A
