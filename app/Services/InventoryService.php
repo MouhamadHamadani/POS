@@ -43,7 +43,7 @@ class InventoryService
         });
     }
 
-    public function receiveStock(Product $product, float $qty, int $userId, int $poId, ?string $batch = null, ?string $expiry = null): float
+    public function receiveStock(Product $product, float $qty, int $userId, int $poId, ?string $batch = null, ?string $expiry = null, ?string $notes = null): float
     {
         return $this->adjust(
             $product,
@@ -54,6 +54,7 @@ class InventoryService
             referenceId: $poId,
             batchNumber: $batch,
             expiryDate: $expiry,
+            notes: $notes,
             allowNegative: true,
         );
     }

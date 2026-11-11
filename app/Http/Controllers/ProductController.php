@@ -225,15 +225,22 @@ class ProductController extends Controller
         return redirect()->route('products.index')->with('success', __('messages.product_deleted', ['name' => $name]));
     }
 
-    public function adjustStock(Request $request, Product $product): RedirectResponse
+    public function adjustStock(Request $request, Product $product, \App\Services\PackagingService $packaging): RedirectResponse
     {
         $data = $request->validate([
             'action' => 'required|in:add,remove,set,count',
             'qty' => 'required|numeric|min:0',
+            'unit' => ['nullable', \Illuminate\Validation\Rule::in(Product::SALE_UNITS)], // packaging: pack | package | carton
             'reason' => 'required|string|max:255',
         ]);
 
-        $qty = (float) $data['qty'];
+        // Stock is in packs: a quantity typed in packages or cartons is converted here, and the log says what was typed.
+        $unit = $data['unit'] ?? Product::UNIT_PACK;
+        $typed = (float) $data['qty'];
+        $qty = $packaging->toPacks($product, $unit, $typed);
+        if ($note = $packaging->receiptNote($product, $unit, $typed, $qty)) {
+            $data['reason'] = \Illuminate\Support\Str::limit($data['reason'].' ('.$note.')', 255, '');
+        }
         $before = (float) $product->stock_qty;
 
         try {

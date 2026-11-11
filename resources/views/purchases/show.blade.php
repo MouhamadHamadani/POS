@@ -116,19 +116,33 @@
                         </thead>
                         <tbody class="divide-y">
                         @foreach ($po->items as $idx => $it)
-                            @php $remaining = (float) $it->qty_ordered - (float) $it->qty_received; @endphp
+                            @php
+                                $remaining = (float) $it->qty_ordered - (float) $it->qty_received;
+                                // Packaging: a product set up with packages / cartons can be received in them (qty and cost per that unit).
+                                $pkgUnits = \App\Models\Product::packagingEnabled() && $it->product ? $it->product->receivableUnits() : ['pack'];
+                                $pkgRow = count($pkgUnits) > 1;
+                            @endphp
                             @if ($remaining > 0)
-                            <tr>
+                            <tr @if ($pkgRow) x-data="{ unit: 'pack', cost: '', mult: @js(collect($pkgUnits)->mapWithKeys(fn ($u) => [$u => $it->product->multiplierFor($u)])), tpl: @js(__('packaging.receive.cost_per_pack', ['cost' => ':cost'])) }" @endif>
                                 <td class="py-2">{{ $it->product?->localName() ?? $it->product_name }}</td>
                                 <td class="py-2 text-end"><x-ltr>{{ rtrim(rtrim(number_format($remaining, 4, '.', ''), '0'), '.') }}</x-ltr></td>
                                 <td class="py-2 text-end">
                                     <input type="hidden" name="receipts[{{ $idx }}][item_id]" value="{{ $it->id }}">
                                     <input type="number" step="0.0001" min="0" max="{{ $remaining }}" value="0" dir="ltr"
                                            name="receipts[{{ $idx }}][qty]" class="w-24 text-end border-gray-300 rounded text-sm" />
+                                    @if ($pkgRow)
+                                        <select name="receipts[{{ $idx }}][unit]" x-model="unit" aria-label="{{ __('packaging.receive.unit') }}" class="mt-1 block ms-auto w-24 text-xs border-gray-300 rounded">
+                                            @foreach ($pkgUnits as $u)<option value="{{ $u }}">{{ __('packaging.unit.'.$u) }}</option>@endforeach
+                                        </select>
+                                    @endif
                                 </td>
                                 <td class="py-2 text-end">
                                     <input type="number" step="0.01" min="0" placeholder="{{ number_format((float) $it->cost_usd, 4) }}" dir="ltr"
-                                           name="receipts[{{ $idx }}][cost_usd]" class="w-24 text-end border-gray-300 rounded text-sm" />
+                                           name="receipts[{{ $idx }}][cost_usd]" class="w-24 text-end border-gray-300 rounded text-sm" @if ($pkgRow) x-model.number="cost" @endif />
+                                    @if ($pkgRow)
+                                        <div x-show="unit !== 'pack' && cost > 0" style="display: none" class="mt-1 text-xs text-gray-500" dir="ltr"
+                                             x-text="tpl.replace(':cost', '$' + (cost / (mult[unit] || 1)).toFixed(4))"></div>
+                                    @endif
                                 </td>
                                 <td class="py-2 text-end">
                                     <input type="text" name="receipts[{{ $idx }}][batch]" dir="ltr" class="w-24 text-end border-gray-300 rounded text-sm" />

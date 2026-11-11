@@ -80,7 +80,9 @@ class PurchaseOrderController extends Controller
 
     public function show(PurchaseOrder $purchase): View
     {
-        $purchase->load('supplier', 'user:id,name', 'items.product:id,name,name_ar,sku,unit,stock_qty');
+        // Packaging: the receive form offers a product's package / carton, so its packaging columns come along.
+        $productColumns = implode(',', array_merge(['id', 'name', 'name_ar', 'sku', 'unit', 'stock_qty', 'type'], Product::packagingColumns()));
+        $purchase->load('supplier', 'user:id,name', "items.product:$productColumns");
         return view('purchases.show', ['po' => $purchase]);
     }
 
@@ -172,7 +174,9 @@ class PurchaseOrderController extends Controller
             'receipts.*.batch' => 'nullable|string|max:80',
             'receipts.*.expiry' => 'nullable|date',
             'receipts.*.cost_usd' => 'nullable|numeric|min:0',
+            'receipts.*.unit' => ['nullable', \Illuminate\Validation\Rule::in(Product::SALE_UNITS)], // packaging: qty and cost are per this unit
         ]);
+        $data['receipts'] = app(\App\Services\PackagingService::class)->receiptsInPacks($data['receipts'], $purchase);
 
         DB::transaction(function () use ($data, $purchase, $request) {
             foreach ($data['receipts'] as $r) {
@@ -197,6 +201,7 @@ class PurchaseOrderController extends Controller
                     poId: $purchase->id,
                     batch: $r['batch'] ?? null,
                     expiry: $r['expiry'] ?? null,
+                    notes: isset($r['typed_qty']) ? app(\App\Services\PackagingService::class)->receiptNote($item->product, $r['unit'], (float) $r['typed_qty'], $qty) : null,
                 );
 
                 // Optional cost override — updates product master cost

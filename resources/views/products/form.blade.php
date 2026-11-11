@@ -309,6 +309,7 @@
                         <input type="text" name="reason" dir="auto" placeholder="{{ __('products.reason_placeholder') }}" required
                                class="w-full border-gray-300 rounded text-sm" />
                     </div>
+                    @include('products._packaging-receive')
                     <div class="md:col-span-4 text-end">
                         <button class="px-4 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700">{{ __('products.adjust_stock') }}</button>
                     </div>
