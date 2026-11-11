@@ -273,6 +273,8 @@
                     </div>
                 </div>
 
+                @include('products._packaging')
+
                 <div class="border-t p-4 flex justify-end gap-2">
                     <a href="{{ route('products.index') }}" class="px-4 py-2 text-sm bg-gray-100 rounded">{{ __('common.cancel') }}</a>
                     <button class="px-4 py-2 text-sm bg-brand-600 text-white rounded hover:bg-brand-700">

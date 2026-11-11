@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\ProductVariant;
 
 class BarcodeService
 {
@@ -39,10 +40,32 @@ class BarcodeService
             return null;
         }
 
-        return Product::withTrashed()
+        $product = Product::withTrashed()
             ->where('barcode', trim($barcode))
             ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
             ->first(['id', 'name']);
+
+        // Which kind of code matched: 'pack' (the product's barcode), 'carton' (its carton barcode) or 'variant'.
+        // Carton and variant codes count as occupied only on a packaging build, so main's behaviour is untouched.
+        if ($product || ! Product::packagingEnabled()) {
+            return $product?->setAttribute('barcode_kind', 'pack');
+        }
+
+        $product = Product::withTrashed()
+            ->where('carton_barcode', trim($barcode))
+            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->first(['id', 'name']);
+        if ($product) {
+            return $product->setAttribute('barcode_kind', 'carton');
+        }
+
+        $variant = ProductVariant::where('barcode', trim($barcode))
+            ->when($exceptId, fn ($q) => $q->where('product_id', '!=', $exceptId))
+            ->first(['id', 'product_id']);
+
+        return $variant
+            ? Product::withTrashed()->find($variant->product_id, ['id', 'name'])?->setAttribute('barcode_kind', 'variant')
+            : null;
     }
 
     public function ean13CheckDigit(string $first12): string

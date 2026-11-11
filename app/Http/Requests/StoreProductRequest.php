@@ -21,7 +21,7 @@ class StoreProductRequest extends FormRequest
     {
         $productId = $this->route('product')?->id;
 
-        return [
+        return \App\Support\PackagingRules::extend([
             'name' => 'required|string|max:255',
             'name_ar' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:5000',
@@ -51,7 +51,7 @@ class StoreProductRequest extends FormRequest
 
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:4096',
             'remove_image' => 'nullable|boolean',
-        ];
+        ], $this);
     }
 
     protected function prepareForValidation(): void
@@ -85,6 +85,6 @@ class StoreProductRequest extends FormRequest
             $this->offsetUnset('unit');
         }
 
-        $this->merge($merged);
+        $this->merge($merged + \App\Support\PackagingRules::prepare($this));
     }
 }

@@ -120,6 +120,9 @@ class ProductController extends Controller
         return response()->json([
             'exists' => (bool) $product,
             'product_name' => $product?->localName(),
+            // Packaging: which code matched, and whose, so the stock screen can jump to the product a carton belongs to.
+            'kind' => $product?->barcode_kind,
+            'product_id' => $product?->id,
         ]);
     }
 
@@ -192,6 +195,7 @@ class ProductController extends Controller
         $name = $product->name;
         $oldBarcode = $product->barcode;
         $oldSku = $product->sku;
+        $oldCartonBarcode = $product->carton_barcode; // packaging: also a unique code, freed below, kept in the audit row
 
         // Free the codes before trashing the row. `barcode` and `sku` are UNIQUE
         // and a unique index knows nothing about `deleted_at`, so a soft-deleted
@@ -204,6 +208,7 @@ class ProductController extends Controller
         DB::transaction(function () use ($product, $oldBarcode, $oldSku) {
             $product->barcode = null;
             $product->sku = null;
+            $product->carton_barcode = null;
             $product->old_barcode = $oldBarcode;
             $product->old_sku = $oldSku;
             $product->save();
@@ -215,7 +220,7 @@ class ProductController extends Controller
             'name' => $name,
             'barcode' => $oldBarcode,
             'sku' => $oldSku,
-        ], null);
+        ] + ($oldCartonBarcode ? ['carton_barcode' => $oldCartonBarcode] : []), null);
 
         return redirect()->route('products.index')->with('success', __('messages.product_deleted', ['name' => $name]));
     }
