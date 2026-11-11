@@ -88,6 +88,38 @@
             </table>
         </div>
 
+        {{-- Debt collected: payments received on past sales on account. Not revenue (that was counted when the
+             sale was made), so it is not in any figure above. Shown while there is something to show. --}}
+        @if ($collected['rows'] ?? false)
+            <div class="bg-white rounded-lg shadow-card overflow-hidden">
+                <div class="px-4 pt-4">
+                    <h3 class="text-sm font-semibold">{{ __('debts.collected_title') }}</h3>
+                    <p class="text-xs text-gray-500">{{ __('debts.collected_note') }}</p>
+                </div>
+                <table class="min-w-full text-sm mt-2">
+                    <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                        <tr>
+                            <th class="p-3 text-start">{{ __('reports.cols.method') }}</th>
+                            <th class="p-3 text-end">{{ __('reports.cols.transactions') }}</th>
+                            <th class="p-3 text-end">{{ __('reports.cols.amount_usd') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                    @foreach ($collected['rows'] as $c)
+                        <tr>
+                            <td class="p-3">{{ __("enums.debt_method.{$c['method']}") }}</td>
+                            <td class="p-3 text-end"><x-ltr>{{ $c['count'] }}</x-ltr></td>
+                            <td class="p-3 text-end font-medium"><x-ltr>${{ number_format($c['usd'], 2) }}</x-ltr></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                    <tfoot class="bg-gray-50 font-bold border-t-2">
+                        <tr><td class="p-3" colspan="2">{{ __('reports.cols.totals') }}</td><td class="p-3 text-end text-brand-700"><x-ltr>${{ number_format($collected['total'], 2) }}</x-ltr></td></tr>
+                    </tfoot>
+                </table>
+            </div>
+        @endif
+
         @if ($byChannel !== null)
             <div class="bg-white rounded-lg shadow-card overflow-hidden">
                 <div class="px-4 pt-4">

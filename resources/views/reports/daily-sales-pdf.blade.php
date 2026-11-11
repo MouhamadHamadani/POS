@@ -37,6 +37,20 @@
         'empty' => __('reports.pdf.no_sales_period'),
     ])
 
+    @if ($collected['rows'] ?? false)
+        <h2>@pdf(__('debts.collected_title'))</h2>
+        @include('reports._pdf-table', [
+            'cols' => [
+                ['label' => __('reports.cols.method'), 'num' => false],
+                ['label' => __('reports.cols.transactions'), 'num' => true],
+                ['label' => __('reports.cols.amount_usd'), 'num' => true],
+            ],
+            'data' => array_map(fn ($c) => [__("enums.debt_method.{$c['method']}"), $c['count'], $money($c['usd'])], $collected['rows']),
+            'foot' => [__('reports.cols.totals'), '', $money($collected['total'])],
+            'empty' => __('debts.collected_none'),
+        ])
+    @endif
+
     @if ($byChannel !== null)
         <h2>@pdf(__('reports.by_channel'))</h2>
         @include('reports._pdf-table', [

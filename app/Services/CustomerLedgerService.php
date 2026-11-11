@@ -295,10 +295,10 @@ class CustomerLedgerService
             }
 
             // Own receipt first, then the others by due date / age, the opening pot last.
-            $targets = $this->openTargets($customer->id)
-                ->sortBy(fn ($t) => [$t['sale_id'] === $sale->id ? 0 : ($t['sale_id'] === null ? 2 : 1)])
+            // (The index keeps the default order, due date then age, inside each group.)
+            $targets = $this->openTargets($customer->id)->values()
+                ->sortBy(fn ($t, $i) => [$t['sale_id'] === $sale->id ? 0 : ($t['sale_id'] === null ? 2 : 1), $i])
                 ->values();
-            $targets = $targets->sortBy(fn ($t, $i) => [$t['sale_id'] === $sale->id ? 0 : ($t['sale_id'] === null ? 2 : 1), $i])->values();
 
             $allocations = $this->autoAllocation($targets, $refund);
             $used = round(array_sum(array_column($allocations, 'amount')), 4);

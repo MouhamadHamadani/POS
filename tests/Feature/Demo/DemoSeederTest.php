@@ -40,6 +40,21 @@ class DemoSeederTest extends TestCase
         $this->assertSame(4, User::count());
     }
 
+    public function test_the_demo_shows_the_debt_book(): void
+    {
+        $salma = Customer::where('phone', '+961 70 000 002')->firstOrFail();
+        $ledger = app(\App\Services\CustomerLedgerService::class);
+
+        $open = $ledger->openReceipts($salma);
+
+        $this->assertCount(2, $open, 'two receipts still owe something');
+        $this->assertSame(1, $open->where('overdue', true)->count(), 'one of them is past its due date');
+        $this->assertSame(1, \App\Models\CustomerPayment::count(), 'and a part payment was taken');
+        $this->assertGreaterThan(0, (float) $salma->fresh()->balance);
+        $this->assertTrue($ledger->reconcile($salma), 'the cached balance is the ledger');
+        $this->assertSame(0.0, (float) Customer::where('phone', '+961 70 000 001')->value('balance'));
+    }
+
     public function test_it_seeds_no_super_admin(): void
     {
         $this->assertSame(0, User::where('role', User::ROLE_SUPER_ADMIN)->count());

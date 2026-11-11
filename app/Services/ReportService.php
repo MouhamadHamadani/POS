@@ -103,6 +103,28 @@ class ReportService
     }
 
     /**
+     * Debt collected in the range, by method: customers paying down what they owe on past sales. These are
+     * collections, not revenue (a credit sale counted as revenue the day it was made), so they sit in their own
+     * section and never in dailySales(), the payment-method breakdown or the P&L. Voided payments and
+     * write-offs are left out; the date is the day the money was received.
+     *
+     * @return array{rows: list<array{method:string,count:int,usd:float}>, total: float}
+     */
+    public function debtCollected(Carbon $from, Carbon $to): array
+    {
+        $rows = \App\Models\CustomerPayment::query()
+            ->where('kind', \App\Models\CustomerPayment::KIND_PAYMENT)->whereNull('voided_at')
+            ->whereBetween('paid_at', [$from, $to])
+            ->groupBy('method')->orderBy('method')
+            ->selectRaw('method, COUNT(*) AS n, SUM(amount_usd) AS usd')
+            ->get()
+            ->map(fn ($r) => ['method' => $r->method, 'count' => (int) $r->n, 'usd' => round((float) $r->usd, 4)])
+            ->all();
+
+        return ['rows' => $rows, 'total' => round(array_sum(array_column($rows, 'usd')), 4)];
+    }
+
+    /**
      * Sales by product (top-sellers + low-sellers).
      */
     public function salesByProduct(Carbon $from, Carbon $to, int $limit = 100): array
