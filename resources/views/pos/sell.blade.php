@@ -134,7 +134,15 @@
                                         <span class="uppercase tracking-wide" x-text="t(customer?.customer_group)"></span>
                                         <span x-show="Number(customer?.balance) > 0" class="text-red-600 font-medium"
                                               x-text="t('owes', { amount: '$' + Number(customer?.balance).toFixed(2) })"></span>
+                                        @feature('customer_credit')
+                                        <span x-show="Number(customer?.overdue_usd) > 0" class="px-1.5 rounded bg-red-600 text-white text-[0.625rem] uppercase tracking-wide"
+                                              :title="t('overdue_amount', { amount: '$' + Number(customer?.overdue_usd).toFixed(2) })" x-text="t('overdue')"></span>
+                                        @endfeature
                                     </div>
+                                    @feature('customer_credit')
+                                    <div x-show="Number(customer?.credit_limit) > 0" class="text-[0.6875rem] text-gray-500"
+                                         x-text="t('limit_available', { limit: '$' + Number(customer?.credit_limit).toFixed(2), available: '$' + creditAvailable().toFixed(2) })"></div>
+                                    @endfeature
                                 </div>
                                 <button type="button" @click="openCustomerModal()"
                                         class="text-xs text-brand-700 hover:underline shrink-0">{{ __('pos.ui.change_customer') }}</button>
@@ -231,8 +239,9 @@
             </div>
 
             {{-- Customer picker: typeahead over existing customers, plus inline quick-add --}}
+            {{-- z-[55]: it can be opened from inside the payment modal (z-50, later in the page) to name the customer an on-account amount goes to. --}}
             <div x-show="showCustomerModal" x-cloak @keydown.escape.window="showCustomerModal=false"
-                 class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                 class="fixed inset-0 z-[55] bg-black/50 flex items-center justify-center p-4">
                 <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-lg font-bold">{{ __('pos.ui.customer') }}</h3>
@@ -259,6 +268,9 @@
                                             <span class="uppercase" x-text="t(c.customer_group)"></span>
                                             <span x-show="Number(c.balance) > 0" class="text-red-600"
                                                   x-text="t('owes', { amount: '$' + Number(c.balance).toFixed(2) })"></span>
+                                            @feature('customer_credit')
+                                            <span x-show="Number(c.overdue_usd) > 0" class="px-1.5 rounded bg-red-600 text-white text-[0.625rem] uppercase" x-text="t('overdue')"></span>
+                                            @endfeature
                                         </div>
                                     </button>
                                 </template>
@@ -468,8 +480,10 @@
                     <div class="space-y-3 text-sm">
                         {{-- How the customer pays. The buttons only choose which fields are shown (and pre-fill the
                              obvious amounts); what is SENT is the amounts, and the server derives the method. --}}
-                        <div class="grid grid-cols-4 gap-1" role="group" aria-label="{{ __('customers.method') }}">
-                            @foreach (['cash', 'card', 'wish', 'split'] as $mode)
+                        {{-- "On account" (pay later) is only there with the customer_credit feature. --}}
+                        @php $payModes = feature('customer_credit') ? ['cash', 'card', 'wish', 'credit', 'split'] : ['cash', 'card', 'wish', 'split']; @endphp
+                        <div class="grid {{ count($payModes) === 5 ? 'grid-cols-5' : 'grid-cols-4' }} gap-1" role="group" aria-label="{{ __('customers.method') }}">
+                            @foreach ($payModes as $mode)
                                 <button type="button" @click="setPayMode('{{ $mode }}')"
                                         :aria-pressed="payMode === '{{ $mode }}'"
                                         :class="payMode === '{{ $mode }}' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
@@ -534,10 +548,45 @@
                                    class="w-full border-gray-300 rounded text-sm" />
                         </div>
 
+                        @feature('customer_credit')
+                        {{-- On account: the part of the total the customer pays later. A line of the split like any other;
+                             it needs a customer, room under their limit and a due date. --}}
+                        <div x-show="['credit','split'].includes(payMode)">
+                            <label class="block text-xs font-medium text-gray-600">{{ __('pos.ui.credit_amount') }}</label>
+                            <div class="flex gap-1 mt-1">
+                                <input type="number" dir="ltr" step="0.01" min="0" x-model.number="payment.amount_credit" @input="ensureDueDate(); refreshChangePreview()"
+                                       class="flex-1 border-gray-300 rounded text-sm" />
+                                <button type="button" x-show="payMode === 'split'" @click="fillRemaining('amount_credit'); ensureDueDate()"
+                                        class="text-xs px-2 py-1 bg-gray-100 rounded whitespace-nowrap">{{ __('pos.ui.fill_remaining') }}</button>
+                            </div>
+                        </div>
+
+                        <div x-show="creditUsd() > 0" x-cloak class="border border-amber-300 bg-amber-50 rounded p-2 text-xs space-y-2">
+                            <div x-show="!customer" class="flex items-center justify-between gap-2">
+                                <span class="text-red-600 font-medium" x-text="t('credit_needs_customer')"></span>
+                                <button type="button" @click="openCustomerModal()" class="px-2 py-1 bg-brand-600 text-white rounded whitespace-nowrap">{{ __('pos.ui.add_customer') }}</button>
+                            </div>
+                            <div x-show="customer" class="space-y-1">
+                                <div class="font-medium" x-text="customer?.name"></div>
+                                <div class="flex justify-between"><span>{{ __('pos.ui.credit_balance') }}</span><span><x-ltr>$<span x-text="Number(customer?.balance || 0).toFixed(2)"></span></x-ltr></span></div>
+                                <div class="flex justify-between"><span>{{ __('pos.ui.credit_limit') }}</span><span><x-ltr>$<span x-text="Number(customer?.credit_limit || 0).toFixed(2)"></span></x-ltr></span></div>
+                                <div class="flex justify-between"><span>{{ __('pos.ui.credit_available') }}</span><span><x-ltr>$<span x-text="creditAvailable().toFixed(2)"></span></x-ltr></span></div>
+                                <div x-show="creditExceeds()" class="text-red-600" x-text="t('credit_exceeds', { amount: '$' + creditAvailable().toFixed(2) })"></div>
+                            </div>
+                            <div>
+                                <label class="block font-medium text-gray-600">{{ __('pos.ui.due_date') }}</label>
+                                <input type="date" dir="ltr" x-model="payment.due_date" :min="todayStr()" @input="dueTouched = true"
+                                       class="w-full border-gray-300 rounded text-sm mt-1" />
+                                <div x-show="creditDueInvalid()" class="text-red-600 mt-1" x-text="t('due_past')"></div>
+                            </div>
+                        </div>
+                        @endfeature
+
                         {{-- Total / Paid so far / Remaining (or the change owed). --}}
                         <div class="bg-gray-50 p-2 rounded text-xs space-y-1">
                             <div class="flex justify-between"><span>{{ __('pos.ui.total_due') }}</span><span><x-ltr>$<span x-text="totals.total.toFixed(2)"></span></x-ltr></span></div>
-                            <div class="flex justify-between"><span>{{ __('pos.ui.paid_so_far') }}</span><span><x-ltr>$<span x-text="tenderedUsd().toFixed(2)"></span></x-ltr></span></div>
+                            <div class="flex justify-between"><span x-text="creditUsd() > 0 ? t('paid_now') : t('paid_so_far')"></span><span><x-ltr>$<span x-text="(tenderedUsd() - creditUsd()).toFixed(2)"></span></x-ltr></span></div>
+                            <div x-show="creditUsd() > 0" x-cloak class="flex justify-between text-amber-700"><span x-text="t('on_account')"></span><span><x-ltr>$<span x-text="creditUsd().toFixed(2)"></span></x-ltr></span></div>
                             <div class="flex justify-between font-semibold" :class="changeUsd() >= -paySlack && !noncashExceeds() ? 'text-green-700' : 'text-red-600'">
                                 <span x-text="changeUsd() > paySlack && !noncashExceeds() ? t('change_owed') : t('remaining')"></span>
                                 <span><x-ltr>$<span x-text="(changeUsd() > paySlack && !noncashExceeds() ? changeUsd() : remainingUsd()).toFixed(2)"></span></x-ltr></span>
@@ -618,6 +667,12 @@
                     <template x-if="lastSale && Number(lastSale.change_usd) > 0">
                         <div class="text-sm text-gray-700 mt-2">{{ __('pos.ui.change') }}: <x-ltr>$<span x-text="Number(lastSale.change_usd).toFixed(2)"></span></x-ltr></div>
                     </template>
+                    <template x-if="lastSale && Number(lastSale.amount_credit_usd) > 0">
+                        <div class="text-sm text-amber-700 mt-2">
+                            {{ __('pos.ui.on_account') }}: <x-ltr>$<span x-text="Number(lastSale.amount_credit_usd).toFixed(2)"></span></x-ltr>
+                            · {{ __('pos.ui.due_date') }}: <x-ltr><span x-text="String(lastSale.due_date || '').slice(0, 10)"></span></x-ltr>
+                        </div>
+                    </template>
                     <div class="mt-4 space-y-2">
                         <p x-show="receiptFormat === 'ask'" class="text-sm font-medium text-gray-700">{{ __('pos.ui.choose_format') }}</p>
                         <div class="flex gap-2">
@@ -689,8 +744,10 @@
                 errorMsg: '',
                 lastSale: null,
                 // Flat, one slot per kind of money. `method` is gone: the server derives it from the amounts.
-                payment: { amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', amount_wish: 0, wish_reference: '', change_usd_out: null },
-                payMode: 'cash',            // cash | card | wish | split: which fields are shown, nothing more
+                payment: { amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', amount_wish: 0, wish_reference: '', amount_credit: 0, due_date: '', change_usd_out: null },
+                dueTouched: false,          // the cashier picked a due date themselves: stop re-defaulting it
+                defaultCreditDays: {{ (int) $defaultCreditDays }}, // Settings > POS; a customer's own payment_terms_days wins
+                payMode: 'cash',            // cash | card | wish | credit | split: which fields are shown, nothing more
                 // Half a cent (+0.0001): the till shows totals rounded to cents, so a payment that close is the total.
                 // Same number as SaleService::PAY_TOLERANCE; PaymentModalParityTest keeps the two in step.
                 paySlack: 0.0051,
@@ -804,6 +861,7 @@
                     this.customer = c;
                     this.showCustomerModal = false;
                     this.applyTier(c.customer_group); // the customer's group picks the price list
+                    this.ensureDueDate();             // a customer's own credit terms change the default due date
                 },
 
                 removeCustomer() {
@@ -1429,7 +1487,8 @@
 
                 openPayment() {
                     if (!this.cart.length || this.issues.length) return;
-                    this.payment = { amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', amount_wish: 0, wish_reference: '', change_usd_out: null };
+                    this.payment = { amount_usd: 0, amount_lbp: 0, amount_card: 0, card_type: 'Visa', card_reference: '', amount_wish: 0, wish_reference: '', amount_credit: 0, due_date: '', change_usd_out: null };
+                    this.dueTouched = false;
                     this.payMode = 'cash';
                     this.changePreview = null;
                     this.errorMsg = '';
@@ -1443,12 +1502,16 @@
                     const total = Number(this.totals.total.toFixed(2));
                     this.payMode = mode;
                     if (mode === 'cash') {
-                        Object.assign(this.payment, { amount_card: 0, amount_wish: 0, card_reference: '', wish_reference: '' });
+                        Object.assign(this.payment, { amount_card: 0, amount_wish: 0, amount_credit: 0, card_reference: '', wish_reference: '' });
                         this.$nextTick(() => this.$refs.cashUsd?.focus());
                     } else if (mode === 'card') {
-                        Object.assign(this.payment, { amount_usd: 0, amount_lbp: 0, amount_wish: 0, wish_reference: '', change_usd_out: null, amount_card: total });
+                        Object.assign(this.payment, { amount_usd: 0, amount_lbp: 0, amount_wish: 0, amount_credit: 0, wish_reference: '', change_usd_out: null, amount_card: total });
                     } else if (mode === 'wish') {
-                        Object.assign(this.payment, { amount_usd: 0, amount_lbp: 0, amount_card: 0, card_reference: '', change_usd_out: null, amount_wish: total });
+                        Object.assign(this.payment, { amount_usd: 0, amount_lbp: 0, amount_card: 0, amount_credit: 0, card_reference: '', change_usd_out: null, amount_wish: total });
+                    } else if (mode === 'credit') {
+                        // Pay later: the whole total goes on the customer's tab.
+                        Object.assign(this.payment, { amount_usd: 0, amount_lbp: 0, amount_card: 0, amount_wish: 0, card_reference: '', wish_reference: '', change_usd_out: null, amount_credit: total });
+                        this.ensureDueDate();
                     }
                     this.refreshChangePreview();
                 },
@@ -1461,9 +1524,9 @@
                 cashTenderedUsd() {
                     return (this.payment.amount_usd || 0) + (this.payment.amount_lbp || 0) / this.exchangeRate;
                 },
-                // Card and Wish are money that moved elsewhere: they can fill the total but never exceed it.
+                // Card, Wish and on-account are money that moved elsewhere: they can fill the total but never exceed it.
                 nonCashUsd() {
-                    return (this.payment.amount_card || 0) + (this.payment.amount_wish || 0);
+                    return (this.payment.amount_card || 0) + (this.payment.amount_wish || 0) + (this.payment.amount_credit || 0);
                 },
                 noncashExceeds() { return this.nonCashUsd() > this.totals.total + this.paySlack; },
                 // What is left for cash to cover; never negative (this is what the change preview works from).
@@ -1472,8 +1535,31 @@
                 cashNotNeeded() { return this.cashDueUsd() <= this.paySlack && this.cashTenderedUsd() > 0; },
                 remainingUsd() { return Math.max(0, this.totals.total - this.tenderedUsd()); },
                 changeUsd() { return this.tenderedUsd() - this.totals.total; },
+                // The debt book's rules, the server's too (SaleService): on account needs a customer, room under their
+                // limit (what they already owe counts; half a cent of slack) and a due date that is not in the past.
+                creditUsd() { return this.payment.amount_credit || 0; },
+                creditRoom() { return Number(this.customer?.credit_limit || 0) - Number(this.customer?.balance || 0); },
+                creditAvailable() { return Math.max(0, this.creditRoom()); },
+                creditNeedsCustomer() { return this.creditUsd() > 0 && !this.customer; },
+                creditExceeds() { return this.creditUsd() > 0 && !!this.customer && this.creditUsd() > this.creditRoom() + 0.005; },
+                creditDueInvalid() { return this.creditUsd() > 0 && !!this.payment.due_date && this.payment.due_date < this.todayStr(); },
                 canComplete() {
-                    return !this.processing && this.changeUsd() >= -this.paySlack && !this.noncashExceeds() && !this.cashNotNeeded();
+                    return !this.processing && this.changeUsd() >= -this.paySlack && !this.noncashExceeds() && !this.cashNotNeeded()
+                        && !this.creditNeedsCustomer() && !this.creditExceeds() && !this.creditDueInvalid();
+                },
+
+                // Local dates as YYYY-MM-DD (never toISOString: that is UTC and can be yesterday).
+                todayStr() { return this.dateStr(0); },
+                dateStr(addDays) {
+                    const d = new Date();
+                    d.setDate(d.getDate() + addDays);
+                    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                },
+                // The due date a credit sale starts with: today + the customer's own terms, else the store default.
+                ensureDueDate() {
+                    if (this.creditUsd() > 0 && (!this.payment.due_date || !this.dueTouched)) {
+                        this.payment.due_date = this.dateStr(Number(this.customer?.payment_terms_days ?? this.defaultCreditDays));
+                    }
                 },
 
                 // Set a card / Wish row to whatever the other rows leave uncovered (0 if they already cover it).
@@ -1526,6 +1612,8 @@
                     if (this.processing) return;
                     this.processing = true;
                     this.errorMsg = '';
+                    // A due date only travels with an on-account amount (a stale one must not fail a cash sale).
+                    this.payment.due_date = this.creditUsd() > 0 ? (this.payment.due_date || null) : null;
                     try {
                         const res = await fetch('/pos/api/sales', {
                             method: 'POST',

@@ -78,7 +78,8 @@ class Sale extends Model
         'amount_tendered_lbp' => 'decimal:2',
         'amount_card_usd' => 'decimal:4',
         'amount_credit_usd' => 'decimal:4',
-        'due_date' => 'date',
+        // 'Y-m-d' in JSON too: a plain date must not turn into a UTC timestamp that reads as the day before.
+        'due_date' => 'date:Y-m-d',
         'customer_balance_after_usd' => 'decimal:4',
         'change_usd' => 'decimal:4',
         'change_lbp' => 'decimal:2',

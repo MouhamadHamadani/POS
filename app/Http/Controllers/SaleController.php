@@ -109,11 +109,14 @@ class SaleController extends Controller
 
             return response()->json([
                 'success' => true,
-                'sale' => $sale->only([
+                'sale' => array_merge($sale->only([
                     'id', 'receipt_number', 'price_tier', 'channel', 'channel_source', 'subtotal_usd', 'discount_amount_usd', 'cart_discount_usd',
                     'tax_amount_usd', 'total_usd', 'total_lbp',
                     'change_usd', 'change_lbp', 'payment_method',
-                    'loyalty_points_earned', 'amount_credit_usd', 'due_date', 'customer_balance_after_usd',
+                    'loyalty_points_earned', 'amount_credit_usd', 'customer_balance_after_usd',
+                ]), [
+                    // A plain date, not a timestamp: json-encoded, a Carbon becomes UTC and reads as the day before.
+                    'due_date' => $sale->due_date?->toDateString(),
                 ]),
                 'items' => $sale->items,
             ], 201);
