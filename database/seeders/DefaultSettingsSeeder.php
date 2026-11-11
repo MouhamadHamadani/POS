@@ -33,6 +33,9 @@ class DefaultSettingsSeeder extends Seeder
             ['pos', 'idle_timeout_min', '30', 'int'],
             ['pos', 'pos_display_cost', '0', 'bool'],
             ['pos', 'require_customer_credit', '1', 'bool'],
+            // debt book: days a credit sale is due after, and whether a credit receipt prints the balance owed
+            ['pos', 'default_credit_days', '30', 'int'],
+            ['pos', 'show_balance_on_receipt', '1', 'bool'],
 
             // receipt
             ['receipt', 'receipt_width', '80', 'int'],
@@ -54,6 +57,8 @@ class DefaultSettingsSeeder extends Seeder
             ['numbering', 'po_counter', '0', 'int'],
             ['numbering', 'return_prefix', 'RTN-' . date('Y') . '-', 'string'],
             ['numbering', 'return_counter', '0', 'int'],
+            ['numbering', 'payment_prefix', 'PAY-' . date('Y') . '-', 'string'],
+            ['numbering', 'payment_counter', '0', 'int'],
 
             // loyalty
             ['loyalty', 'points_per_dollar', '1', 'float'],

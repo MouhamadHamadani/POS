@@ -122,7 +122,7 @@ class CustomerPickerTest extends TestCase
 
         $this->sellTo($customer, ['method' => 'credit', 'amount_credit' => 11.10])
             ->assertStatus(422)
-            ->assertJsonPath('error.customer.0', 'Customer credit limit exceeded.');
+            ->assertJsonPath('error.customer.0', 'Customer credit limit exceeded. Limit $5.00, available $5.00.');
 
         $this->assertSame(0, Sale::count());
         $this->assertEqualsWithDelta(0.0, (float) $customer->fresh()->balance, 0.0001);

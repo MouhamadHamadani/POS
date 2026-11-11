@@ -566,8 +566,9 @@ class FakeDataSeeder extends Seeder
         $all = $fresh->items->every(fn ($i) => (float) $i->returned_qty >= (float) $i->qty - 0.0001);
         $fresh->update(['status' => $all ? Sale::STATUS_REFUNDED : Sale::STATUS_PARTIAL_REFUND]);
 
+        // The debt book is the only writer of customers.balance.
         if ($method === 'account' && $sale->customer) {
-            $sale->customer->decrement('balance', $refund);
+            app(\App\Services\CustomerLedgerService::class)->applyReturnCredit($return);
         }
 
         $return->update(['status' => ReturnTransaction::STATUS_COMPLETED]);

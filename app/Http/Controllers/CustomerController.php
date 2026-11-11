@@ -125,6 +125,7 @@ class CustomerController extends Controller
                 })
                 ->limit(10)
                 ->get(Customer::POS_COLUMNS)
+                ->map(fn (Customer $c) => $c->posSummary())
         );
     }
 

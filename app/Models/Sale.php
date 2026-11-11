@@ -58,7 +58,7 @@ class Sale extends Model
         'total_usd', 'total_lbp', 'exchange_rate',
         'payment_method',
         'amount_tendered_usd', 'amount_tendered_lbp',
-        'amount_card_usd', 'amount_credit_usd',
+        'amount_card_usd', 'amount_credit_usd', 'due_date', 'customer_balance_after_usd',
         'change_usd', 'change_lbp',
         'loyalty_points_earned', 'loyalty_points_redeemed',
         'card_type', 'card_reference',
@@ -78,6 +78,8 @@ class Sale extends Model
         'amount_tendered_lbp' => 'decimal:2',
         'amount_card_usd' => 'decimal:4',
         'amount_credit_usd' => 'decimal:4',
+        'due_date' => 'date',
+        'customer_balance_after_usd' => 'decimal:4',
         'change_usd' => 'decimal:4',
         'change_lbp' => 'decimal:2',
         'is_synced' => 'boolean',
@@ -112,6 +114,12 @@ class Sale extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(SalePayment::class);
+    }
+
+    /** The debt book's lines for this receipt (credit, repayments applied to it, reversals). */
+    public function ledgerEntries(): HasMany
+    {
+        return $this->hasMany(CustomerLedgerEntry::class);
     }
 
     /**

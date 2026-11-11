@@ -52,7 +52,7 @@ class FakeDataModeTest extends TestCase
     private const BUSINESS_TABLES = [
         'products', 'product_variants', 'categories', 'customers', 'suppliers', 'purchase_orders', 'purchase_order_items', 'shifts', 'sales',
         'sale_items', 'sale_payments', 'returns', 'return_items', 'expenses', 'recurring_expenses', 'cash_movements', 'held_sales',
-        'inventory_adjustments', 'loyalty_transactions',
+        'inventory_adjustments', 'loyalty_transactions', 'customer_payments', 'customer_ledger_entries',
     ];
 
     // --- What it makes ---------------------------------------------------------------------------------------

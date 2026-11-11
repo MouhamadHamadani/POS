@@ -284,8 +284,8 @@ class FeatureServiceTest extends TestCase
         Feature::override('returns', true); // same as the plan again
         $this->assertSame([], $this->storedOverrides());
 
-        Feature::override('loyalty', false);
-        Feature::override('loyalty', null); // follow the plan
+        Feature::override('sales_channels', false);
+        Feature::override('sales_channels', null); // follow the plan
         $this->assertSame([], $this->storedOverrides());
     }
 
@@ -398,7 +398,7 @@ class FeatureServiceTest extends TestCase
 
         $down = Feature::preview('starter');
         $this->assertEqualsCanonicalizing(
-            ['reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'sales_channels', 'receipts.custom_templates'],
+            ['reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'customer_credit', 'sales_channels', 'receipts.custom_templates'],
             $down['off'],
         );
         $this->assertSame([], $down['on']);
