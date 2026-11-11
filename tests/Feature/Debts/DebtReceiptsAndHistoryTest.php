@@ -156,20 +156,25 @@ class DebtReceiptsAndHistoryTest extends DebtBookTestCase
         $this->assertStringContainsString('On account', $all, 'the badge');
         $this->assertStringContainsString('$50.00', $all, 'the outstanding column');
 
+        // The receipt numbers also sit in the search box's placeholder, so look for each sale's own link.
+        $has = fn (string $html, Sale $s) => str_contains($html, '/sales/'.$s->id.'?');
+        $cashSale = Sale::where('receipt_number', $cash)->firstOrFail();
+
         $outstanding = $list(['debt' => 'outstanding']);
         foreach ([$open, $late, $dueToday] as $s) {
-            $this->assertStringContainsString($s->receipt_number, $outstanding);
+            $this->assertTrue($has($outstanding, $s), $s->receipt_number.' still owes');
         }
-        $this->assertStringNotContainsString($paid->receipt_number, $outstanding, 'settled');
-        $this->assertStringNotContainsString($cash, $outstanding, 'not on account');
+        $this->assertFalse($has($outstanding, $paid), 'settled');
+        $this->assertFalse($has($outstanding, $cashSale), 'not on account');
+        $this->assertFalse($has($outstanding, $legacy), 'a sale from before the book has no per-receipt debt');
 
         $overdue = $list(['debt' => 'overdue']);
-        $this->assertStringContainsString($late->receipt_number, $overdue);
-        $this->assertStringNotContainsString($open->receipt_number, $overdue);
-        $this->assertStringNotContainsString($dueToday->receipt_number, $overdue, 'due today is not late');
+        $this->assertTrue($has($overdue, $late));
+        $this->assertFalse($has($overdue, $open));
+        $this->assertFalse($has($overdue, $dueToday), 'due today is not late');
 
         // The legacy sale has no per-receipt debt to show; it is in neither filter and the page still renders.
-        $this->actingAs($this->manager)->get(route('sales.index', ['debt' => 'outstanding', 'q' => 'OLD']))->assertOk()->assertDontSee('OLD-1');
+        $this->actingAs($this->manager)->get(route('sales.index', ['debt' => 'outstanding', 'q' => 'OLD']))->assertOk()->assertDontSee('/sales/'.$legacy->id.'?', false);
         $this->actingAs($this->manager)->get(route('sales.index', ['q' => 'OLD']))->assertOk()->assertSee('OLD-1')->assertSee('On account');
         $this->actingAs($this->manager)->get(route('sales.index', ['debt' => 'nonsense']))->assertSessionHasErrors('debt');
     }
