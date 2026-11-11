@@ -45,10 +45,11 @@
                         {{-- Product grid --}}
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[60vh] overflow-y-auto">
                             <template x-for="p in filtered" :key="p.id">
-                                <button type="button" @click="addToCart(p)"
+                                <button type="button" @click="tapProduct(p)"
                                         :disabled="p.track_stock && p.stock_qty <= 0"
                                         class="p-2 bg-white border rounded-lg hover:bg-brand-50 hover:border-brand-300 text-start disabled:opacity-40 disabled:cursor-not-allowed">
                                     <div class="text-xs font-medium text-gray-900 line-clamp-2" x-text="pname(p)"></div>
+                                    <div x-show="p.variants && p.variants.length" class="inline-block text-[0.625rem] bg-brand-50 text-brand-700 px-1 rounded" x-text="t('has_variants')"></div>
                                     <div class="text-[0.6875rem] text-gray-500 mt-0.5" x-text="p.sku || p.barcode || ''"></div>
                                     <div class="mt-1 text-sm font-bold text-brand-700"><x-ltr>$<span x-text="priceFor(p).toFixed(2)"></span></x-ltr></div>
                                     <div class="text-[0.6875rem] text-gray-500" x-text="t('stock_line', { qty: Number(p.stock_qty).toFixed(0), unit: unitLabel(p.unit) })"></div>
@@ -144,7 +145,7 @@
                         @endfeature
 
                         <div class="divide-y max-h-[40vh] overflow-y-auto">
-                            <template x-for="(line, idx) in cart" :key="line.product_id">
+                            <template x-for="(line, idx) in cart" :key="lineKey(line)">
                                 <div class="p-2 flex items-center gap-2 text-sm" :class="{ 'bg-brand-50': idx === lastScannedIndex }">
                                     <div class="flex-1 min-w-0">
                                         <button type="button" @click="openLineEditor(idx)" :title="t('discount') + ' (F8)'"
@@ -370,6 +371,33 @@
                                 <button type="button" @click="discardHold(h.id)"
                                         class="px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700">{{ __('pos.ui.discard') }}</button>
                             </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Variant chooser: a product with variants asks which item before it is added. 1-9 pick, Enter takes the
+                 first, Esc cancels. The search box is blurred while it is open so scanner digits never land in the
+                 search text, and keys that arrive at scanner speed are ignored (chooserKey). --}}
+            <div x-show="chooser.open" x-cloak @keydown.window="chooserKey($event)"
+                 style="display: none"
+                 class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div role="dialog" :aria-label="t('choose_variant')"
+                     class="bg-white rounded-lg shadow-xl max-w-sm w-full p-5">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="text-lg font-bold" x-text="chooser.product ? pname(chooser.product) : ''"></h3>
+                        <button type="button" @click="closeChooser()" class="text-gray-400 hover:text-gray-700 text-xl">&times;</button>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3" x-text="t('chooser_hint')"></p>
+                    <div class="space-y-1">
+                        <template x-for="(it, n) in chooser.items" :key="n">
+                            <button type="button" @click="pickItem(it)"
+                                    :disabled="chooser.product && chooser.product.track_stock && it.stock <= 0"
+                                    class="w-full flex items-center gap-2 px-3 py-2 border rounded text-start text-sm hover:bg-brand-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                                <span class="w-5 text-xs text-gray-400" dir="ltr" x-text="n < 9 ? (n + 1) : ''"></span>
+                                <span class="flex-1 min-w-0 truncate" x-text="it.name"></span>
+                                <span class="text-xs text-gray-500" x-text="t('stock_line', { qty: Number(it.stock).toFixed(0), unit: unitLabel(chooser.product?.unit) })"></span>
+                            </button>
                         </template>
                     </div>
                 </div>
@@ -638,6 +666,8 @@
                 filtered: [],
                 cart: [],
                 lastScannedIndex: null, // index of the most recently added/touched cart line
+                chooser: { open: false, product: null, items: [] }, // variant chooser (tapProduct)
+                _lastKey: 0, _burstUntil: 0, _chooserTimer: null,
                 customer: null,         // the POS customer shape: {id, name, phone, customer_group, balance, ...}
                 showCustomerModal: false,
                 showNewCustomer: false,
@@ -849,6 +879,7 @@
                             body: JSON.stringify({
                                 cart: this.cart.map(l => ({
                                     product_id: l.product_id,
+                                    product_variant_id: l.variant_id,
                                     qty: l.qty,
                                     discount_pct: l.discount_pct,
                                     discount_amount: l.discount_amount,
@@ -909,12 +940,16 @@
                             ? this.normTier(data.price_tier)
                             : this.normTier(this.customer?.customer_group);
                         const cart = [];
+                        const dropped = [...(data.dropped || [])]; // the server already left out deleted / inactive variants
                         for (const line of data.cart || []) {
                             const p = this.allProducts.find(pp => pp.id === line.product_id);
                             if (!p) continue;
-                            cart.push(this.makeLine(p, Number(line.qty), line));
+                            const v = line.product_variant_id ? (p.variants || []).find(x => x.id === line.product_variant_id) : null;
+                            if (line.product_variant_id && !v) { dropped.push(this.pname(p)); continue; } // not on this till's list any more
+                            cart.push(this.makeLine(p, Number(line.qty), line, v));
                         }
                         this.cart = cart;
+                        if (dropped.length) this.errorMsg = this.t('recall_dropped', { names: dropped.join(', ') });
                         this.cartDiscount = data.cart_discount
                             ? { type: data.cart_discount.type, value: Number(data.cart_discount.value) }
                             : { type: 'pct', value: 0 };
@@ -947,7 +982,8 @@
                         return (p.name || '').toLowerCase().includes(s)
                             || (p.name_ar || '').includes(this.search)
                             || (p.sku || '').toLowerCase().includes(s)
-                            || (p.barcode || '') === s;
+                            || (p.barcode || '') === s
+                            || (p.variants || []).some(v => v.barcode === s || (v.label || '').toLowerCase().includes(s) || (v.label_ar || '').includes(this.search));
                     });
                 },
 
@@ -964,44 +1000,115 @@
                     if (/^\d{1,4}$/.test(raw)
                         && this.lastScannedIndex !== null
                         && this.cart[this.lastScannedIndex]
-                        && !this.allProducts.some(p => p.barcode === raw)) {
+                        && !this.findByCode(raw)) {
                         this.setQty(this.lastScannedIndex, parseInt(raw, 10));
                         this.search = '';
                         this.filter();
                         return;
                     }
 
-                    const hit = this.allProducts.find(p => p.barcode === raw);
-                    if (hit) { this.addToCart(hit); this.search = ''; this.filter(); return; }
+                    const hit = this.findByCode(raw);
+                    if (hit) { this.addToCart(hit.p, hit.v); this.search = ''; this.filter(); return; }
+                    // Not on the loaded list (added since the page opened, or an inactive variant): the server decides.
                     fetch(`/pos/api/barcode?code=${encodeURIComponent(raw)}`, { headers: { Accept: 'application/json' }})
-                        .then(r => r.ok ? r.json() : Promise.reject())
-                        .then(p => { this.addToCart(p); this.search = ''; this.filter(); })
-                        .catch(() => {
-                            this.errorMsg = this.t('barcode_not_found', { code: raw });
+                        .then(async r => { if (r.ok) return r.json(); throw await r.json().catch(() => ({})); })
+                        .then(p => {
+                            const v = p.variant_id ? (p.variants || []).find(x => x.id === p.variant_id) : null;
+                            this.addToCart(p, v); this.search = ''; this.filter();
+                        })
+                        .catch(err => {
+                            this.errorMsg = err && typeof err.error === 'string' && err.error !== '' && !/not found/i.test(err.error)
+                                ? err.error : this.t('barcode_not_found', { code: raw });
                             setTimeout(() => { this.errorMsg = ''; }, 3000);
                             this.search = '';
                         });
                 },
 
-                addToCart(p) {
-                    if (p.track_stock && p.stock_qty <= 0) {
-                        this.errorMsg = this.t('out_of_stock', { name: this.pname(p) });
+                // A product's own barcode or one of its active variants' barcodes, from the list the till already holds.
+                findByCode(code) {
+                    for (const p of this.allProducts) {
+                        if (p.barcode === code) return { p, v: null };
+                        const v = (p.variants || []).find(x => x.barcode === code);
+                        if (v) return { p, v };
+                    }
+                    return null;
+                },
+
+                lineKey(l) { return l.product_id + ':' + (l.variant_id ?? 0); },
+                sameItem(l, p, v) { return l.product_id === p.id && (l.variant_id ?? null) === (v ? v.id : null); },
+
+                // Tapping a tile: a product with variants asks which item; the rest are added as ever.
+                tapProduct(p) {
+                    if (!p.variants || !p.variants.length) { this.addToCart(p); return; }
+                    this.chooser = {
+                        open: true, product: p,
+                        items: [
+                            { v: null, name: this.t('main_item'), stock: Number(p.main_stock ?? p.stock_qty) },
+                            ...p.variants.map(v => ({ v, name: v.display_name, stock: Number(v.stock_qty) })),
+                        ],
+                    };
+                    // Drop focus from the search box (and the tile just tapped): digits typed or scanned from now on
+                    // reach chooserKey() through the window listener, never the search text.
+                    document.activeElement?.blur?.();
+                },
+
+                closeChooser() {
+                    clearTimeout(this._chooserTimer);
+                    this.chooser.open = false;
+                    // Scanning goes straight on: focus back to the search box.
+                    this.$nextTick(() => this.$refs.search?.focus());
+                },
+
+                pickItem(it) {
+                    const p = this.chooser.product;
+                    if (!p || (p.track_stock && it.stock <= 0)) return;
+                    this.closeChooser();
+                    this.addToCart(p, it.v);
+                },
+
+                // 1-9 pick an item, Enter the first, Esc cancels. A barcode scanner types digits and Enter at machine
+                // speed: any key that follows another within 40 ms marks a burst and is ignored, and a lone digit or
+                // Enter only acts after 60 ms of quiet, so the first digit of a scan cannot pick an item either.
+                chooserKey(e) {
+                    if (!this.chooser.open) return;
+                    const now = performance.now();
+                    if (now - this._lastKey < 40) this._burstUntil = now + 400;
+                    this._lastKey = now;
+                    clearTimeout(this._chooserTimer);
+
+                    if (e.key === 'Escape') { e.preventDefault(); this.closeChooser(); return; }
+                    if (now < this._burstUntil) { e.preventDefault(); return; }
+                    const n = /^[1-9]$/.test(e.key) ? Number(e.key) - 1 : (e.key === 'Enter' ? 0 : -1);
+                    if (n < 0) return;
+                    e.preventDefault();
+                    this._chooserTimer = setTimeout(() => {
+                        if (this.chooser.open && this.chooser.items[n]) this.pickItem(this.chooser.items[n]);
+                    }, 60);
+                },
+
+                // `v` is the variant scanned or picked (null = the product's main item). A cart line is a product plus
+                // a variant: the same variant again adds to its line, another variant is a line of its own.
+                addToCart(p, v = null) {
+                    const stock = v ? Number(v.stock_qty) : Number(p.main_stock ?? p.stock_qty);
+                    const name = v ? v.display_name : this.pname(p);
+                    if (p.track_stock && stock <= 0) {
+                        this.errorMsg = this.t('out_of_stock', { name });
                         setTimeout(() => { this.errorMsg = ''; }, 2500);
                         return;
                     }
-                    const existing = this.cart.find(l => l.product_id === p.id);
+                    const existing = this.cart.find(l => this.sameItem(l, p, v));
                     if (existing) {
                         if (!this.canAdd(existing, 1)) {
-                            this.errorMsg = this.t('only_in_stock', { qty: p.stock_qty, unit: this.unitLabel(p.unit), name: this.pname(p) });
+                            this.errorMsg = this.t('only_in_stock', { qty: stock, unit: this.unitLabel(p.unit), name });
                             setTimeout(() => { this.errorMsg = ''; }, 2500);
                             return;
                         }
                         existing.qty += 1;
                     } else {
-                        this.cart.push(this.makeLine(p));
+                        this.cart.push(this.makeLine(p, 1, {}, v));
                     }
                     this.recompute();
-                    this.lastScannedIndex = this.cart.findIndex(l => l.product_id === p.id);
+                    this.lastScannedIndex = this.cart.findIndex(l => this.sameItem(l, p, v));
                 },
 
                 // --- price lists -------------------------------------------------
@@ -1035,10 +1142,10 @@
                 },
 
                 // The one place a cart line is built (add, recall) so both price and discount rules stay together.
-                makeLine(p, qty = 1, saved = {}) {
+                makeLine(p, qty = 1, saved = {}, v = null) {
                     const tp = this.tierPrices(p);
                     return {
-                        product_id: p.id, name: this.pname(p),
+                        product_id: p.id, variant_id: v ? v.id : null, name: v ? v.display_name : this.pname(p),
                         unit_price: tp[this.priceTier], retail_price: tp.retail, tier_prices: tp,
                         qty,
                         discount_pct: Number(saved.discount_pct || 0),
@@ -1048,7 +1155,7 @@
                         tax_rate: p.tax ? Number(p.tax.rate) : 0, is_taxable: !!p.is_taxable,
                         tax_inclusive: p.tax ? !!p.tax.is_inclusive : false,
                         track_stock: !!p.track_stock,
-                        stock_available: Number(p.stock_qty),
+                        stock_available: v ? Number(v.stock_qty) : Number(p.main_stock ?? p.stock_qty),
                         unit: p.unit || 'pcs',
                         note: saved.note || null,
                     };
@@ -1431,6 +1538,7 @@
                                 // No prices: the server prices every line from the product and price list.
                                 cart: this.cart.map(l => ({
                                     product_id: l.product_id,
+                                    product_variant_id: l.variant_id,
                                     qty: l.qty,
                                     discount_pct: l.discount_pct,
                                     discount_amount: l.discount_amount,
@@ -1457,7 +1565,13 @@
                         // decrement local stock so UI reflects reality without refresh
                         for (const item of data.items || []) {
                             const p = this.allProducts.find(pp => pp.id === item.product_id);
-                            if (p && p.track_stock) p.stock_qty = Number(p.stock_qty) - Number(item.qty);
+                            if (p && p.track_stock) {
+                                p.stock_qty = Number(p.stock_qty) - Number(item.qty);
+                                // The total moved either way; the item that sold moved with it.
+                                const v = item.product_variant_id ? (p.variants || []).find(x => x.id === item.product_variant_id) : null;
+                                if (v) v.stock_qty = Number(v.stock_qty) - Number(item.qty);
+                                else p.main_stock = Number(p.main_stock ?? p.stock_qty) - Number(item.qty);
+                            }
                         }
                         this.filter();
                         // "Ask" prints nothing until the cashier picks a format on the panel.

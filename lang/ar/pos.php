@@ -144,6 +144,11 @@ return [
         'out_of_stock' => '«:name» نفد من المخزون.',
         'only_in_stock' => 'يوجد فقط :qty :unit من «:name» في المخزون.',
         'confirm_clear_cart' => 'تفريغ السلة؟',
+        'has_variants' => 'أنواع',
+        'choose_variant' => 'أيّ نوع؟',
+        'chooser_hint' => 'اضغط رقماً للاختيار، أو Enter لاختيار الأول، أو Esc للإلغاء.',
+        'main_item' => 'المنتج الأساسي',
+        'recall_dropped' => 'لم يعد متاحاً وتم استبعاده من السلة: :names',
         'lbp' => 'ل.ل.',
     ],
 ];

@@ -144,6 +144,11 @@ return [
         'out_of_stock' => '":name" is out of stock.',
         'only_in_stock' => 'Only :qty :unit of ":name" in stock.',
         'confirm_clear_cart' => 'Clear cart?',
+        'has_variants' => 'Variants',
+        'choose_variant' => 'Which one?',
+        'chooser_hint' => 'Press a number to pick, Enter for the first, Esc to cancel.',
+        'main_item' => 'Main item',
+        'recall_dropped' => 'Not available any more, left out of the cart: :names',
         'lbp' => 'LBP',
     ],
 ];

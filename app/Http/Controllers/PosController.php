@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Services\BarcodeService;
 use App\Services\ReceiptPrintService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,10 +34,15 @@ class PosController extends Controller
             $columns[] = 'cost_usd';
         }
 
-        $products = Product::with('tax:id,rate,is_inclusive')
+        // select() first: withSum() would otherwise turn the column list into products.* and ship cost to a cashier.
+        $products = Product::select($columns)
+            ->with(['tax:id,rate,is_inclusive', 'variants' => fn ($q) => $q->where('is_active', true)->orderBy('id')
+                ->select('id', 'product_id', 'barcode', 'label', 'label_ar', 'stock_qty')])
+            ->withSum('variants as variants_stock', 'stock_qty') // every variant, active or not: the main item is what they leave
             ->where('is_active', true)
             ->orderBy('name')
-            ->get($columns);
+            ->get()
+            ->each(fn (Product $p) => $this->forTill($p));
 
         $exchangeRate = (float) Setting::get('exchange_rate', 90000);
         $lbpStep = (float) Setting::get('lbp_rounding_step', 1000);
@@ -107,20 +113,43 @@ class PosController extends Controller
         ]);
     }
 
-    public function lookupBarcode(Request $request): JsonResponse
+    /**
+     * A scanned code: a product's own barcode or one of its variants' (BarcodeService is the one namespace).
+     * Answers with the product, its active variants and, for a variant code, `variant_id` of the one scanned.
+     */
+    public function lookupBarcode(Request $request, BarcodeService $barcodes): JsonResponse
     {
         $code = trim((string) $request->query('code'));
         if (!$code) {
             return response()->json(['error' => __('messages.no_barcode')], 422);
         }
-        $product = Product::with('tax:id,rate,is_inclusive')
-            ->where('barcode', $code)
-            ->where('is_active', true)
-            ->first();
-        if (!$product) {
+
+        $hit = $barcodes->findByBarcode($code);
+        $product = $hit && !$hit['product']->trashed() && $hit['product']->is_active
+            ? Product::with(['tax:id,rate,is_inclusive', 'variants' => fn ($q) => $q->where('is_active', true)->orderBy('id')])
+                ->withSum('variants as variants_stock', 'stock_qty')->find($hit['product']->id)
+            : null;
+        if (!$product || ($hit['variant'] && $hit['variant']->trashed())) {
             return response()->json(['error' => __('messages.product_not_found')], 404);
         }
-        return response()->json($this->hideCostFrom($request, $product));
+        if ($hit['variant'] && !$hit['variant']->is_active) {
+            return response()->json(['error' => __('products.variants.inactive')], 422);
+        }
+
+        $this->forTill($product);
+
+        return response()->json($this->hideCostFrom($request, $product)->setAttribute('variant_id', $hit['variant']?->id));
+    }
+
+    /**
+     * What the till needs of a product beyond its own columns: the main item's own stock (what its variants
+     * leave of the total) and each active variant's display name. Variants carry no price: it is the product's.
+     */
+    private function forTill(Product $p): void
+    {
+        $p->setAttribute('main_stock', round((float) $p->stock_qty - (float) $p->variants_stock, 4));
+        $p->makeHidden('variants_stock');
+        $p->variants->each(fn ($v) => $v->setAttribute('display_name', $v->displayName(product: $p))->makeHidden(['price_modifier', 'attributes']));
     }
 
     /** Cashiers never receive cost data, not even through the lookup endpoints. */
