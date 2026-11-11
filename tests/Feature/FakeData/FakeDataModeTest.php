@@ -50,7 +50,7 @@ class FakeDataModeTest extends TestCase
 
     /** Every table a clean install leaves empty. */
     private const BUSINESS_TABLES = [
-        'products', 'categories', 'customers', 'suppliers', 'purchase_orders', 'purchase_order_items', 'shifts', 'sales',
+        'products', 'product_variants', 'categories', 'customers', 'suppliers', 'purchase_orders', 'purchase_order_items', 'shifts', 'sales',
         'sale_items', 'sale_payments', 'returns', 'return_items', 'expenses', 'recurring_expenses', 'cash_movements', 'held_sales',
         'inventory_adjustments', 'loyalty_transactions',
     ];

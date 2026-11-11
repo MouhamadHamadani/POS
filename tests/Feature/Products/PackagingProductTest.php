@@ -227,14 +227,15 @@ class PackagingProductTest extends TestCase
         $p = $this->tobacco(['barcode' => 'PACK-1', 'carton_barcode' => 'CTN-1']);
         $barcodes = app(BarcodeService::class);
 
-        $this->assertSame('pack', $barcodes->findByBarcode('PACK-1')->barcode_kind);
-        $this->assertSame('carton', $barcodes->findByBarcode('CTN-1')->barcode_kind);
-        $this->assertSame($p->id, $barcodes->findByBarcode('CTN-1')->id);
+        $this->assertSame('product', $barcodes->findByBarcode('PACK-1')['kind']);
+        $this->assertSame('carton', $barcodes->findByBarcode('CTN-1')['kind']);
+        $this->assertSame($p->id, $barcodes->findByBarcode('CTN-1')['product']->id);
         $this->assertNull($barcodes->findByBarcode('CTN-1', $p->id), 'a product does not clash with itself');
         $this->assertNull($barcodes->findByBarcode('NOPE'));
 
         $v = ProductVariant::create(['product_id' => $p->id, 'attributes' => ['x' => 1], 'barcode' => 'VAR-1']);
-        $this->assertSame('variant', $barcodes->findByBarcode('VAR-1')->barcode_kind);
+        $this->assertSame('variant', $barcodes->findByBarcode('VAR-1')['kind']);
+        $this->assertSame($v->id, $barcodes->findByBarcode('VAR-1')['variant']->id);
     }
 
     public function test_the_live_check_and_the_till_lookup_report_a_carton(): void
@@ -246,7 +247,7 @@ class PackagingProductTest extends TestCase
         $this->actingAs($admin)->getJson(route('products.check-barcode', ['barcode' => 'CTN-1']))
             ->assertOk()->assertJson(['exists' => true, 'kind' => 'carton', 'product_id' => $p->id]);
         $this->actingAs($admin)->getJson(route('products.check-barcode', ['barcode' => 'PACK-1']))
-            ->assertOk()->assertJson(['exists' => true, 'kind' => 'pack']);
+            ->assertOk()->assertJson(['exists' => true, 'kind' => 'product']);
 
         $this->actingAs($admin)->getJson(route('pos.api.barcode', ['code' => 'CTN-1']))
             ->assertOk()->assertJson(['id' => $p->id, 'barcode_kind' => 'carton']);

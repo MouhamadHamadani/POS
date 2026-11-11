@@ -10,6 +10,7 @@ use App\Models\Tax;
 use App\Services\BarcodeService;
 use App\Services\InventoryService;
 use App\Services\StockMovementService;
+use App\Services\VariantService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,18 +23,26 @@ class ProductController extends Controller
     public function __construct(
         private readonly BarcodeService $barcodes,
         private readonly InventoryService $inventory,
+        private readonly VariantService $variants,
     ) {}
 
     public function index(Request $request): View
     {
-        $q = Product::with('category:id,name,name_ar', 'tax:id,name,name_ar,rate');
+        $q = Product::with('category:id,name,name_ar', 'tax:id,name,name_ar,rate')
+            ->withCount('variants')
+            ->withSum('variants as variants_stock', 'stock_qty');
 
         if ($s = $request->query('search')) {
             $q->where(function ($w) use ($s) {
                 $w->where('name', 'like', "%{$s}%")
                   ->orWhere('name_ar', 'like', "%{$s}%")
                   ->orWhere('sku', 'like', "%{$s}%")
-                  ->orWhere('barcode', 'like', "%{$s}%");
+                  ->orWhere('barcode', 'like', "%{$s}%")
+                  // A variant's own barcode, SKU or label finds its product too.
+                  ->orWhereHas('variants', fn ($v) => $v->where('barcode', 'like', "%{$s}%")
+                      ->orWhere('sku', 'like', "%{$s}%")
+                      ->orWhere('label', 'like', "%{$s}%")
+                      ->orWhere('label_ar', 'like', "%{$s}%"));
             });
         }
 
@@ -115,14 +124,17 @@ class ProductController extends Controller
         }
 
         $except = $request->query('except');
-        $product = $this->barcodes->findByBarcode($barcode, $except ? (int) $except : null);
+        $exceptVariant = $request->query('except_variant');
+        $hit = $this->barcodes->findByBarcode($barcode, $except ? (int) $except : null, $exceptVariant ? (int) $exceptVariant : null);
 
         return response()->json([
-            'exists' => (bool) $product,
-            'product_name' => $product?->localName(),
-            // Packaging: which code matched, and whose, so the stock screen can jump to the product a carton belongs to.
-            'kind' => $product?->barcode_kind,
-            'product_id' => $product?->id,
+            'exists' => (bool) $hit,
+            // 'product' | 'carton' (packaging builds) | 'variant': which code matched, so the stock screen can tell a
+            // carton from a pack, and jump to the product a carton belongs to.
+            'kind' => $hit['kind'] ?? null,
+            'product_id' => $hit['product']->id ?? null,
+            // A variant's own name reads "Product — Red"; a product's is its name.
+            'product_name' => $hit ? ($hit['variant']?->displayName() ?? $hit['product']->localName()) : null,
         ]);
     }
 
@@ -146,11 +158,15 @@ class ProductController extends Controller
         $opening = (float) ($data['stock_qty'] ?? 0);
         unset($data['stock_qty']);
 
-        $product = DB::transaction(function () use ($data, $opening, $request) {
+        $variantRows = (array) ($data['variants'] ?? []);
+        unset($data['variants']);
+
+        $product = DB::transaction(function () use ($data, $opening, $variantRows, $request) {
             $product = Product::create($data);
             if ($opening != 0.0) {
                 $this->inventory->recordOpening($product, $opening, $request->user()->id);
             }
+            $this->variants->sync($product, $variantRows, $request->user()->id);
 
             return $product;
         });
@@ -182,8 +198,14 @@ class ProductController extends Controller
         // no trace in the movement log — stock only changes through adjustStock().
         unset($data['stock_qty']);
 
+        $variantRows = (array) ($data['variants'] ?? []);
+        unset($data['variants']);
+
         $old = $product->only(array_keys($data));
-        $product->update($data);
+        DB::transaction(function () use ($product, $data, $variantRows, $request) {
+            $product->update($data);
+            $this->variants->sync($product, $variantRows, $request->user()->id);
+        });
 
         AuditLog::record($request->user()->id, 'update', Product::class, $product->id, $old, $data);
 
@@ -205,7 +227,7 @@ class ProductController extends Controller
         // old_barcode/old_sku keep the codes readable on the row itself, for the
         // super-admin-only trashed list. Historical only — no unique index, no
         // validation rule, so they never block a new product reusing the code.
-        DB::transaction(function () use ($product, $oldBarcode, $oldSku) {
+        DB::transaction(function () use ($product, $oldBarcode, $oldSku, $request) {
             $product->barcode = null;
             $product->sku = null;
             $product->carton_barcode = null;
@@ -214,6 +236,9 @@ class ProductController extends Controller
             $product->save();
 
             $product->delete(); // soft delete via SoftDeletes trait
+
+            // Its variants go with it, and their barcodes / SKUs are freed the same way.
+            $this->variants->releaseAllFor($product, $request->user()->id);
         });
 
         AuditLog::record($request->user()->id, 'delete', Product::class, $product->id, [
@@ -232,6 +257,7 @@ class ProductController extends Controller
             'qty' => 'required|numeric|min:0',
             'unit' => ['nullable', \Illuminate\Validation\Rule::in(Product::SALE_UNITS)], // packaging: pack | package | carton
             'reason' => 'required|string|max:255',
+            'variant_id' => 'nullable|integer',
         ]);
 
         // Stock is in packs: a quantity typed in packages or cartons is converted here, and the log says what was typed.
@@ -241,13 +267,24 @@ class ProductController extends Controller
         if ($note = $packaging->receiptNote($product, $unit, $typed, $qty)) {
             $data['reason'] = \Illuminate\Support\Str::limit($data['reason'].' ('.$note.')', 255, '');
         }
+
+        // Blank = the main item. A variant has to be one of this product's.
+        $variant = null;
+        if (! empty($data['variant_id'])) {
+            $variant = $product->variants()->find($data['variant_id']);
+            if (! $variant) {
+                return back()->withErrors(['variant_id' => __('products.variants.err_not_found')]);
+            }
+        }
+
         $before = (float) $product->stock_qty;
+        $itemBefore = $variant ? (float) $variant->stock_qty : null;
 
         try {
             $after = match ($data['action']) {
-                'add' => $this->inventory->adjust($product, $qty, \App\Models\InventoryAdjustment::TYPE_ADD, $request->user()->id, reason: $data['reason']),
-                'remove' => $this->inventory->adjust($product, -$qty, \App\Models\InventoryAdjustment::TYPE_REMOVE, $request->user()->id, reason: $data['reason'], allowNegative: false),
-                'set', 'count' => $this->inventory->setStock($product, $qty, $request->user()->id, $data['reason']),
+                'add' => $this->inventory->adjust($product, $qty, \App\Models\InventoryAdjustment::TYPE_ADD, $request->user()->id, reason: $data['reason'], variant: $variant),
+                'remove' => $this->inventory->adjust($product, -$qty, \App\Models\InventoryAdjustment::TYPE_REMOVE, $request->user()->id, reason: $data['reason'], allowNegative: false, variant: $variant),
+                'set', 'count' => $this->inventory->setStock($product, $qty, $request->user()->id, $data['reason'], $variant),
             };
         } catch (\App\Exceptions\InsufficientStockException $e) {
             return back()->withErrors(['stock' => $e->getMessage()]);
@@ -258,8 +295,9 @@ class ProductController extends Controller
             'stock_adjust',
             Product::class,
             $product->id,
-            ['stock_qty' => $before],
-            ['stock_qty' => $after, 'action' => $data['action'], 'qty' => $qty, 'reason' => $data['reason']],
+            ['stock_qty' => $before] + ($variant ? ['variant_id' => $variant->id, 'variant_qty' => $itemBefore] : []),
+            ['stock_qty' => $after, 'action' => $data['action'], 'qty' => $qty, 'reason' => $data['reason']]
+                + ($variant ? ['variant_id' => $variant->id, 'variant_qty' => (float) $variant->fresh()->stock_qty] : []),
         );
 
         return redirect()->route('products.edit', $product)->with('success', __('messages.stock_adjusted'));

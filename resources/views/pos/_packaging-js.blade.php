@@ -63,7 +63,8 @@ function posPackaging() {
         pkgBase(line, qty) {
             let others = 0;
             for (const l of this.cart) {
-                if (l.product_id === line.product_id && l.sale_unit !== line.sale_unit) others += l.qty * (l.unit_multiplier || 1);
+                // Same item only: a variant has its own count, so another variant's lines do not draw on this one's.
+                if (l.product_id === line.product_id && (l.variant_id ?? null) === (line.variant_id ?? null) && l.sale_unit !== line.sale_unit) others += l.qty * (l.unit_multiplier || 1);
             }
             return qty * (line.unit_multiplier || 1) + others;
         },

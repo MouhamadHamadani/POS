@@ -64,7 +64,7 @@ class ReturnController extends Controller
         if (in_array($sale->status, self::NOT_RETURNABLE, true)) {
             abort(403, __('messages.sale_cannot_return_abort'));
         }
-        $sale->load('items.product:id,name,name_ar,sku,track_stock', 'customer');
+        $sale->load('items.product:id,name,name_ar,sku,track_stock', 'items.variant', 'customer');
         return view('returns.create', compact('sale'));
     }
 
@@ -191,7 +191,7 @@ class ReturnController extends Controller
 
     public function show(ReturnTransaction $return): View
     {
-        $return->load('sale.customer', 'items.product:id,name,name_ar,sku', 'user:id,name', 'approver:id,name');
+        $return->load('sale.customer', 'items.product:id,name,name_ar,sku', 'items.saleItem.product:id,name,name_ar,sku', 'items.saleItem.variant', 'user:id,name', 'approver:id,name');
         return view('returns.show', ['return' => $return]);
     }
 
@@ -264,9 +264,9 @@ class ReturnController extends Controller
             }
 
             if ($ri->restock && $ri->product) {
-                // qty_returned is in the line's sale units (1 package); stock is in packs.
+                // qty_returned is in the line's sale units (1 package); stock is in packs. A variant line is a pack line.
                 $packs = $qty * (float) (SaleItem::whereKey($ri->sale_item_id)->value('unit_multiplier') ?: 1);
-                $this->inventory->restockFromReturn($ri->product, $packs, $return->user_id, $return->id);
+                $this->inventory->restockFromReturn($ri->product, $packs, $return->user_id, $return->id, $ri->saleItem?->variant);
             }
         }
 

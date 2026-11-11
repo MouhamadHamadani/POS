@@ -95,6 +95,27 @@ about this repo being read-only; they no longer apply.)
   the `sales_channels` feature (Standard+): off means the server forces on-site
   (`Sale::resolveChannel`) and the till toggle, History filter and report section are hidden, while
   stored values stay readable.
+- Variants: a product's variants are other barcodes of the SAME product (a colour, a scent): same price,
+  cost, tax and category (all read from the parent; `product_variants.price_modifier` stays 0 and is never
+  read), own barcode, own label (`label` / `label_ar`, `ProductVariant::displayName()`) and own stock. A
+  different price means a separate product. `products.stock_qty` is the TOTAL of the main item plus every
+  variant, `product_variants.stock_qty` is that variant's count, and the main item's count is derived
+  (`Product::mainStockQty()`), never stored, so every product-level report and low-stock check keeps working.
+  Every stock change to a variant goes through `InventoryService` with `variant:` set: it moves both rows in one
+  transaction and writes one movement with `inventory_adjustments.product_variant_id` (`qty_before` / `qty_after`
+  stay the product total). A sale line is `product_id` + `product_variant_id|null`; `SaleService` prices it from
+  the product, checks stock per item (a variant against its own count, the main item against what the variants
+  leave) and snapshots `product_name` as "Product — Label" (English) and `product_sku`. Receipts and return screens
+  read the snapshot (`SaleItem::arabicName()` / `localName()` rebuild the Arabic name); never the live name.
+  Not combinable: bundles, services (and tobacco packaging), either way. PO receiving still adds to the main item.
+- One barcode namespace: `products.barcode` and `product_variants.barcode` (and `carton_barcode` on the tobacco
+  branch) are one pool. `BarcodeService::findByBarcode()` answers `{product, variant, kind}` and every caller uses
+  it (product request, variant rows, bulk import, the `check-barcode` endpoint, the till's scan lookup, the
+  barcode generator). Never `Product::where('barcode', ...)` for a uniqueness check.
+- Releasing codes: deleting a product soft-deletes its variants and frees their barcode / SKU (copied to
+  `old_barcode` / `old_sku`, audited), like the product's own. Deleting a variant is refused while its stock is not
+  zero; otherwise it is soft-deleted (never hard-deleted, past sales point at it) and its codes are freed.
+  Deactivating a variant keeps its barcode and stock and only stops it selling. `old_*` never take part in uniqueness.
 - Fake data mode (`docs/fake-data.md`): `php artisan pos:fake-data` seeds a fake business for
   development and testing; `POS_FAKE_DATA=true` does it on an empty database's first launch; a
   production launch (`APP_ENV=production`) resets a database carrying the `fake_data_seeded` marker

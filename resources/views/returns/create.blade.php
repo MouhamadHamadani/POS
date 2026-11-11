@@ -53,7 +53,7 @@
                                 @if ($canReturn)
                                     <input type="hidden" name="items[{{ $idx }}][sale_item_id]" value="{{ $item->id }}">
                                 @endif
-                                <div class="font-medium">{{ $item->product?->localName() ?? $item->product_name }}
+                                <div class="font-medium">{{ $item->localName() }}
                                     @if ($item->isPackagedUnit())<span class="ms-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-semibold"><x-ltr>{{ $item->unitLabel() }}</x-ltr></span>@endif
                                 </div>
                                 <div class="text-xs text-gray-500"><x-ltr>{{ $item->product?->sku ?? $item->product_sku }}</x-ltr></div>

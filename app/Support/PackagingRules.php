@@ -63,8 +63,8 @@ class PackagingRules
         // A pack barcode may not be any product's carton barcode (a scan would be ambiguous), and not its own either.
         $rules['barcode'][] = function (string $attr, mixed $value, \Closure $fail) use ($barcodes, $productId, $request) {
             $hit = $barcodes->findByBarcode((string) $value, $productId);
-            if ($hit && $hit->barcode_kind !== 'pack') {
-                $fail(__('packaging.errors.barcode_taken', ['name' => $hit->name]));
+            if ($hit && $hit['kind'] === BarcodeService::KIND_CARTON) {
+                $fail(__('packaging.errors.barcode_taken', ['name' => $hit['product']->name]));
             }
             if (trim((string) $value) !== '' && trim((string) $value) === trim((string) $request->input('carton_barcode'))) {
                 $fail(__('packaging.errors.carton_equals_pack'));
@@ -94,7 +94,7 @@ class PackagingRules
                     $fail(__('packaging.errors.carton_equals_pack'));
                 }
                 if ($hit = $barcodes->findByBarcode((string) $value, $productId)) {
-                    $fail(__('packaging.errors.barcode_taken', ['name' => $hit->name]));
+                    $fail(__('packaging.errors.barcode_taken', ['name' => $hit['variant']?->displayName() ?? $hit['product']->name]));
                 }
             }],
             'packages_per_carton' => ['nullable', 'integer', 'min:1', 'max:1000', 'required_with:carton_barcode'],

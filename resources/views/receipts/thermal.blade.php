@@ -116,7 +116,7 @@
     <table>
         @foreach ($sale->items as $item)
             @php
-                $itemAr = $item->product?->name_ar;
+                $itemAr = $item->arabicName();
                 $itemName = $rtl && $itemAr ? $itemAr : $item->product_name;
                 $itemSecondary = $receiptLang === 'bilingual' && $itemAr && $itemAr !== $item->product_name ? $itemAr : null;
             @endphp

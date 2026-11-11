@@ -20,6 +20,8 @@ class SaleController extends Controller
         $data = $request->validate([
             'cart' => 'required|array|min:1',
             'cart.*.product_id' => 'required|integer|exists:products,id',
+            // A variant of that product (SaleService checks it is the product's, alive and active).
+            'cart.*.product_variant_id' => 'nullable|integer',
             'cart.*.qty' => 'required|numeric|min:0.0001',
             // pack | package | carton. Only the NAME of the unit: its price and size are the server's (SaleService).
             'cart.*.sale_unit' => ['nullable', Rule::in(\App\Models\Product::SALE_UNITS)],

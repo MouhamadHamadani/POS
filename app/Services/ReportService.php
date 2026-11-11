@@ -154,10 +154,17 @@ class ReportService
         } elseif ($statusFilter === 'out') {
             $q->where('stock_qty', '<=', 0);
         }
-        $rows = $q->orderBy('name')->get([
+        $rows = $q->with(['variants' => fn ($v) => $v->select('id', 'product_id', 'label', 'label_ar', 'barcode', 'stock_qty')->orderBy('id')])
+            ->orderBy('name')->get([
             'id', 'name', 'name_ar', 'sku', 'barcode', 'unit', 'stock_qty', 'min_stock', 'max_stock', 'cost_usd', 'price_usd',
         ])->map(function ($p) {
             $p->local_name = $p->localName();
+            // The product row is the total (its status, value and low-stock test stay product-level). A product with
+            // variants also lists what makes the total up, shown indented under it on the screen.
+            $p->breakdown = $p->variants->isEmpty() ? [] : array_merge(
+                [['name' => null, 'qty' => $p->mainStockQty()]],
+                $p->variants->map(fn ($v) => ['name' => $v->localLabel() ?? '…'.substr((string) $v->barcode, -4), 'qty' => (float) $v->stock_qty])->all(),
+            );
             $p->stock_value_cost = round((float) $p->stock_qty * (float) $p->cost_usd, 2);
             $p->stock_value_retail = round((float) $p->stock_qty * (float) $p->price_usd, 2);
             $p->status = $p->stock_qty <= 0 ? 'out' : ($p->stock_qty <= $p->min_stock ? 'low' : 'ok');

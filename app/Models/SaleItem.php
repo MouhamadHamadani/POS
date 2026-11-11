@@ -89,7 +89,30 @@ class SaleItem extends Model
 
     public function variant(): BelongsTo
     {
-        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id')->withTrashed();
+    }
+
+    /**
+     * The line's Arabic name, when it has one. A variant line is the Arabic product name plus the variant's label;
+     * the stored product_name is the English snapshot ("Product — Red") and stays the fallback.
+     */
+    public function arabicName(): ?string
+    {
+        if ($this->product_variant_id) {
+            return $this->variant?->arabicName($this->product);
+        }
+
+        return $this->product?->name_ar ?: null;
+    }
+
+    /** What an on-screen list shows for the line in the user's language (receipts decide per layout instead). */
+    public function localName(): string
+    {
+        if (app()->getLocale() === 'ar' && ($ar = $this->arabicName())) {
+            return $ar;
+        }
+
+        return $this->product_variant_id ? $this->product_name : ($this->product?->localName() ?? $this->product_name);
     }
 
     public function returnItems(): HasMany

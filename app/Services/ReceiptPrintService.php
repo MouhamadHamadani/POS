@@ -172,7 +172,7 @@ class ReceiptPrintService
                 'n' => $i + 1,
                 'code' => $item->product_sku ?: ($product?->sku ?: $product?->barcode),
                 'name' => $item->product_name,
-                'name_ar' => $product?->name_ar,
+                'name_ar' => $item->arabicName(),
                 'qty' => rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.'),
                 // A package / carton line is counted in that unit ("2 Package ×10"), not in the product's own unit.
                 'unit' => $item->isPackagedUnit() ? null : $product?->unit,

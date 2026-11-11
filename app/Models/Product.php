@@ -66,6 +66,25 @@ class Product extends Model
         return $this->hasMany(ProductVariant::class);
     }
 
+    public function hasVariants(): bool
+    {
+        return $this->relationLoaded('variants') ? $this->variants->isNotEmpty() : $this->variants()->exists();
+    }
+
+    /**
+     * Stock of the main item alone. products.stock_qty is the TOTAL of the main item plus every variant
+     * (InventoryService keeps both rows in step), so the main item's own count is what is left over.
+     * Derived, never stored. A product with no variants: this is just its stock_qty.
+     */
+    public function mainStockQty(): float
+    {
+        $variants = $this->relationLoaded('variants')
+            ? (float) $this->variants->sum('stock_qty')
+            : (float) $this->variants()->sum('stock_qty');
+
+        return round((float) $this->stock_qty - $variants, 4);
+    }
+
     public function bundleComponents(): HasMany
     {
         return $this->hasMany(BundleItem::class, 'bundle_product_id');

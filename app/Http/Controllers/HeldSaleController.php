@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\HeldSale;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Sale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -49,6 +50,7 @@ class HeldSaleController extends Controller
         $data = $request->validate([
             'cart' => 'required|array|min:1',
             'cart.*.product_id' => 'required|integer|exists:products,id',
+            'cart.*.product_variant_id' => 'nullable|integer',
             'cart.*.qty' => 'required|numeric|min:0.0001',
             'cart.*.sale_unit' => ['nullable', Rule::in(Product::SALE_UNITS)],
             // No cart.*.unit_price: a hold keeps no prices, the sell screen
@@ -102,8 +104,13 @@ class HeldSaleController extends Controller
         $withCustomer = feature('loyalty');
         [$channel, $channelSource] = Sale::resolveChannel($heldSale->channel, $heldSale->channel_source);
 
+        // A line whose variant has been deleted or deactivated since the hold cannot be sold: it is left out
+        // and named, so the till can say so.
+        [$cart, $dropped] = $this->liveLines((array) $heldSale->cart);
+
         $payload = [
-            'cart' => $heldSale->cart,
+            'cart' => $cart,
+            'dropped' => $dropped,
             'customer_id' => $withCustomer ? $heldSale->customer_id : null,
             'customer' => $withCustomer ? $heldSale->customer?->posSummary() : null,
             'price_tier' => $heldSale->price_tier,
@@ -124,6 +131,29 @@ class HeldSaleController extends Controller
         $this->authorizeHold($request, $heldSale);
         $heldSale->delete();
         return response()->json(['success' => true]);
+    }
+
+    /** @return array{0: list<array>, 1: list<string>} the lines still sellable, and the names of those dropped */
+    private function liveLines(array $cart): array
+    {
+        // withTrashed(): a deleted variant is named in the message too.
+        $variants = ProductVariant::withTrashed()->with('product')
+            ->whereIn('id', array_filter(array_column($cart, 'product_variant_id')))
+            ->get()->keyBy('id');
+
+        $kept = $dropped = [];
+        foreach ($cart as $line) {
+            $id = $line['product_variant_id'] ?? null;
+            if ($id === null) {
+                $kept[] = $line;
+            } elseif (($v = $variants->get($id)) && ! $v->trashed() && $v->is_active) {
+                $kept[] = $line;
+            } else {
+                $dropped[] = $v?->displayName() ?? __('products.variants.err_variant_missing');
+            }
+        }
+
+        return [$kept, $dropped];
     }
 
     private function authorizeHold(Request $request, HeldSale $hold): void

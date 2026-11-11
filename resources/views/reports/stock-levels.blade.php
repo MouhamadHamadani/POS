@@ -79,6 +79,14 @@
                             @endif
                         </td>
                     </tr>
+                    @foreach ($r['breakdown'] ?? [] as $part)
+                        <tr class="text-xs text-gray-500 bg-gray-50/60">
+                            <td class="py-1.5 ps-8 pe-3">{{ $part['name'] ?? __('products.variants.main_item') }}</td>
+                            <td></td>
+                            <td class="py-1.5 px-3 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $part['qty'], 4, '.', ''), '0'), '.') ?: '0' }}</x-ltr></td>
+                            <td colspan="5"></td>
+                        </tr>
+                    @endforeach
                 @empty
                     <tr><td colspan="8" class="p-10 text-center text-gray-500">{{ __('reports.no_products_match') }}</td></tr>
                 @endforelse

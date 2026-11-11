@@ -78,7 +78,11 @@
                                 @endif
                             </td>
                             <td class="p-3">
-                                <div class="font-medium text-gray-900">{{ $p->localName() }}</div>
+                                <div class="font-medium text-gray-900">{{ $p->localName() }}
+                                    @if ($p->variants_count)
+                                        <span class="ms-1 align-middle text-[0.6875rem] font-normal bg-brand-50 text-brand-700 px-1.5 py-0.5 rounded">{{ trans_choice('products.variants.badge', $p->variants_count, ['count' => $p->variants_count]) }}</span>
+                                    @endif
+                                </div>
                                 @if ($p->name_ar && $p->name_ar !== $p->name)
                                     <div class="text-xs text-gray-500" dir="{{ app()->getLocale() === 'ar' ? 'ltr' : 'rtl' }}">{{ app()->getLocale() === 'ar' ? $p->name : $p->name_ar }}</div>
                                 @endif
@@ -91,7 +95,7 @@
                             <td class="p-3 text-end font-medium"><x-ltr>${{ number_format((float) $p->price_usd, 2) }}</x-ltr></td>
                             <td class="p-3 text-end">
                                 @if ($p->track_stock)
-                                    <span @class([
+                                    <span @if ($p->variants_count) title="{{ __('products.variants.breakdown', ['main' => rtrim(rtrim(number_format((float) $p->stock_qty - (float) $p->variants_stock, 4, '.', ''), '0'), '.'), 'variants' => rtrim(rtrim(number_format((float) $p->variants_stock, 4, '.', ''), '0'), '.')]) }}" @endif @class([
                                         'text-red-600 font-bold' => $p->stock_qty <= 0,
                                         'text-orange-600 font-semibold' => $p->stock_qty > 0 && $p->stock_qty <= $p->min_stock,
                                     ])>

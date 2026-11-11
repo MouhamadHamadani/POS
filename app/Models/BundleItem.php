@@ -14,6 +14,16 @@ class BundleItem extends Model
 
     protected $casts = ['qty' => 'decimal:4'];
 
+    /** A product with variants cannot be a bundle component (the bundle would not know which item to take). */
+    protected static function booted(): void
+    {
+        static::saving(function (BundleItem $item) {
+            if (Product::find($item->component_id)?->hasVariants()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['component_id' => __('products.variants.err_bundle_component')]);
+            }
+        });
+    }
+
     public function bundle(): BelongsTo
     {
         return $this->belongsTo(Product::class, 'bundle_product_id');

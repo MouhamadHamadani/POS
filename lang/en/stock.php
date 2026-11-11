@@ -6,6 +6,7 @@ return [
     'cols' => [
         'date' => 'Date / time',
         'product' => 'Product',
+        'variant' => 'Variant',
         'sku' => 'SKU',
         'type' => 'Type',
         'qty_in' => 'In',
@@ -30,4 +31,9 @@ return [
     'total_out' => 'Total out',
     'net' => 'Net change',
     'full_history' => 'Full history with filters',
+    'item' => 'Item',
+    'items' => [
+        'main' => 'Main items only',
+        'variants' => 'Variants only',
+    ],
 ];

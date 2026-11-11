@@ -48,6 +48,7 @@ class ResetData extends Command
     ];
 
     private const CATALOGUE = [
+        'product_variants', // before products: they point at it
         'products',
         'categories',
         'customers',
