@@ -295,6 +295,68 @@ Water,Home,1,4000000000003");
         $this->assertSame('7000000000002', $live->fresh()->barcode); // live product untouched
     }
 
+    // --- the form and the list ---------------------------------------------------------------
+
+    public function test_the_form_offers_the_variants_section_on_create_and_shows_existing_variants_on_edit(): void
+    {
+        $admin = $this->admin();
+        $this->actingAs($admin)->get('/products/create')->assertOk()
+            ->assertSee('Add variant')->assertSee('variantRows()', false);
+
+        $product = Product::factory()->create(['stock_qty' => 5]);
+        self::variantWithStock($product, '9000000000001', 3, ['label' => 'Lavender 250ml']);
+
+        $this->actingAs($admin)->get(route('products.edit', $product))->assertOk()
+            ->assertSee('9000000000001')->assertSee('Lavender 250ml')
+            ->assertSee('Main item: ', false);
+    }
+
+    public function test_the_variant_section_and_badge_render_in_arabic(): void
+    {
+        $admin = User::factory()->admin()->create(['language' => 'ar']);
+        $product = Product::factory()->create(['stock_qty' => 5]);
+        self::variantWithStock($product, '9000000000002', 3);
+        self::variantWithStock($product, '9000000000003', 0);
+
+        $this->actingAs($admin)->get(route('products.edit', $product))->assertOk()
+            ->assertSee('الأنواع')->assertSee('إضافة نوع')->assertSee('المنتج الأساسي');
+        $this->actingAs($admin)->get('/products')->assertOk()->assertSee('2 أنواع');
+    }
+
+    public function test_the_list_badges_a_product_with_variants_and_a_variant_barcode_finds_its_product(): void
+    {
+        $withVariants = Product::factory()->create(['name' => 'Candle', 'stock_qty' => 5]);
+        self::variantWithStock($withVariants, '9000000000004', 3);
+        self::variantWithStock($withVariants, '9000000000005', 2);
+        Product::factory()->create(['name' => 'Plain']);
+
+        $admin = $this->admin();
+        $this->actingAs($admin)->get('/products')->assertOk()->assertSee('2 variants');
+        $this->actingAs($admin)->get('/products?search=9000000000005')->assertOk()->assertSee('Candle')->assertDontSee('Plain');
+    }
+
+    public function test_an_existing_product_can_edit_deactivate_and_add_variants(): void
+    {
+        $product = Product::factory()->create(['stock_qty' => 5]);
+        $red = self::variantWithStock($product, '9100000000001', 3, ['label' => 'Red']);
+        $total = fn () => (float) $product->fresh()->stock_qty;
+        $this->assertEquals(8, $total());
+
+        $this->actingAs($this->admin())->put(route('products.update', $product), $this->updatePayload($product, [
+            ['id' => $red->id, 'barcode' => '9100000000001', 'label' => 'Crimson', 'is_active' => 0],
+            ['barcode' => '9100000000002', 'label' => 'Blue', 'stock_qty' => 4],
+        ]))->assertSessionHasNoErrors();
+
+        $red = $red->fresh();
+        $this->assertSame('Crimson', $red->label);
+        $this->assertFalse($red->is_active);
+        $this->assertSame('9100000000001', $red->barcode);         // deactivating keeps the barcode
+        $this->assertEquals(3, (float) $red->stock_qty);           // and the stock
+        $this->assertSame(1, AuditLog::where('action', 'variant_deactivate')->count());
+        $this->assertEquals(12, $total());                         // Blue's 4 opened into the total
+        $this->assertEquals(5, $product->fresh()->mainStockQty()); // the main item did not move
+    }
+
     /** What the edit form posts for a product: its own fields plus the variant rows. */
     private function updatePayload(Product $product, array $variants, array $extra = []): array
     {

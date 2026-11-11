@@ -73,7 +73,9 @@
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('products.product_type') }}</label>
                         <select name="type" class="w-full border-gray-300 rounded text-sm">
-                            @foreach (['simple', 'service', 'bundle', 'variant'] as $t)
+                            {{-- "Variant parent" is the old scaffold's type: variants are now rows under any simple product, so it is
+                                 offered only to a product that already has it. --}}
+                            @foreach (array_filter(['simple', 'service', 'bundle', $product->type === 'variant' ? 'variant' : null]) as $t)
                                 <option value="{{ $t }}" @selected(old('type', $product->type) === $t)>{{ __("enums.product_type.$t") }}</option>
                             @endforeach
                         </select>
@@ -123,6 +125,131 @@
                         @endif
                         <input type="file" name="image" accept="image/*" class="text-sm" />
                         <div class="text-xs text-gray-500 mt-1">{{ __('products.image_hint') }}</div>
+                    </div>
+
+                    {{-- VARIANTS: other barcodes of this same product (a colour, a scent). Same price, cost and tax as
+                         the product; each has its own barcode and stock. Rows post as variants[i][...]; a row is
+                         removed only by its hidden `remove`, an empty trailing row is ignored by the server. --}}
+                    @php
+                        $liveVariants = $product->exists ? $product->variants()->orderBy('id')->get()->keyBy('id') : collect();
+                        $variantRowsInitial = old('variants') !== null
+                            ? collect(old('variants'))->map(fn ($r) => [
+                                'id' => $r['id'] ?? null,
+                                'barcode' => $r['barcode'] ?? '',
+                                'label' => $r['label'] ?? '',
+                                'label_ar' => $r['label_ar'] ?? '',
+                                'sku' => $r['sku'] ?? '',
+                                'stock_qty' => ! empty($r['id']) ? (float) ($liveVariants[$r['id']]->stock_qty ?? 0) : (float) ($r['stock_qty'] ?? 0),
+                                'is_active' => ! array_key_exists('is_active', $r) || filter_var($r['is_active'], FILTER_VALIDATE_BOOLEAN),
+                                'remove' => ! empty($r['remove']),
+                            ])->values()
+                            : $liveVariants->map(fn ($v) => [
+                                'id' => $v->id, 'barcode' => $v->barcode, 'label' => $v->label, 'label_ar' => $v->label_ar,
+                                'sku' => $v->sku, 'stock_qty' => (float) $v->stock_qty, 'is_active' => (bool) $v->is_active, 'remove' => false,
+                            ])->values();
+                        $variantErrors = [];
+                        foreach ($errors->getMessages() as $key => $messages) {
+                            if (preg_match('/^variants\.(\d+)\.(\w+)$/', $key, $hit)) {
+                                $variantErrors[(int) $hit[1]][$hit[2]] = $messages[0];
+                            }
+                        }
+                        $mainStock = $product->exists ? rtrim(rtrim(number_format($product->mainStockQty(), 4, '.', ''), '0'), '.') : null;
+                    @endphp
+                    <div class="md:col-span-2 border-t pt-4" x-data="variantRows()"
+                         @keydown.enter="if ($event.target.tagName === 'INPUT') $event.preventDefault()">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 class="font-semibold text-sm">{{ __('products.variants.title') }}</h3>
+                                <p class="text-xs text-gray-500 mt-0.5">{{ __('products.variants.intro') }}</p>
+                            </div>
+                            <button type="button" @click="add(true)"
+                                    class="shrink-0 px-3 py-1.5 text-xs bg-brand-600 text-white rounded hover:bg-brand-700">+ {{ __('products.variants.add') }}</button>
+                        </div>
+
+                        @if ($product->exists)
+                            <div class="text-xs text-gray-600 mt-2">
+                                {{ __('products.variants.main_item') }}: <x-ltr>{{ $mainStock }}</x-ltr>
+                                <span class="text-gray-400">· {{ __('products.variants.stock_note') }}</span>
+                            </div>
+                        @endif
+
+                        <div class="mt-3 space-y-2">
+                            <div x-show="rows.length === 0" class="text-xs text-gray-400">{{ __('products.variants.empty') }}</div>
+
+                            <template x-for="(row, i) in rows" :key="row.key">
+                                <div class="border rounded p-2" :class="row.remove ? 'bg-red-50 border-red-200' : (row.is_active ? '' : 'bg-gray-50')">
+                                    <input type="hidden" :name="`variants[${i}][id]`" :value="row.id" :disabled="!row.id">
+                                    <input type="hidden" :name="`variants[${i}][remove]`" value="1" :disabled="!row.remove">
+                                    <input type="hidden" :name="`variants[${i}][is_active]`" :value="row.is_active ? 1 : 0">
+
+                                    <div class="grid grid-cols-12 gap-2 items-start">
+                                        <div class="col-span-12 md:col-span-4">
+                                            <label class="block text-[0.6875rem] text-gray-500 mb-0.5">{{ __('products.variants.barcode') }}</label>
+                                            <div class="relative">
+                                                <input type="text" :id="'vbc-' + row.key" :name="`variants[${i}][barcode]`" x-model="row.barcode" dir="ltr" autocomplete="off"
+                                                       @keydown.enter.prevent.stop="commit(i)"
+                                                       @input.debounce.400ms="check(row)"
+                                                       placeholder="{{ __('products.variants.barcode_placeholder') }}"
+                                                       class="w-full border-gray-300 rounded text-sm pe-16" />
+                                                <button type="button" @click="generate(row)"
+                                                        class="absolute end-1 top-1/2 -translate-y-1/2 px-2 py-0.5 text-[0.6875rem] bg-gray-100 rounded hover:bg-gray-200">{{ __('products.variants.generate') }}</button>
+                                            </div>
+                                            <div class="text-xs mt-0.5 min-h-[1rem]">
+                                                <span x-show="row.dupMsg" class="text-red-600" x-text="'✕ ' + row.dupMsg"></span>
+                                                <span x-show="!row.dupMsg && row.status === 'checking'" class="text-gray-400">{{ __('products.checking') }}</span>
+                                                <span x-show="!row.dupMsg && row.status === 'free'" class="text-green-600">✓ {{ __('products.available') }}</span>
+                                                <span x-show="!row.dupMsg && row.status === 'taken'" class="text-red-600" x-text="'✕ ' + takenText(row)"></span>
+                                                <span x-show="errors[i]?.barcode" class="text-red-600" x-text="errors[i]?.barcode"></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-span-8 md:col-span-3">
+                                            <label class="block text-[0.6875rem] text-gray-500 mb-0.5">{{ __('products.variants.label') }}</label>
+                                            <input type="text" :name="`variants[${i}][label]`" x-model="row.label" dir="auto" maxlength="80"
+                                                   placeholder="{{ __('products.variants.label_placeholder') }}"
+                                                   class="w-full border-gray-300 rounded text-sm" />
+                                        </div>
+
+                                        <div class="col-span-4 md:col-span-2">
+                                            <label class="block text-[0.6875rem] text-gray-500 mb-0.5" x-text="row.id ? t.stock : t.opening"></label>
+                                            <template x-if="row.id">
+                                                <div class="py-1.5 text-sm" dir="ltr" x-text="row.stock_qty"></div>
+                                            </template>
+                                            <template x-if="!row.id">
+                                                <input type="number" :name="`variants[${i}][stock_qty]`" x-model="row.stock_qty" dir="ltr" min="0" step="0.0001"
+                                                       class="w-full border-gray-300 rounded text-sm" />
+                                            </template>
+                                        </div>
+
+                                        <div class="col-span-12 md:col-span-3 flex flex-wrap items-center justify-end gap-3 pt-4 text-xs">
+                                            <label class="flex items-center gap-1">
+                                                <input type="checkbox" x-model="row.is_active"> {{ __('products.variants.active') }}
+                                            </label>
+                                            <button type="button" @click="row.more = !row.more" class="text-gray-600 hover:underline">{{ __('products.variants.more') }}</button>
+                                            <button type="button" x-show="!row.remove" @click="remove(i)" class="text-red-600 hover:underline">{{ __('products.variants.remove') }}</button>
+                                            <button type="button" x-show="row.remove" @click="row.remove = false" class="text-gray-700 hover:underline">{{ __('products.variants.undo') }}</button>
+                                        </div>
+                                    </div>
+
+                                    <div x-show="row.remove" class="text-xs text-red-600 mt-1">{{ __('products.variants.removed') }}</div>
+                                    <div x-show="errors[i]?.id || errors[i]?.sku || errors[i]?.label" class="text-xs text-red-600 mt-1"
+                                         x-text="errors[i]?.id || errors[i]?.sku || errors[i]?.label"></div>
+
+                                    <div x-show="row.more" class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                                        <div>
+                                            <label class="block text-[0.6875rem] text-gray-500 mb-0.5">{{ __('products.variants.sku') }}</label>
+                                            <input type="text" :name="`variants[${i}][sku]`" x-model="row.sku" dir="ltr" maxlength="80"
+                                                   class="w-full border-gray-300 rounded text-sm" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-[0.6875rem] text-gray-500 mb-0.5">{{ __('products.variants.label_ar') }}</label>
+                                            <input type="text" :name="`variants[${i}][label_ar]`" x-model="row.label_ar" dir="rtl" maxlength="80"
+                                                   class="w-full border-gray-300 rounded text-sm" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </div>
 
@@ -361,6 +488,101 @@
                     // Fail closed. A 500/419/403 must not render "Available" on a code we
                     // never actually cleared — show nothing and let the server rule decide.
                     .catch(() => { this.barcodeStatus = null; });
+            },
+        };
+    }
+
+    // Variant rows of the product form. Rows are plain data; the server (StoreProductRequest) is the judge of
+    // barcodes, this only gives early feedback: duplicates inside the form, and a live check against the whole
+    // barcode namespace (products and variants) through the same endpoint as the main barcode field.
+    function variantRows() {
+        return {
+            seq: 0,
+            rows: [],
+            errors: @js($variantErrors),
+            t: @js(['stock' => __('products.variants.stock'), 'opening' => __('products.variants.opening_stock')]),
+            msgs: @js([
+                'same' => __('products.variants.err_same_as_product'),
+                'dup' => __('products.variants.err_duplicate_in_form'),
+                'taken' => __('products.taken_by', ['name' => ':name']),
+            ]),
+
+            init() {
+                this.rows = @js($variantRowsInitial).map(r => this.make(r));
+            },
+
+            make(r = {}) {
+                return {
+                    key: ++this.seq, id: r.id ?? null, barcode: r.barcode ?? '', label: r.label ?? '', label_ar: r.label_ar ?? '',
+                    sku: r.sku ?? '', stock_qty: r.stock_qty ?? 0, is_active: r.is_active ?? true, remove: !!r.remove,
+                    more: !!(r.sku || r.label_ar), status: null, takenBy: '', dupMsg: '', _last: null,
+                };
+            },
+
+            focusRow(row) {
+                this.$nextTick(() => document.getElementById('vbc-' + row.key)?.focus());
+            },
+
+            add(focus) {
+                const row = this.make();
+                this.rows.push(row);
+                if (focus) this.focusRow(row);
+                return row;
+            },
+
+            // Enter in a filled barcode box (a scanner sends it after the digits): keep the code, open the next row.
+            commit(i) {
+                const row = this.rows[i];
+                if (!row.barcode.trim()) return;
+                this.check(row);
+                const next = this.rows[i + 1] && !this.rows[i + 1].id && !this.rows[i + 1].barcode.trim() ? this.rows[i + 1] : this.add(false);
+                this.focusRow(next);
+            },
+
+            remove(i) {
+                const row = this.rows[i];
+                if (row.id) { row.remove = true; } else { this.rows.splice(i, 1); }
+            },
+
+            takenText(row) {
+                return this.msgs.taken.replace(':name', row.takenBy);
+            },
+
+            generate(row) {
+                let base = String(1 + Math.floor(Math.random() * 9));
+                while (base.length < 12) base += Math.floor(Math.random() * 10);
+                let sum = 0;
+                for (let k = 0; k < 12; k++) sum += Number(base[k]) * (k % 2 === 0 ? 1 : 3);
+                row.barcode = base + String((10 - (sum % 10)) % 10);
+                row._last = null;
+                this.check(row);
+            },
+
+            mainBarcode() {
+                return (document.querySelector('input[name="barcode"]')?.value || '').trim();
+            },
+
+            check(row) {
+                const code = row.barcode.trim();
+                row.dupMsg = '';
+                if (!code) { row.status = null; return; }
+
+                if (code === this.mainBarcode()) { row.dupMsg = this.msgs.same; return; }
+                if (this.rows.some(o => o !== row && !o.remove && o.barcode.trim() === code)) { row.dupMsg = this.msgs.dup; return; }
+                if (code === row._last) return;
+
+                row.status = 'checking';
+                fetch(`{{ route('products.check-barcode') }}?barcode=${encodeURIComponent(code)}${row.id ? '&except_variant=' + row.id : ''}`,
+                    { headers: { Accept: 'application/json' } })
+                    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+                    .then(data => {
+                        if (code !== row.barcode.trim()) return; // a late reply for a code already typed past
+                        row._last = code;
+                        row.status = data.exists ? 'taken' : 'free';
+                        row.takenBy = data.product_name ?? '';
+                    })
+                    // Fail closed, like the main field: no verdict beats a wrong "Available".
+                    .catch(() => { row.status = null; });
             },
         };
     }

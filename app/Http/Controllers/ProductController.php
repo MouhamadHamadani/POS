@@ -28,14 +28,21 @@ class ProductController extends Controller
 
     public function index(Request $request): View
     {
-        $q = Product::with('category:id,name,name_ar', 'tax:id,name,name_ar,rate');
+        $q = Product::with('category:id,name,name_ar', 'tax:id,name,name_ar,rate')
+            ->withCount('variants')
+            ->withSum('variants as variants_stock', 'stock_qty');
 
         if ($s = $request->query('search')) {
             $q->where(function ($w) use ($s) {
                 $w->where('name', 'like', "%{$s}%")
                   ->orWhere('name_ar', 'like', "%{$s}%")
                   ->orWhere('sku', 'like', "%{$s}%")
-                  ->orWhere('barcode', 'like', "%{$s}%");
+                  ->orWhere('barcode', 'like', "%{$s}%")
+                  // A variant's own barcode, SKU or label finds its product too.
+                  ->orWhereHas('variants', fn ($v) => $v->where('barcode', 'like', "%{$s}%")
+                      ->orWhere('sku', 'like', "%{$s}%")
+                      ->orWhere('label', 'like', "%{$s}%")
+                      ->orWhere('label_ar', 'like', "%{$s}%"));
             });
         }
 
