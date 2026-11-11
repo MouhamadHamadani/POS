@@ -36,6 +36,24 @@ return [
         'split' => 'مجزّأ',
         'wish' => 'ويش',
     ],
+    // كيف سدّد الزبون دَينه (دفتر الديون)، وما هو كل سطر في السجل.
+    'debt_method' => [
+        'cash' => 'نقداً',
+        'card' => 'بطاقة',
+        'wish' => 'ويش',
+        'bank_transfer' => 'تحويل مصرفي',
+        'other' => 'أخرى',
+        'write_off' => 'شطب دين',
+    ],
+    'ledger_entry' => [
+        'opening' => 'رصيد افتتاحي',
+        'credit_sale' => 'بيع على الحساب',
+        'payment' => 'دفعة مستلمة',
+        'write_off' => 'شطب دين',
+        'return_credit' => 'مرتجع على الحساب',
+        'void_reversal' => 'عكس قيد',
+        'adjustment' => 'تسوية',
+    ],
     'purchase_status' => [
         'draft' => 'مسودة',
         'sent' => 'مُرسل',

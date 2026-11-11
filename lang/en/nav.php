@@ -8,6 +8,7 @@ return [
     'stock_movements' => 'Stock Movements',
     'categories' => 'Categories',
     'customers' => 'Customers',
+    'debts' => 'Customer debts',
     'suppliers' => 'Suppliers',
     'purchases' => 'Purchase Orders',
     'expenses' => 'Expenses',

@@ -40,6 +40,23 @@
             </div>
         </div>
 
+        {{-- Money owed by customers (the debt book): managers only, and only while the feature is on or someone still owes. --}}
+        @php $ledger = app(\App\Services\CustomerLedgerService::class); @endphp
+        @if (auth()->user()?->isManagerial() && (feature('customer_credit') || $ledger->anyDebt()))
+            @php $owed = $ledger->agingBuckets(); @endphp
+            <a href="{{ route('debts.index') }}" class="block bg-white rounded-lg shadow-card p-4 hover:shadow-pop border border-transparent hover:border-brand-300 transition">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <div>
+                        <div class="text-xs text-gray-500">{{ __('debts.tile_owed') }}</div>
+                        <div class="text-2xl font-bold text-brand-700 mt-1"><x-ltr>${{ number_format($owed['outstanding'], 2) }}</x-ltr></div>
+                    </div>
+                    <div class="text-sm {{ $owed['overdue'] > 0 ? 'text-danger font-medium' : 'text-gray-500' }}">
+                        <x-ltr>${{ number_format($owed['overdue'], 2) }}</x-ltr> {{ __('debts.tile_overdue') }}
+                    </div>
+                </div>
+            </a>
+        @endif
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div class="bg-white rounded-lg shadow-card p-5">
                 <h3 class="font-semibold text-sm mb-3">{{ __('dashboard.recent_sales') }}</h3>

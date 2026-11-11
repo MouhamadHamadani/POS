@@ -36,41 +36,10 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="bg-white rounded-lg shadow-card p-5">
-                <h3 class="font-semibold mb-3 text-sm">{{ __('customers.record_payment') }}</h3>
-                @if ($customer->balance > 0)
-                    <form method="POST" action="{{ route('customers.payment', $customer) }}" class="space-y-3 text-sm">
-                        @csrf
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs text-gray-500">{{ __('customers.amount_usd') }}</label>
-                                <input type="number" step="0.01" min="0.01" max="{{ $customer->balance }}" name="amount_usd" dir="ltr" required class="w-full border-gray-300 rounded text-sm" />
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-500">{{ __('customers.method') }}</label>
-                                <select name="method" class="w-full border-gray-300 rounded text-sm" required>
-                                    @foreach (['cash_usd', 'cash_lbp', 'card', 'bank_transfer', 'other'] as $m)
-                                        <option value="{{ $m }}">{{ __("enums.payment_method.$m") }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500">{{ __('customers.reference') }}</label>
-                            <input type="text" name="reference" dir="ltr" class="w-full border-gray-300 rounded text-sm" />
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-500">{{ __('common.notes') }}</label>
-                            <textarea name="notes" dir="auto" rows="2" class="w-full border-gray-300 rounded text-sm"></textarea>
-                        </div>
-                        <button class="w-full px-4 py-2 bg-success text-white rounded text-sm hover:bg-green-700">{{ __('customers.record_payment_btn') }}</button>
-                    </form>
-                @else
-                    <p class="text-sm text-gray-500">{{ __('customers.no_balance') }}</p>
-                @endif
-            </div>
+        {{-- The debt book: pay down, open debts per receipt, repayments, statement. --}}
+        @include('debts._tabs')
 
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div class="bg-white rounded-lg shadow-card p-5">
                 <h3 class="font-semibold mb-3 text-sm">{{ __('customers.recent_loyalty') }}</h3>
                 <table class="w-full text-xs">

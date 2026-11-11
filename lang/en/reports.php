@@ -9,8 +9,10 @@ return [
         'pnl' => 'Profit & Loss',
         'inventory_by_date' => 'Inventory by Date',
         'expenses' => 'Expenses by Category',
+        'receivables' => 'Receivables (customer debts)',
     ],
     'descriptions' => [
+        'receivables' => 'Who owes what, since when, and how late it is: aging by customer.',
         'daily_sales' => 'Sales totals per day with discount and VAT breakdown.',
         'sales_by_product' => 'Top-sellers by units, revenue, profit, and margin %.',
         'stock_levels' => 'Current stock with cost / retail valuation totals.',
