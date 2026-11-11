@@ -415,6 +415,34 @@
                 <h3 class="font-semibold mb-3">{{ __('products.stock_adjustment') }}</h3>
                 <form method="POST" action="{{ route('products.adjust-stock', $product) }}" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end text-sm">
                     @csrf
+                    {{-- A product with variants: which item the change is for. Scanning a variant's barcode, or the
+                         product's own, picks it. The product total moves with it (InventoryService). --}}
+                    @php
+                        $adjVariants = $product->variants()->orderBy('id')->get();
+                        $adjCodes = array_filter([(string) $product->barcode => ''] + $adjVariants->mapWithKeys(fn ($v) => [(string) $v->barcode => (string) $v->id])->all(), fn ($v, $k) => $k !== '', ARRAY_FILTER_USE_BOTH);
+                        $qtyText = fn ($n) => rtrim(rtrim(number_format((float) $n, 4, '.', ''), '0'), '.') ?: '0';
+                    @endphp
+                    @if ($adjVariants->isNotEmpty())
+                        <div class="md:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-3"
+                             x-data="{ item: '', scan: '', miss: false, codes: @js($adjCodes),
+                                       pick() { const c = this.scan.trim(); this.miss = !(c in this.codes); if (!this.miss) this.item = this.codes[c]; this.scan = ''; } }">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('products.variants.item') }}</label>
+                                <select name="variant_id" x-model="item" class="w-full border-gray-300 rounded text-sm">
+                                    <option value="">{{ __('products.variants.main_item') }} ({{ $qtyText($product->mainStockQty()) }})</option>
+                                    @foreach ($adjVariants as $v)
+                                        <option value="{{ $v->id }}">{{ $v->displayName() }} ({{ $qtyText($v->stock_qty) }}){{ $v->is_active ? '' : ' · '.__('common.inactive') }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('products.scan') }}</label>
+                                <input type="text" x-model="scan" dir="ltr" autocomplete="off" @keydown.enter.prevent="pick()" @input="miss = false"
+                                       placeholder="{{ __('products.scan_title') }}" class="w-full border-gray-300 rounded text-sm" />
+                                <div x-show="miss" class="text-xs text-red-600 mt-1" style="display: none">{{ __('messages.product_not_found') }}</div>
+                            </div>
+                        </div>
+                    @endif
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('products.action') }}</label>
                         <select name="action" class="w-full border-gray-300 rounded text-sm" required>

@@ -251,16 +251,27 @@ class ProductController extends Controller
             'action' => 'required|in:add,remove,set,count',
             'qty' => 'required|numeric|min:0',
             'reason' => 'required|string|max:255',
+            'variant_id' => 'nullable|integer',
         ]);
+
+        // Blank = the main item. A variant has to be one of this product's.
+        $variant = null;
+        if (! empty($data['variant_id'])) {
+            $variant = $product->variants()->find($data['variant_id']);
+            if (! $variant) {
+                return back()->withErrors(['variant_id' => __('products.variants.err_not_found')]);
+            }
+        }
 
         $qty = (float) $data['qty'];
         $before = (float) $product->stock_qty;
+        $itemBefore = $variant ? (float) $variant->stock_qty : null;
 
         try {
             $after = match ($data['action']) {
-                'add' => $this->inventory->adjust($product, $qty, \App\Models\InventoryAdjustment::TYPE_ADD, $request->user()->id, reason: $data['reason']),
-                'remove' => $this->inventory->adjust($product, -$qty, \App\Models\InventoryAdjustment::TYPE_REMOVE, $request->user()->id, reason: $data['reason'], allowNegative: false),
-                'set', 'count' => $this->inventory->setStock($product, $qty, $request->user()->id, $data['reason']),
+                'add' => $this->inventory->adjust($product, $qty, \App\Models\InventoryAdjustment::TYPE_ADD, $request->user()->id, reason: $data['reason'], variant: $variant),
+                'remove' => $this->inventory->adjust($product, -$qty, \App\Models\InventoryAdjustment::TYPE_REMOVE, $request->user()->id, reason: $data['reason'], allowNegative: false, variant: $variant),
+                'set', 'count' => $this->inventory->setStock($product, $qty, $request->user()->id, $data['reason'], $variant),
             };
         } catch (\App\Exceptions\InsufficientStockException $e) {
             return back()->withErrors(['stock' => $e->getMessage()]);
@@ -271,8 +282,9 @@ class ProductController extends Controller
             'stock_adjust',
             Product::class,
             $product->id,
-            ['stock_qty' => $before],
-            ['stock_qty' => $after, 'action' => $data['action'], 'qty' => $qty, 'reason' => $data['reason']],
+            ['stock_qty' => $before] + ($variant ? ['variant_id' => $variant->id, 'variant_qty' => $itemBefore] : []),
+            ['stock_qty' => $after, 'action' => $data['action'], 'qty' => $qty, 'reason' => $data['reason']]
+                + ($variant ? ['variant_id' => $variant->id, 'variant_qty' => (float) $variant->fresh()->stock_qty] : []),
         );
 
         return redirect()->route('products.edit', $product)->with('success', __('messages.stock_adjusted'));

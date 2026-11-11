@@ -157,6 +157,7 @@ class SaleHistoryService
     {
         return $sale->load([
             'items.product' => fn ($p) => $p->withTrashed()->select('id', 'name', 'name_ar', 'sku', 'unit'),
+            'items.variant',
             'customer' => fn ($c) => $c->withTrashed(),
             'user:id,name',
             'shift:id,opened_at,closed_at',

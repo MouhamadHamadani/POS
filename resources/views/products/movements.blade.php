@@ -57,6 +57,15 @@
                         @endforeach
                     </select>
                 </div>
+                <div>
+                    <label class="block text-xs text-gray-500">{{ __('stock.item') }}</label>
+                    <select name="item" class="w-full border-gray-300 rounded text-sm">
+                        <option value="">{{ __('common.all') }}</option>
+                        @foreach (['main', 'variants'] as $it)
+                            <option value="{{ $it }}" @selected($f['item'] === $it)>{{ __("stock.items.$it") }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="md:col-span-5 flex flex-wrap items-center gap-2">
                     @if ($f['product_id'])
                         <input type="hidden" name="product_id" value="{{ $f['product_id'] }}" />

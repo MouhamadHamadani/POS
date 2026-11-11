@@ -49,6 +49,7 @@ class StockMovementController extends Controller
             'category_id' => 'nullable|integer',
             'direction' => 'nullable|in:all,in,out',
             'type' => ['nullable', Rule::in(InventoryAdjustment::TYPES)],
+            'item' => 'nullable|in:main,variants',
         ]));
     }
 }

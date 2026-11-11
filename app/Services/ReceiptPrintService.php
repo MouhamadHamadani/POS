@@ -172,7 +172,7 @@ class ReceiptPrintService
                 'n' => $i + 1,
                 'code' => $item->product_sku ?: ($product?->sku ?: $product?->barcode),
                 'name' => $item->product_name,
-                'name_ar' => $product?->name_ar,
+                'name_ar' => $item->arabicName(),
                 'qty' => rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.'),
                 'unit' => $product?->unit,
                 'unit_price' => (float) $item->unit_price_usd,

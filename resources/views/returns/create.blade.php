@@ -53,7 +53,7 @@
                                 @if ($canReturn)
                                     <input type="hidden" name="items[{{ $idx }}][sale_item_id]" value="{{ $item->id }}">
                                 @endif
-                                <div class="font-medium">{{ $item->product?->localName() ?? $item->product_name }}</div>
+                                <div class="font-medium">{{ $item->localName() }}</div>
                                 <div class="text-xs text-gray-500"><x-ltr>{{ $item->product?->sku ?? $item->product_sku }}</x-ltr></div>
                             </td>
                             <td class="p-2 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.') }}</x-ltr></td>

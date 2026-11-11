@@ -50,14 +50,32 @@ class ProductVariant extends Model
     public function displayName(bool $localized = true, ?Product $product = null): string
     {
         $product ??= $this->product;
-        $name = $localized ? ($product?->localName() ?? '') : ($product?->name ?? '');
-        $label = $localized ? $this->localLabel() : (filled($this->label) ? $this->label : null);
 
+        return $this->compose(
+            $localized ? ($product?->localName() ?? '') : ($product?->name ?? ''),
+            $localized ? $this->localLabel() : (filled($this->label) ? $this->label : null),
+        );
+    }
+
+    /** "صابون — أحمر": the Arabic names, or null when the product has no Arabic name (the English line is used). */
+    public function arabicName(?Product $product = null): ?string
+    {
+        $product ??= $this->product;
+        if (! filled($product?->name_ar)) {
+            return null;
+        }
+
+        return $this->compose($product->name_ar, filled($this->label_ar) ? $this->label_ar : (filled($this->label) ? $this->label : null));
+    }
+
+    private function compose(string $name, ?string $label): string
+    {
         if ($label !== null) {
             return $name . ' — ' . $label;
         }
 
-        $code = (string) $this->barcode;
+        // A deleted variant has released its barcode into old_barcode; history still tells it apart.
+        $code = (string) ($this->barcode ?? $this->old_barcode);
 
         return $code === '' ? $name : $name . ' (…' . substr($code, -4) . ')';
     }

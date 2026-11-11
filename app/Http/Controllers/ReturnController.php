@@ -64,7 +64,7 @@ class ReturnController extends Controller
         if (in_array($sale->status, self::NOT_RETURNABLE, true)) {
             abort(403, __('messages.sale_cannot_return_abort'));
         }
-        $sale->load('items.product:id,name,name_ar,sku,track_stock', 'customer');
+        $sale->load('items.product:id,name,name_ar,sku,track_stock', 'items.variant', 'customer');
         return view('returns.create', compact('sale'));
     }
 
@@ -191,7 +191,7 @@ class ReturnController extends Controller
 
     public function show(ReturnTransaction $return): View
     {
-        $return->load('sale.customer', 'items.product:id,name,name_ar,sku', 'user:id,name', 'approver:id,name');
+        $return->load('sale.customer', 'items.product:id,name,name_ar,sku', 'items.saleItem.product:id,name,name_ar,sku', 'items.saleItem.variant', 'user:id,name', 'approver:id,name');
         return view('returns.show', ['return' => $return]);
     }
 

@@ -25,7 +25,7 @@ class StockMovementService
      * Normalise raw query input into the filter shape every method here takes.
      * The caller has validated the input; this only fills defaults.
      *
-     * @return array{from: Carbon, to: Carbon, product: string, product_id: ?int, category_id: ?int, direction: string, type: ?string}
+     * @return array{from: Carbon, to: Carbon, product: string, product_id: ?int, category_id: ?int, direction: string, type: ?string, item: ?string}
      */
     public function filters(array $input): array
     {
@@ -37,6 +37,8 @@ class StockMovementService
             'category_id' => ! empty($input['category_id']) ? (int) $input['category_id'] : null,
             'direction' => in_array($input['direction'] ?? 'all', ['in', 'out'], true) ? $input['direction'] : 'all',
             'type' => ! empty($input['type']) ? (string) $input['type'] : null,
+            // main = the main items only, variants = movements of variants only (a product's own total is unaffected).
+            'item' => in_array($input['item'] ?? null, ['main', 'variants'], true) ? $input['item'] : null,
         ];
     }
 
@@ -74,6 +76,12 @@ class StockMovementService
 
         if ($f['type']) {
             $q->where('type', $f['type']);
+        }
+
+        if ($f['item'] === 'main') {
+            $q->whereNull('product_variant_id');
+        } elseif ($f['item'] === 'variants') {
+            $q->whereNotNull('product_variant_id');
         }
 
         return $q;
@@ -123,6 +131,8 @@ class StockMovementService
             __('stock.cols.date'), __('stock.cols.product'), __('stock.cols.sku'), __('stock.cols.type'),
             __('stock.cols.qty_in'), __('stock.cols.qty_out'), __('stock.cols.balance'),
             __('stock.cols.reference'), __('stock.cols.user'), __('stock.cols.notes'),
+            // Last, so the columns a spreadsheet already reads keep their place.
+            __('stock.cols.variant'),
         ]];
 
         foreach ($rows as $r) {
@@ -138,6 +148,7 @@ class StockMovementService
                 $r->ref_label,
                 $r->user?->name,
                 trim(($r->reason ?? '').' '.($r->notes ?? '')),
+                $r->variant ? ($r->variant->localLabel() ?? '…'.substr((string) ($r->variant->barcode ?? $r->variant->old_barcode), -4)) : '',
             ];
         }
 
@@ -148,6 +159,7 @@ class StockMovementService
     {
         return $q->with([
             'product' => fn ($p) => $p->withTrashed()->select('id', 'name', 'name_ar', 'sku', 'unit'),
+            'variant:id,product_id,label,label_ar,barcode,old_barcode',
             'user:id,name',
         ])->orderByDesc('inventory_adjustments.created_at')->orderByDesc('inventory_adjustments.id');
     }
