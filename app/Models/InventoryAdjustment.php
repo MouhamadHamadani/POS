@@ -26,7 +26,7 @@ class InventoryAdjustment extends Model
     ];
 
     protected $fillable = [
-        'product_id', 'user_id', 'type',
+        'product_id', 'product_variant_id', 'user_id', 'type',
         'qty_before', 'qty_change', 'qty_after',
         'reason', 'reference_type', 'reference_id',
         'batch_number', 'expiry_date', 'notes',
@@ -54,6 +54,12 @@ class InventoryAdjustment extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /** The variant this movement was for; null = the main item. */
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id')->withTrashed();
     }
 
     public function user(): BelongsTo

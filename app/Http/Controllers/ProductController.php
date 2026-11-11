@@ -10,6 +10,7 @@ use App\Models\Tax;
 use App\Services\BarcodeService;
 use App\Services\InventoryService;
 use App\Services\StockMovementService;
+use App\Services\VariantService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class ProductController extends Controller
     public function __construct(
         private readonly BarcodeService $barcodes,
         private readonly InventoryService $inventory,
+        private readonly VariantService $variants,
     ) {}
 
     public function index(Request $request): View
@@ -115,11 +117,14 @@ class ProductController extends Controller
         }
 
         $except = $request->query('except');
-        $product = $this->barcodes->findByBarcode($barcode, $except ? (int) $except : null);
+        $exceptVariant = $request->query('except_variant');
+        $hit = $this->barcodes->findByBarcode($barcode, $except ? (int) $except : null, $exceptVariant ? (int) $exceptVariant : null);
 
         return response()->json([
-            'exists' => (bool) $product,
-            'product_name' => $product?->localName(),
+            'exists' => (bool) $hit,
+            'kind' => $hit['kind'] ?? null,
+            // A variant's own name reads "Product — Red"; a product's is its name.
+            'product_name' => $hit ? ($hit['variant']?->displayName() ?? $hit['product']->localName()) : null,
         ]);
     }
 
@@ -143,11 +148,15 @@ class ProductController extends Controller
         $opening = (float) ($data['stock_qty'] ?? 0);
         unset($data['stock_qty']);
 
-        $product = DB::transaction(function () use ($data, $opening, $request) {
+        $variantRows = (array) ($data['variants'] ?? []);
+        unset($data['variants']);
+
+        $product = DB::transaction(function () use ($data, $opening, $variantRows, $request) {
             $product = Product::create($data);
             if ($opening != 0.0) {
                 $this->inventory->recordOpening($product, $opening, $request->user()->id);
             }
+            $this->variants->sync($product, $variantRows, $request->user()->id);
 
             return $product;
         });
@@ -179,8 +188,14 @@ class ProductController extends Controller
         // no trace in the movement log — stock only changes through adjustStock().
         unset($data['stock_qty']);
 
+        $variantRows = (array) ($data['variants'] ?? []);
+        unset($data['variants']);
+
         $old = $product->only(array_keys($data));
-        $product->update($data);
+        DB::transaction(function () use ($product, $data, $variantRows, $request) {
+            $product->update($data);
+            $this->variants->sync($product, $variantRows, $request->user()->id);
+        });
 
         AuditLog::record($request->user()->id, 'update', Product::class, $product->id, $old, $data);
 
@@ -201,7 +216,7 @@ class ProductController extends Controller
         // old_barcode/old_sku keep the codes readable on the row itself, for the
         // super-admin-only trashed list. Historical only — no unique index, no
         // validation rule, so they never block a new product reusing the code.
-        DB::transaction(function () use ($product, $oldBarcode, $oldSku) {
+        DB::transaction(function () use ($product, $oldBarcode, $oldSku, $request) {
             $product->barcode = null;
             $product->sku = null;
             $product->old_barcode = $oldBarcode;
@@ -209,6 +224,9 @@ class ProductController extends Controller
             $product->save();
 
             $product->delete(); // soft delete via SoftDeletes trait
+
+            // Its variants go with it, and their barcodes / SKUs are freed the same way.
+            $this->variants->releaseAllFor($product, $request->user()->id);
         });
 
         AuditLog::record($request->user()->id, 'delete', Product::class, $product->id, [

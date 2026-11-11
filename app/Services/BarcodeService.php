@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\ProductVariant;
 
 class BarcodeService
 {
@@ -16,33 +17,50 @@ class BarcodeService
             $base12 = str_pad((string) random_int(100_000_000_000, 999_999_999_999), 12, '0', STR_PAD_LEFT);
             $candidate = $base12 . $this->ean13CheckDigit($base12);
 
-            if (!Product::withTrashed()->where('barcode', $candidate)->exists()) {
+            if ($this->findByBarcode($candidate) === null) {
                 return $candidate;
             }
         }
         throw new \RuntimeException('Could not generate a unique barcode after 20 attempts.');
     }
 
+    public const KIND_PRODUCT = 'product';
+    public const KIND_VARIANT = 'variant';
+
     /**
-     * Find the product already holding a barcode, if any.
+     * Who holds a barcode. One namespace across products.barcode and product_variants.barcode:
+     *   ['product' => Product, 'variant' => ?ProductVariant, 'kind' => 'product'|'variant'], or null.
+     * A scanned variant code resolves to its parent product plus the variant.
      *
-     * withTrashed(): the DB unique index and the StoreProductRequest unique rule
-     * both still see soft-deleted rows, so every duplicate check must too, or the
-     * preview says "free" and the INSERT says otherwise. Deleting a product now
-     * nulls its barcode/sku (ProductController::destroy) and a migration freed the
-     * ones already stuck, so a trashed row should no longer hold a code at all —
-     * this stays as the guard that keeps the preview honest if one ever does.
+     * withTrashed(): the DB unique indexes and the form's unique rules still see soft-deleted rows, so every
+     * duplicate check must too, or the preview says "free" and the INSERT says otherwise. Deleting a product
+     * or a variant nulls its barcode/sku, so a trashed row should no longer hold a code at all; this stays as
+     * the guard that keeps the preview honest if one ever does.
+     *
+     * $exceptProductId / $exceptVariantId leave out the row being edited.
      */
-    public function findByBarcode(string $barcode, ?int $exceptId = null): ?Product
+    public function findByBarcode(string $barcode, ?int $exceptProductId = null, ?int $exceptVariantId = null): ?array
     {
-        if (trim($barcode) === '') {
+        $code = trim($barcode);
+        if ($code === '') {
             return null;
         }
 
-        return Product::withTrashed()
-            ->where('barcode', trim($barcode))
-            ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
-            ->first(['id', 'name']);
+        $product = Product::withTrashed()
+            ->where('barcode', $code)
+            ->when($exceptProductId, fn ($q) => $q->where('id', '!=', $exceptProductId))
+            ->first();
+        if ($product) {
+            return ['product' => $product, 'variant' => null, 'kind' => self::KIND_PRODUCT];
+        }
+
+        $variant = ProductVariant::withTrashed()
+            ->with(['product' => fn ($q) => $q->withTrashed()])
+            ->where('barcode', $code)
+            ->when($exceptVariantId, fn ($q) => $q->where('id', '!=', $exceptVariantId))
+            ->first();
+
+        return $variant ? ['product' => $variant->product, 'variant' => $variant, 'kind' => self::KIND_VARIANT] : null;
     }
 
     public function ean13CheckDigit(string $first12): string

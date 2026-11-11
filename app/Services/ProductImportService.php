@@ -128,7 +128,7 @@ class ProductImportService
                     $report['duplicates'][] = [
                         'row' => $lineNo,
                         'barcode' => $barcode,
-                        'existing' => $existing->name,
+                        'existing' => $existing['variant']?->displayName(false) ?? $existing['product']->name,
                     ];
                     continue;
                 }
