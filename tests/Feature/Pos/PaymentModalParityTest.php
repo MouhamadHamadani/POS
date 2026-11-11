@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Pos;
 
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Setting;
@@ -87,6 +88,29 @@ class PaymentModalParityTest extends TestCase
             }];
         }
 
+        // On account: it needs a customer, room under their limit (what they owe already counts) and a due date that
+        // is not in the past. `customer` is what the till holds; the test builds the same customer for the server.
+        $ok = ['limit' => 100, 'balance' => 0];
+        $owes = ['limit' => 100, 'balance' => 70];
+        $yesterday = now()->subDay()->toDateString();
+        $later = now()->addDays(10)->toDateString();
+        foreach ([
+            [10.00, ['amount_credit' => 10, 'due_date' => $later], $ok],              // pay later
+            [10.00, ['amount_credit' => 10], null],                                   // no customer
+            [10.00, ['amount_credit' => 6, 'amount_usd' => 4], $ok],                  // part now, part later
+            [10.00, ['amount_credit' => 6, 'amount_card' => 4, 'due_date' => $later], $ok],
+            [10.00, ['amount_credit' => 10], ['limit' => 0, 'balance' => 0]],         // limit 0 = no credit
+            [50.00, ['amount_credit' => 30], $owes],                                  // 70 + 30 = exactly the limit
+            [50.00, ['amount_credit' => 30.01], $owes],                               // one cent over
+            [50.00, ['amount_credit' => 31], $owes],
+            [10.00, ['amount_credit' => 10, 'due_date' => $yesterday], $ok],          // due in the past
+            [10.00, ['amount_credit' => 11], $ok],                                    // more than the total
+            [10.00, ['amount_credit' => 5, 'amount_usd' => 6], $ok],                  // cash over a covered rest: change
+            [10.00, ['amount_credit' => 10, 'amount_usd' => 1], $ok],                 // cash with nothing left to cover
+        ] as [$total, $payment, $customer]) {
+            $cases[] = ['total' => $total, 'payment' => $payment, 'customer' => $customer];
+        }
+
         return $cases;
     }
 
@@ -127,9 +151,13 @@ class PaymentModalParityTest extends TestCase
         $mismatches = [];
         foreach ($scenarios as $i => $case) {
             $product->update(['price_usd' => $case['total']]);
+            $customer = ! empty($case['customer'])
+                ? Customer::create(['name' => 'C'.$i, 'credit_limit' => $case['customer']['limit'], 'balance' => $case['customer']['balance'], 'customer_group' => 'retail', 'is_active' => true])
+                : null;
             $response = $this->actingAs($cashier)->postJson('/pos/api/sales', [
                 'cart' => [['product_id' => $product->id, 'qty' => 1]],
                 'payment' => $case['payment'],
+                'customer_id' => $customer?->id,
             ]);
             $serverTakesIt = $response->status() === 201;
             $accepted += $serverTakesIt ? 1 : 0;

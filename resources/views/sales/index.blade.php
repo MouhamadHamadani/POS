@@ -1,6 +1,11 @@
 <x-app-layout>
     <x-slot name="header"><h2 class="font-semibold text-xl text-gray-800">{{ __('sales.title') }}</h2></x-slot>
 
+    @php
+        // Debts are shown while the feature is on, and also while anyone still owes money after it was switched off.
+        $showDebt = feature('customer_credit') || app(\App\Services\CustomerLedgerService::class)->anyDebt();
+        $cols = 8 + (feature('sales_channels') ? 1 : 0) + ($showDebt ? 1 : 0);
+    @endphp
     <div class="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4" x-data="salesReprint(@js($desktop))">
 
         @include('sales._reprint_error')
@@ -42,6 +47,17 @@
                             @endforeach
                         </select>
                     </div>
+                    @if ($showDebt)
+                        <div>
+                            <label class="block text-xs text-gray-500">{{ __('sales.debt') }}</label>
+                            <select name="debt" class="w-full border-gray-300 rounded text-sm">
+                                <option value="">{{ __('common.all') }}</option>
+                                @foreach (\App\Services\SaleHistoryService::DEBT_FILTERS as $d)
+                                    <option value="{{ $d }}" @selected($f['debt'] === $d)>{{ __("sales.debt_$d") }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                     @feature('sales_channels')
                         <div>
                             <label class="block text-xs text-gray-500">{{ __('sales.channel') }}</label>
@@ -92,6 +108,7 @@
                         <th class="p-3 text-start">{{ __('receipt.payment') }}</th>
                         @feature('sales_channels')<th class="p-3 text-start">{{ __('sales.channel') }}</th>@endfeature
                         <th class="p-3 text-end">{{ __('dashboard.total') }}</th>
+                        @if ($showDebt)<th class="p-3 text-end">{{ __('debts.cols.outstanding') }}</th>@endif
                         <th class="p-3 text-center">{{ __('common.status') }}</th>
                         <th class="p-3 text-end">{{ __('common.actions') }}</th>
                     </tr>
@@ -106,7 +123,12 @@
                         <td class="p-3 text-xs text-gray-600 whitespace-nowrap"><x-ltr>{{ $s->created_at->format('Y-m-d H:i') }}</x-ltr></td>
                         <td class="p-3">{{ $s->customer?->name ?? __('returns.walk_in') }}</td>
                         <td class="p-3">{{ $s->user?->name ?? '—' }}</td>
-                        <td class="p-3 text-xs">{{ $s->paymentMethodLabel() }}</td>
+                        <td class="p-3 text-xs">
+                            {{ $s->paymentMethodLabel() }}
+                            @if ((float) $s->amount_credit_usd > 0)
+                                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">{{ __('debts.on_account') }}</span>
+                            @endif
+                        </td>
                         @feature('sales_channels')
                             <td class="p-3 text-xs whitespace-nowrap">
                                 <span class="px-1.5 py-0.5 rounded {{ $s->isOnline() ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600' }}">{{ $s->channelLabel() }}</span>
@@ -119,6 +141,22 @@
                                 <div class="text-xs text-gray-500"><x-ltr>{{ number_format((float) $s->total_lbp) }}</x-ltr> {{ __('shifts.lbp') }}</div>
                             @endif
                         </td>
+                        @if ($showDebt)
+                            @php
+                                $owed = $s->outstanding_usd !== null ? (float) $s->outstanding_usd : null;
+                                $late = $owed !== null && $owed > \App\Services\CustomerLedgerService::SETTLED && $s->due_date && $s->due_date->lt(today());
+                            @endphp
+                            <td class="p-3 text-end whitespace-nowrap">
+                                @if ($owed !== null && $owed > \App\Services\CustomerLedgerService::SETTLED)
+                                    <div class="font-medium {{ $late ? 'text-danger' : '' }}"><x-ltr>${{ number_format($owed, 2) }}</x-ltr></div>
+                                    @if ($s->due_date)<div class="text-xs {{ $late ? 'text-danger' : 'text-gray-500' }}"><x-ltr>{{ $s->due_date->format('Y-m-d') }}</x-ltr>@if ($late) · {{ __('pos.ui.overdue') }}@endif</div>@endif
+                                @elseif ($owed !== null)
+                                    <span class="text-xs text-gray-400">{{ __('sales.debt_settled') }}</span>
+                                @else
+                                    <span class="text-gray-300">—</span>
+                                @endif
+                            </td>
+                        @endif
                         <td class="p-3 text-center"><x-sale-status :sale="$s" /></td>
                         <td class="p-3 text-end whitespace-nowrap">
                             <a href="{{ route('sales.show', ['sale' => $s->id] + request()->query()) }}" class="px-2 py-1 rounded text-xs bg-gray-100 text-gray-700 hover:bg-gray-200">{{ __('common.view') }}</a>
@@ -132,7 +170,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ feature('sales_channels') ? 9 : 8 }}" class="p-10 text-center text-gray-500">{{ __('sales.none') }}</td></tr>
+                    <tr><td colspan="{{ $cols }}" class="p-10 text-center text-gray-500">{{ __('sales.none') }}</td></tr>
                 @endforelse
                 </tbody>
             </table>

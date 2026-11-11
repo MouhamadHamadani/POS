@@ -208,6 +208,17 @@
                             <label class="block text-xs text-gray-500">{{ __('settings.idle_logout') }}</label>
                             <input type="number" min="1" max="600" name="settings[idle_timeout_min]" dir="ltr" value="{{ $get('idle_timeout_min') }}" class="w-full border-gray-300 rounded text-sm" />
                         </div>
+                        @feature('customer_credit')
+                        <div>
+                            <label class="block text-xs text-gray-500">{{ __('settings.default_credit_days') }}</label>
+                            <input type="number" min="0" max="3650" name="settings[default_credit_days]" dir="ltr" value="{{ $get('default_credit_days', 30) }}" class="w-full border-gray-300 rounded text-sm" />
+                            <div class="text-xs text-gray-500 mt-1">{{ __('settings.default_credit_days_help') }}</div>
+                        </div>
+                        <label class="text-sm flex items-center gap-2">
+                            <input type="checkbox" name="settings[show_balance_on_receipt]" value="1" @checked($get('show_balance_on_receipt', true))>
+                            {{ __('settings.show_balance_on_receipt') }}
+                        </label>
+                        @endfeature
                         <div class="md:col-span-2 flex justify-end"><button class="px-4 py-2 bg-brand-700 text-white rounded text-sm hover:bg-brand-800">{{ __('common.save') }}</button></div>
                     </form>
 

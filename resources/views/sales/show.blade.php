@@ -152,6 +152,28 @@
                     <tr class="font-medium"><td class="py-0.5">{{ __('receipt.change_lbp') }}</td><td class="text-end"><x-ltr>{{ number_format((float) $sale->change_lbp) }}</x-ltr></td></tr>
                 @endif
             </table>
+            {{-- On account: when it is due, what is still owed, and every payment applied to it with its date. --}}
+            @if ($debt)
+                <div class="mt-3 pt-3 border-t text-sm space-y-1">
+                    <div class="flex justify-between"><span>{{ __('debts.on_account') }}</span><x-ltr>{{ $money($debt['credit']) }}</x-ltr></div>
+                    @if ($debt['due_date'])<div class="flex justify-between"><span>{{ __('debts.due_date') }}</span><x-ltr class="{{ $debt['overdue'] ? 'text-danger font-medium' : '' }}">{{ $debt['due_date']->format('Y-m-d') }}</x-ltr></div>@endif
+                    @if ($debt['outstanding'] !== null)
+                        <div class="flex justify-between"><span>{{ __('debts.paid_so_far') }}</span><x-ltr>{{ $money($debt['paid']) }}</x-ltr></div>
+                        <div class="flex justify-between font-semibold"><span>{{ __('debts.cols.outstanding') }}</span><x-ltr class="{{ $debt['outstanding'] > \App\Services\CustomerLedgerService::SETTLED ? 'text-danger' : 'text-success' }}">{{ $money($debt['outstanding']) }}</x-ltr></div>
+                        @foreach ($debt['payments'] as $e)
+                            <div class="flex justify-between text-xs {{ $e->payment?->isVoided() ? 'line-through text-gray-400' : 'text-gray-600' }}">
+                                <span><x-ltr>{{ $e->entry_date->format('Y-m-d') }}</x-ltr> · <a href="{{ route('debts.show', ['customer' => $e->customer_id, 'tab' => 'payments']) }}" class="text-brand-700 hover:underline"><x-ltr>{{ $e->payment?->number }}</x-ltr></a></span>
+                                <x-ltr>{{ $money(abs((float) $e->amount_usd)) }}</x-ltr>
+                            </div>
+                        @endforeach
+                    @else
+                        <p class="text-xs text-gray-500">{{ __('sales.debt_legacy') }}</p>
+                    @endif
+                    @if ($sale->customer_id)
+                        <a href="{{ route('debts.show', $sale->customer_id) }}" class="inline-block text-xs text-brand-700 hover:underline">{{ __('sales.debt_open_customer') }}</a>
+                    @endif
+                </div>
+            @endif
             @if ($sale->loyalty_points_earned > 0 || $sale->loyalty_points_redeemed > 0)
                 <div class="mt-2 text-xs text-gray-500 space-y-0.5">
                     @if ($sale->loyalty_points_earned > 0)<div>{{ __('receipt.loyalty_earned', ['count' => $sale->loyalty_points_earned]) }}</div>@endif

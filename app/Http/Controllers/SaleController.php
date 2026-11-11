@@ -39,6 +39,8 @@ class SaleController extends Controller
             'payment.amount_card' => 'nullable|numeric|min:0',
             'payment.amount_wish' => 'nullable|numeric|min:0',
             'payment.amount_credit' => 'nullable|numeric|min:0',
+            // When the on-account part is due; blank = today + the customer's credit days (SaleService).
+            'payment.due_date' => 'nullable|date|after_or_equal:today',
             'payment.card_type' => 'nullable|string|max:50',
             'payment.card_reference' => 'nullable|string|max:100',
             'payment.wish_reference' => 'nullable|string|max:100',
@@ -58,16 +60,19 @@ class SaleController extends Controller
         ]);
         [$channel, $channelSource] = Sale::resolveChannel($data['channel'] ?? null, $data['channel_source'] ?? null);
 
-        // Attaching a customer, paying on account and redeeming points are the loyalty
-        // feature's. The sale itself is core and goes through without them; only the
-        // customer-bound parts of the request are refused, so a till that has loyalty
-        // switched off under it says so instead of quietly pricing the sale differently.
+        // Attaching a customer and redeeming points are the loyalty feature's, paying on account is
+        // customer_credit's. The sale itself is core and goes through without them; only the
+        // customer-bound parts of the request are refused, so a till that has a feature
+        // switched off under it says so instead of quietly pricing the sale differently
+        // (or, for the tab, treating money that was meant for it as paid).
         if (! feature('loyalty') && (
             ($data['customer_id'] ?? null) !== null
-            || (float) ($data['payment']['amount_credit'] ?? 0) > 0
             || (int) ($data['payment']['loyalty_points_redeemed'] ?? 0) > 0
         )) {
             return response()->json(['error' => __('plan.feature_locked')], 403);
+        }
+        if (! feature('customer_credit') && (float) ($data['payment']['amount_credit'] ?? 0) > 0) {
+            return response()->json(['error' => __('messages.credit_feature_off')], 403);
         }
 
         $shift = Shift::where('user_id', $request->user()->id)
@@ -84,7 +89,7 @@ class SaleController extends Controller
 
         $payment = array_merge([
             'amount_usd' => 0, 'amount_lbp' => 0, 'amount_card' => 0, 'amount_wish' => 0,
-            'amount_credit' => 0, 'loyalty_points_redeemed' => 0,
+            'amount_credit' => 0, 'loyalty_points_redeemed' => 0, 'due_date' => null,
         ], $data['payment']);
 
         try {
@@ -106,11 +111,14 @@ class SaleController extends Controller
 
             return response()->json([
                 'success' => true,
-                'sale' => $sale->only([
+                'sale' => array_merge($sale->only([
                     'id', 'receipt_number', 'price_tier', 'channel', 'channel_source', 'subtotal_usd', 'discount_amount_usd', 'cart_discount_usd',
                     'tax_amount_usd', 'total_usd', 'total_lbp',
                     'change_usd', 'change_lbp', 'payment_method',
-                    'loyalty_points_earned',
+                    'loyalty_points_earned', 'amount_credit_usd', 'customer_balance_after_usd',
+                ]), [
+                    // A plain date, not a timestamp: json-encoded, a Carbon becomes UTC and reads as the day before.
+                    'due_date' => $sale->due_date?->toDateString(),
                 ]),
                 'items' => $sale->items,
             ], 201);

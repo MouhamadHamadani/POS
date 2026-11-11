@@ -20,6 +20,8 @@ return [
     'wish' => 'Wish',
     'ref' => 'Ref.',
     'on_account' => 'On account',
+    'due_date' => 'Due date',
+    'balance_owed' => 'Total balance owed',
     'change_usd' => 'Change USD',
     'change_lbp' => 'Change LBP',
     'disc' => 'disc:',

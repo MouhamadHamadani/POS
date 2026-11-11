@@ -35,6 +35,7 @@ class SaleService
         private readonly CurrencyService $currency,
         private readonly InventoryService $inventory,
         private readonly LoyaltyService $loyalty,
+        private readonly CustomerLedgerService $ledger,
     ) {}
 
     /**
@@ -55,8 +56,11 @@ class SaleService
      *   ['amount_usd'=>float, 'amount_lbp'=>float,                       cash tendered, by currency
      *    'amount_card'=>float, 'card_type'=>?string, 'card_reference'=>?string,
      *    'amount_wish'=>float, 'wish_reference'=>?string,                USD
-     *    'amount_credit'=>float,                                         on account (loyalty feature)
+     *    'amount_credit'=>float, 'due_date'=>?string (Y-m-d),            on account (customer_credit feature)
      *    'change_usd_out'=>?float, 'loyalty_points_redeemed'=>int]
+     * On account needs a customer, the `customer_credit` feature and room under the customer's credit limit
+     * (what they already owe counts). It is one line of a split payment, so "pay later" is just credit = the total.
+     * `due_date` defaults to today + the customer's credit days (or the store default) and is kept only with credit.
      * `method` is no longer read: payment_method is derived from the amounts (Sale::deriveMethod).
      * Non-cash can never exceed the total and never causes change; cash covers what is left.
      *
@@ -144,6 +148,15 @@ class SaleService
             $wish = (float) ($payment['amount_wish'] ?? 0);
             $credit = (float) ($payment['amount_credit'] ?? 0);
 
+            // Everything on the tab, no cash: the tab takes up the sub-cent gap between the cents the till showed
+            // and the four-decimal total, so the customer owes (and later pays) exactly what the sale came to.
+            if ($credit > 0 && $tendUsd <= 0 && $tendLbp <= 0) {
+                $gap = round($grandTotal - ($card + $wish + $credit), 4);
+                if ($gap !== 0.0 && abs($gap) <= self::PAY_TOLERANCE) {
+                    $credit = round($credit + $gap, 4);
+                }
+            }
+
             $cashAsUsd = $tendUsd + $this->currency->lbpToUsd($tendLbp);
             $nonCash = $card + $wish + $credit;
             $totalPaid = $cashAsUsd + $nonCash;
@@ -166,13 +179,22 @@ class SaleService
                 throw ValidationException::withMessages(['payment' => __('messages.payment_cash_not_needed')]);
             }
 
+            $dueDate = null;
             if ($credit > 0) {
+                // Refused, never silently dropped: money that was meant for the tab must not turn up as "paid".
+                if (! feature('customer_credit')) {
+                    throw ValidationException::withMessages(['payment' => __('messages.credit_feature_off')]);
+                }
                 if (!$customer) {
                     throw ValidationException::withMessages(['customer' => __('messages.credit_customer_required')]);
                 }
                 if (!$customer->hasAvailableCredit($credit)) {
-                    throw ValidationException::withMessages(['customer' => __('messages.credit_limit_exceeded')]);
+                    throw ValidationException::withMessages(['customer' => __('messages.credit_limit_exceeded', [
+                        'limit' => '$' . number_format((float) $customer->credit_limit, 2),
+                        'available' => '$' . number_format($customer->availableCredit(), 2),
+                    ])]);
                 }
+                $dueDate = $this->resolveDueDate($payment['due_date'] ?? null, $customer);
             }
 
             $changeUsdOut = array_key_exists('change_usd_out', $payment) && $payment['change_usd_out'] !== null
@@ -204,6 +226,7 @@ class SaleService
                 'amount_tendered_lbp' => $tendLbp ?: null,
                 'amount_card_usd' => $card,
                 'amount_credit_usd' => $credit,
+                'due_date' => $dueDate,
                 'change_usd' => $change['change_usd'],
                 'change_lbp' => $change['change_lbp'],
                 'loyalty_points_redeemed' => (int) ($payment['loyalty_points_redeemed'] ?? 0),
@@ -250,10 +273,14 @@ class SaleService
                 $sale->payments()->create(Arr::except($row, 'kind'));
             }
 
+            // The debt goes on the customer's ledger (the only writer of customers.balance), and the receipt keeps
+            // what they owed right after it, so a reprint shows what the original did.
             if ($customer && $credit > 0) {
-                $customer->increment('balance', $credit);
+                $this->ledger->recordCreditSale($sale, $customer, $credit);
+                $sale->update(['customer_balance_after_usd' => round((float) $customer->fresh()->balance, 4)]);
             }
 
+            // Points are earned on the whole sale total, paid now or not: a sale on account earns the same as one paid in cash.
             if ($customer) {
                 $this->loyalty->awardForSale($sale, $customer);
             }
@@ -267,6 +294,8 @@ class SaleService
                 'payment_method' => $sale->payment_method,
                 // Per-method amounts as paid (cash USD / LBP are what was tendered; the change is on the sale).
                 'payments' => collect($paymentLines)->mapWithKeys(fn ($l) => [$l['kind'] => $l['amount']])->all(),
+                'credit_usd' => $credit,
+                'due_date' => $dueDate,
                 'discount_total' => $totals['discount'],
                 'cart_discount' => $totals['cart_discount'],
                 'max_line_discount_pct' => $totals['max_line_discount_pct'],
@@ -572,9 +601,8 @@ class SaleService
                 }
             }
 
-            if ($sale->customer && $sale->amount_credit_usd > 0) {
-                $sale->customer->decrement('balance', (float) $sale->amount_credit_usd);
-            }
+            // The sale's debt comes off the ledger (refused, and nothing above is kept, while a repayment is applied to it).
+            $this->ledger->reverseCreditSale($sale, $userId);
 
             $sale->update([
                 'status' => Sale::STATUS_VOIDED,
@@ -606,6 +634,24 @@ class SaleService
             'qty' => (float) $l['qty'],
             'packs' => (float) $l['qty'] * $l['multiplier'],
         ], $packaged)];
+    }
+
+    /**
+     * When a credit sale is due. A date the client sent must be today or later; with none it is today plus the
+     * customer's own credit days, else the store default (Settings > POS).
+     */
+    private function resolveDueDate(mixed $given, Customer $customer): string
+    {
+        if ($given === null || $given === '') {
+            return now()->addDays($customer->creditDays())->toDateString();
+        }
+
+        $due = \Carbon\Carbon::parse($given)->startOfDay();
+        if ($due->lt(today())) {
+            throw ValidationException::withMessages(['due_date' => __('messages.credit_due_date_past')]);
+        }
+
+        return $due->toDateString();
     }
 
     private function nextReceiptNumber(): string

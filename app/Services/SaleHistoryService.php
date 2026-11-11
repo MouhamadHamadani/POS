@@ -41,7 +41,7 @@ class SaleHistoryService
      * one cheap range scan. A text search with no dates looks through every date:
      * "find any past receipt" must not need the date pickers moved first.
      *
-     * @return array{q:string,from:?Carbon,to:?Carbon,defaulted:bool,user_id:?int,status:?string,payment_method:?string,channel:?string}
+     * @return array{q:string,from:?Carbon,to:?Carbon,defaulted:bool,user_id:?int,status:?string,payment_method:?string,channel:?string,debt:?string}
      */
     public function filters(array $input): array
     {
@@ -64,8 +64,20 @@ class SaleHistoryService
             'payment_method' => in_array($input['payment_method'] ?? null, array_merge(self::PAYMENT_FILTERS, Sale::METHODS), true) ? $input['payment_method'] : null,
             // The channel filter exists only with the feature; a stale ?channel= in a bookmark is ignored without it.
             'channel' => feature('sales_channels') && in_array($input['channel'] ?? null, Sale::CHANNELS, true) ? $input['channel'] : null,
+            'debt' => in_array($input['debt'] ?? null, self::DEBT_FILTERS, true) ? $input['debt'] : null,
         ];
     }
+
+    /** `outstanding`: still owes money on account. `overdue`: owes it and the due date has passed. */
+    public const DEBT_FILTERS = ['outstanding', 'overdue'];
+
+    /**
+     * What one receipt still owes, as a SQL expression: the sum of its ledger lines. NULL when the sale has none
+     * (a sale from before the debt book, or one not on account), which is never "owes": its debt, if it had one,
+     * lives in the customer's opening balance, not on the receipt. The one rule behind the filters, the column
+     * and the badge, so they cannot disagree.
+     */
+    private const OUTSTANDING_SQL = '(SELECT SUM(customer_ledger_entries.amount_usd) FROM customer_ledger_entries WHERE customer_ledger_entries.sale_id = sales.id)';
 
     public function query(array $f, User $user): Builder
     {
@@ -85,6 +97,14 @@ class SaleHistoryService
         }
         if ($f['channel']) {
             $q->where('sales.channel', $f['channel']);
+        }
+        if ($f['debt']) {
+            // Half a cent or less is settled. Overdue = still owed and the due date is before today (due today is not late).
+            // CAST: PDO binds the float as text and SQLite sorts any text above any number, so a bare `> ?` is never true.
+            $q->whereRaw(self::OUTSTANDING_SQL.' > CAST(? AS REAL)', [CustomerLedgerService::SETTLED]);
+            if ($f['debt'] === 'overdue') {
+                $q->whereNotNull('sales.due_date')->whereRaw('date(sales.due_date) < ?', [today()->toDateString()]);
+            }
         }
         // A cashier's own filter is a no-op next to visibleTo(): another id matches nothing.
         if ($f['user_id']) {
@@ -146,7 +166,9 @@ class SaleHistoryService
     {
         return $this->query($f, $user)
             ->select('sales.id', 'sales.receipt_number', 'sales.customer_id', 'sales.user_id', 'sales.status',
-                'sales.payment_method', 'sales.channel', 'sales.channel_source', 'sales.total_usd', 'sales.total_lbp', 'sales.created_at')
+                'sales.payment_method', 'sales.channel', 'sales.channel_source', 'sales.total_usd', 'sales.total_lbp', 'sales.created_at',
+                'sales.amount_credit_usd', 'sales.due_date')
+            ->selectRaw(self::OUTSTANDING_SQL.' AS outstanding_usd')
             ->with(['customer' => fn ($c) => $c->withTrashed()->select('id', 'name'), 'user:id,name'])
             ->orderByDesc('sales.created_at')->orderByDesc('sales.id')
             ->paginate(self::PER_PAGE);

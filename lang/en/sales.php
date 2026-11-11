@@ -24,4 +24,10 @@ return [
     'voided_on' => 'Voided on :date',
     'loyalty_redeemed' => '-:count loyalty points redeemed',
     'card_reference' => 'Ref. :ref',
+    'debt' => 'On account',
+    'debt_outstanding' => 'Still owes',
+    'debt_overdue' => 'Overdue',
+    'debt_settled' => 'Paid',
+    'debt_legacy' => 'This sale was made before the debt book, so what is still owed on it is not tracked per receipt. It is part of the customer\'s opening balance.',
+    'debt_open_customer' => 'Open the customer\'s debts',
 ];

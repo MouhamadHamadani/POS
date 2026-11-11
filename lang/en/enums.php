@@ -36,6 +36,24 @@ return [
         'split' => 'Split',
         'wish' => 'Wish',
     ],
+    // How a customer paid down a debt (the debt book), and what each ledger line is.
+    'debt_method' => [
+        'cash' => 'Cash',
+        'card' => 'Card',
+        'wish' => 'Wish',
+        'bank_transfer' => 'Bank transfer',
+        'other' => 'Other',
+        'write_off' => 'Write-off',
+    ],
+    'ledger_entry' => [
+        'opening' => 'Opening balance',
+        'credit_sale' => 'Sale on account',
+        'payment' => 'Payment',
+        'write_off' => 'Write-off',
+        'return_credit' => 'Return credited',
+        'void_reversal' => 'Reversal',
+        'adjustment' => 'Adjustment',
+    ],
     'purchase_status' => [
         'draft' => 'Draft',
         'sent' => 'Sent',

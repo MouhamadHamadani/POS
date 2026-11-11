@@ -9,6 +9,7 @@
         ['stock_movements', '/products/movements', 'stock,manager,admin',       '🔄'],
         ['categories',     '/categories',       'stock,manager,admin',         '🏷️'],
         ['customers',       '/customers',        'manager,admin',               '👥'],
+        ['debts',           '/debts',            'cashier,manager,admin',       '📒'],
         ['suppliers',       '/suppliers',        'manager,admin',               '🚚'],
         ['purchases',       '/purchase-orders',  'manager,admin',               '📑'],
         ['sales',           '/sales',            implode(',', \App\Models\User::SALES_HISTORY_ROLES), '🧾'],
@@ -37,6 +38,12 @@
         '/expenses' => 'expenses',
     ];
     $nav = array_values(array_filter($nav, fn ($item) => ! isset($featureFor[$item[1]]) || feature($featureFor[$item[1]])));
+
+    // Debts: the way in follows customer_credit, but never while someone still owes money: collecting what is
+    // already owed must stay reachable after the feature is switched off (the routes carry no feature key).
+    if (! feature('customer_credit') && ! app(\App\Services\CustomerLedgerService::class)->anyDebt()) {
+        $nav = array_values(array_filter($nav, fn ($item) => $item[1] !== '/debts'));
+    }
 @endphp
 
 <aside x-data="{ open: window.innerWidth >= 1024 }"

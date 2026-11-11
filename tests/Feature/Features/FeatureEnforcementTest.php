@@ -275,6 +275,7 @@ class FeatureEnforcementTest extends TestCase
         ])->assertCreated();
         $this->assertSame($customer->id, HeldSale::sole()->customer_id);
 
+        Feature::override('customer_credit', false); // it depends on loyalty, so it goes first
         Feature::override('loyalty', false);
 
         $hold = HeldSale::sole();
@@ -297,6 +298,7 @@ class FeatureEnforcementTest extends TestCase
         $this->plan('standard');
         $this->actingAs($cashier)->get('/pos')->assertOk()->assertSee('Add customer (F3)');
 
+        Feature::override('customer_credit', false);
         Feature::override('loyalty', false);
         $this->actingAs($cashier)->get('/pos')->assertOk()->assertDontSee('Add customer (F3)');
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use App\Models\User;
+use App\Services\CustomerLedgerService;
 use App\Services\ReceiptPrintService;
 use App\Services\SaleHistoryService;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class SaleHistoryController extends Controller
             'status' => ['nullable', Rule::in(Sale::STATUSES)],
             'payment_method' => ['nullable', Rule::in(array_merge(SaleHistoryService::PAYMENT_FILTERS, Sale::METHODS))],
             'channel' => ['nullable', Rule::in(Sale::CHANNELS)],
+            'debt' => ['nullable', Rule::in(SaleHistoryService::DEBT_FILTERS)],
         ]));
 
         return view('sales.index', [
@@ -46,7 +48,7 @@ class SaleHistoryController extends Controller
         ] + $this->printing());
     }
 
-    public function show(Request $request, Sale $sale): View
+    public function show(Request $request, Sale $sale, CustomerLedgerService $ledger): View
     {
         // A sale this user may not open looks exactly like one that does not exist.
         abort_unless($sale->canBeSeenBy($request->user()), 404);
@@ -55,6 +57,8 @@ class SaleHistoryController extends Controller
 
         return view('sales.show', [
             'sale' => $sale,
+            // On account: what it still owes and the payments applied to it (null for a sale not on account).
+            'debt' => $ledger->saleDebt($sale),
             // VAT rates and the item/cart discount split, read from the stored lines (no recalculation).
             'inv' => $this->prints->invoice($sale),
             'canReturn' => $this->history->canReturn($sale),

@@ -55,6 +55,8 @@ class SettingController extends Controller
             'auto_print' => 'bool', 'require_shift' => 'bool', 'pos_display_cost' => 'bool',
             'cashier_can_change_price_tier' => 'bool',
             'max_cashier_discount_pct' => 'float', 'idle_timeout_min' => 'int',
+            // debt book: days a credit sale is due after, whether a credit receipt prints the balance owed
+            'default_credit_days' => 'int', 'show_balance_on_receipt' => 'bool',
         ],
         'receipt' => [
             'receipt_width' => 'int', 'paper_width_char' => 'int', 'receipt_language' => 'string',
@@ -251,6 +253,7 @@ class SettingController extends Controller
         'lbp_rounding_step' => ['required|numeric|min:0', 'settings.lbp_rounding'],
         'max_cashier_discount_pct' => ['nullable|numeric|min:0|max:100', 'settings.max_cashier_discount'],
         'idle_timeout_min' => ['nullable|integer|min:1|max:600', 'settings.idle_logout'],
+        'default_credit_days' => ['nullable|integer|min:0|max:3650', 'settings.default_credit_days'],
         'receipt_width' => ['required|in:58,80', 'settings.paper_width'],
         'paper_width_char' => ['nullable|integer|min:20|max:80', 'settings.chars_per_line'],
         'points_per_dollar' => ['nullable|numeric|min:0', 'settings.points_per_dollar'],
@@ -325,7 +328,8 @@ class SettingController extends Controller
         // the page: both payment lines with a reference, the online line, and the change. Cash covers only
         // what Wish left; give $4 back in USD and the rest in LBP so both change rows print.
         $wish = 10.0;
-        $change = $currency->calculateChange(max(0.0, $total - $wish), 30.0, 0.0, 4.0);
+        $credit = 8.0; // part of it on account, so the due date and the balance owed print too
+        $change = $currency->calculateChange(max(0.0, $total - $wish - $credit), 30.0, 0.0, 4.0);
 
         $sale = new Sale([
             'receipt_number' => 'TEST-' . now()->format('His'),
@@ -337,6 +341,9 @@ class SettingController extends Controller
             'exchange_rate' => $currency->getRate(),
             'payment_method' => Sale::METHOD_SPLIT,
             'amount_tendered_usd' => 30.0,
+            'amount_credit_usd' => $credit,
+            'due_date' => now()->addDays((int) Setting::get('default_credit_days', 30))->toDateString(),
+            'customer_balance_after_usd' => 125.5,
             'change_usd' => $change['change_usd'],
             'change_lbp' => $change['change_lbp'],
             'channel' => Sale::CHANNEL_ONLINE,
@@ -346,10 +353,11 @@ class SettingController extends Controller
         $sale->setRelation('payments', collect([
             new SalePayment(SalePayment::line(SalePayment::METHOD_CASH, 'USD', 30.0, 30.0) + ['sale_id' => 0]),
             new SalePayment(SalePayment::line(SalePayment::METHOD_WISH, 'USD', $wish, $wish, 'WISH-TEST-001') + ['sale_id' => 0]),
+            new SalePayment(SalePayment::line(SalePayment::METHOD_CREDIT, 'USD', $credit, $credit) + ['sale_id' => 0]),
         ]));
         $sale->setRelation('items', $items);
         $sale->setRelation('user', $request->user());
-        $sale->setRelation('customer', null);
+        $sale->setRelation('customer', new \App\Models\Customer(['name' => 'Sample Customer']));
 
         $data = [
             'sale' => $sale,
@@ -364,6 +372,7 @@ class SettingController extends Controller
             'header' => (string) $input('receipt_header', ''),
             'footer' => (string) $input('receipt_footer', ''),
             'receiptLang' => (string) $input('receipt_language', 'bilingual'),
+            'showBalance' => filter_var($input('show_balance_on_receipt', true), FILTER_VALIDATE_BOOLEAN),
             'fontScale' => $prints->fontScale($input('receipt_font_size', null)),
             'autoPrint' => true,
             'isTest' => true,

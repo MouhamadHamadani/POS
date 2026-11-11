@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Customer;
+use App\Models\CustomerPayment;
 use App\Models\LoyaltyTransaction;
 use App\Models\Sale;
+use App\Services\CustomerLedgerService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class CustomerController extends Controller
@@ -52,14 +54,27 @@ class CustomerController extends Controller
         return redirect()->route('customers.show', $customer)->with('success', __('messages.customer_created', ['name' => $customer->name]));
     }
 
-    public function show(Customer $customer): View
+    public function show(Request $request, Customer $customer, CustomerLedgerService $ledger): View
     {
         $sales = Sale::where('customer_id', $customer->id)->latest()->limit(20)->get();
         $loyalty = LoyaltyTransaction::where('customer_id', $customer->id)->latest()->limit(20)->get();
         $totalSpent = (float) Sale::where('customer_id', $customer->id)
             ->where('status', Sale::STATUS_COMPLETED)->sum('total_usd');
         $salesCount = Sale::where('customer_id', $customer->id)->where('status', Sale::STATUS_COMPLETED)->count();
-        return view('customers.show', compact('customer', 'sales', 'loyalty', 'totalSpent', 'salesCount'));
+
+        // The debt book: open receipts, repayments, statement. Repayments are taken on the /debts screens
+        // (the same partial, so the two pages cannot drift apart).
+        $book = $ledger->book(
+            $customer,
+            $request->query('from') ? Carbon::parse($request->query('from')) : null,
+            $request->query('to') ? Carbon::parse($request->query('to')) : null,
+        ) + [
+            'tab' => in_array($request->query('tab'), ['debts', 'payments', 'statement'], true) ? $request->query('tab') : 'debts',
+            'canManage' => $request->user()->isManagerial(),
+            'slipPayment' => session('slip_payment') ? CustomerPayment::find(session('slip_payment')) : null,
+        ];
+
+        return view('customers.show', compact('customer', 'sales', 'loyalty', 'totalSpent', 'salesCount') + $book);
     }
 
     public function edit(Customer $customer): View
@@ -85,31 +100,6 @@ class CustomerController extends Controller
     }
 
     /**
-     * Record a payment from a customer against their credit balance.
-     */
-    public function recordPayment(Request $request, Customer $customer): RedirectResponse
-    {
-        $data = $request->validate([
-            'amount_usd' => 'required|numeric|min:0.01',
-            'method' => 'required|in:cash_usd,cash_lbp,card,bank_transfer,other',
-            'reference' => 'nullable|string|max:80',
-            'date' => 'nullable|date',
-            'notes' => 'nullable|string|max:500',
-        ]);
-
-        if ((float) $data['amount_usd'] > (float) $customer->balance) {
-            return back()->withErrors(['amount_usd' => __('messages.payment_exceeds', ['amount' => '$' . number_format($customer->balance, 2)])]);
-        }
-
-        DB::transaction(function () use ($data, $customer, $request) {
-            $customer->decrement('balance', (float) $data['amount_usd']);
-            AuditLog::record($request->user()->id, 'customer_payment', Customer::class, $customer->id, null, $data);
-        });
-
-        return back()->with('success', __('messages.payment_recorded', ['amount' => '$' . number_format($customer->fresh()->balance, 2)]));
-    }
-
-    /**
      * AJAX endpoint used by the POS typeahead.
      */
     public function search(Request $request): JsonResponse
@@ -125,6 +115,7 @@ class CustomerController extends Controller
                 })
                 ->limit(10)
                 ->get(Customer::POS_COLUMNS)
+                ->map(fn (Customer $c) => $c->posSummary())
         );
     }
 
@@ -161,6 +152,8 @@ class CustomerController extends Controller
             'tax_number' => 'nullable|string|max:80',
             'customer_group' => 'required|in:retail,wholesale,vip',
             'credit_limit' => 'nullable|numeric|min:0',
+            // Days of credit this customer gets; blank = the store default (Settings > POS).
+            'payment_terms_days' => 'nullable|integer|min:0|max:3650',
             'loyalty_points' => 'nullable|integer|min:0',
             'tax_exempt' => 'nullable|boolean',
             'is_active' => 'nullable|boolean',

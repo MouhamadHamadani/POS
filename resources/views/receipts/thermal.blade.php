@@ -173,6 +173,14 @@
         @if ($sale->change_lbp > 0)
             <tr class="bold"><td>{!! $L('change_lbp') !!}</td><td class="amt">{{ number_format((float) $sale->change_lbp) }}</td></tr>
         @endif
+        {{-- Sold on account: when it is due, and (store setting) what the customer owes in all. Both are read from
+             the sale as it was made, so a reprint says what the original did. --}}
+        @if ((float) $sale->amount_credit_usd > 0 && $sale->due_date)
+            <tr class="bold"><td>{!! $L('due_date') !!}</td><td class="amt">{{ $sale->due_date->format('Y-m-d') }}</td></tr>
+            @if (($showBalance ?? (bool) \App\Models\Setting::get('show_balance_on_receipt', true)) && $sale->customer_balance_after_usd !== null)
+                <tr class="bold"><td>{!! $L('balance_owed') !!}</td><td class="amt">{{ $money($sale->customer_balance_after_usd) }}</td></tr>
+            @endif
+        @endif
     </table>
 
     <hr>

@@ -8,6 +8,7 @@ return [
     'stock_movements' => 'حركة المخزون',
     'categories' => 'الفئات',
     'customers' => 'الزبائن',
+    'debts' => 'ديون الزبائن',
     'suppliers' => 'الموردون',
     'purchases' => 'أوامر الشراء',
     'expenses' => 'المصاريف',

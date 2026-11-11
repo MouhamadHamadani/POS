@@ -93,6 +93,7 @@ needs renaming.
 | `returns` | Sales | Returns & refunds | `sales_history` | existing group; sidebar; Return button on sale detail; stock-movement link |
 | `sales_channels` | Sales | On-site and online sales | — | no route to gate: the on-site / online toggle on the till, the Sales History filter and badge, the receipt line, the daily-sales channel section. Off forces every sale on-site |
 | `loyalty` | Customers | Customers & loyalty | — | existing routes; sidebar; Add-customer button on the till; Loyalty settings tab |
+| **`customer_credit`** *(new key)* | Customers | Customer debts (sell on account) | `loyalty` | the till's On account option and due date; `SaleController` / `SaleService` refuse `amount_credit`; the `/debts` sidebar item, dashboard tile and Receivables report card (shown while the feature is on **or** any balance is owed). The repayment screens themselves carry no `feature:` key: money already owed can always be collected |
 | `suppliers` | Purchasing | Suppliers & purchase orders | `products` | existing group; 2 sidebar items; stock-movement PO link |
 | `receipts.custom_templates` | Receipts | Custom receipt templates | `receipts` | existing route; Receipt Template tab |
 | **`expenses`** *(new key)* | Finance | Expenses | `shifts` | `/expenses*` group; sidebar; Settings → Expenses tab; Expenses report card |
@@ -111,7 +112,8 @@ rules against both the real edge and a synthetic config.
   gate at module / page level only.
 - **Split payments and Wish** (cash USD / LBP + card + Wish + on account in one sale, on-site or
   online): **core on every plan**, not a feature key. A plan cannot switch off a way of being paid;
-  the on-account part still follows `loyalty` (it needs a customer), and nothing else does.
+  the on-account part follows `customer_credit` (the debt book; it also needs a customer, so it
+  requires `loyalty`), and nothing else does.
 - **Trashed products, Backup, Permissions, Plan**: super_admin-only already; the client never sees them.
 - **A4 invoice print**: optional. I can add `receipts.a4_invoice` (requires `receipts`) if you
   want to sell it separately. Off the list unless you say yes (decision 6).
@@ -133,6 +135,7 @@ tier includes today; both new keys are on in all three.** Restricting Starter fu
 | `returns` | – | ✔ | ✔ |
 | `suppliers` | – | ✔ | ✔ |
 | `loyalty` | – | ✔ | ✔ |
+| `customer_credit` *(new)* | – | ✔ | ✔ |
 | `sales_channels` | – | ✔ | ✔ |
 | `receipts.custom_templates` | – | – | ✔ |
 
@@ -226,8 +229,10 @@ the Plan & Features tab and its endpoints are never gated by a feature.
 - **Per-product Movements tab.** The product edit page's movements tab and its "full history" link
   are the stock-movements history, so they go with `stock_movements`.
 - **Customer inputs on the sale endpoint.** With `loyalty` off, `POST /pos/api/sales` refuses
-  `customer_id`, `payment.amount_credit` and `payment.loyalty_points_redeemed` (403), and holds are
-  stored and recalled as walk-in carts. The sale itself is untouched.
+  `customer_id` and `payment.loyalty_points_redeemed` (403), and holds are
+  stored and recalled as walk-in carts. With `customer_credit` off it refuses `payment.amount_credit`
+  (403) and `SaleService` refuses it too (422): money meant for the tab is never silently counted as paid.
+  The sale itself is untouched.
 - **No new default migration.** `2026_10_18_000001_backfill_license_settings` already pins `tier`
   on installs that predate plans, and an unset tier reads as `premium`; unset `feature_overrides`
   means none. `FeatureUpgradeAndCatalogueTest` covers it.

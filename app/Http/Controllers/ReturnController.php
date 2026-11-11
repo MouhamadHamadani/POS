@@ -8,6 +8,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Setting;
 use App\Services\CurrencyService;
+use App\Services\CustomerLedgerService;
 use App\Services\InventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,9 +21,13 @@ class ReturnController extends Controller
     /** A sale in one of these states cannot take a return: not found by "Find sale", refused by create()/store(). */
     public const NOT_RETURNABLE = [Sale::STATUS_VOIDED, Sale::STATUS_ON_HOLD, Sale::STATUS_REFUNDED];
 
+    /** While a sale still owes money, only these can be chosen: cash back would leave the debt standing. */
+    public const DEBT_REFUND_METHODS = ['account', 'exchange'];
+
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly CurrencyService $currency,
+        private readonly CustomerLedgerService $ledger,
     ) {}
 
     public function index(Request $request): View
@@ -65,7 +70,10 @@ class ReturnController extends Controller
             abort(403, __('messages.sale_cannot_return_abort'));
         }
         $sale->load('items.product:id,name,name_ar,sku,track_stock', 'items.variant', 'customer');
-        return view('returns.create', compact('sale'));
+        // What the sale still owes on account: while it is more than nothing, only an account credit or an
+        // exchange can be chosen (the view explains why).
+        $outstanding = $this->ledger->outstandingForSale($sale);
+        return view('returns.create', compact('sale', 'outstanding'));
     }
 
     public function store(Request $request, Sale $sale): RedirectResponse
@@ -137,6 +145,13 @@ class ReturnController extends Controller
         // Credit refund needs a customer.
         if ($data['refund_method'] === 'account' && !$sale->customer_id) {
             return back()->withErrors(['refund_method' => __('returns.account_needs_customer')]);
+        }
+
+        // A sale that still owes money cannot be refunded in cash, card or Wish: the customer would take
+        // the money out and the debt would stand. It goes against the debt (account) or is exchanged.
+        if (! in_array($data['refund_method'], self::DEBT_REFUND_METHODS, true)
+            && ($owed = $this->ledger->outstandingForSale($sale)) > CustomerLedgerService::SETTLED) {
+            return back()->withErrors(['refund_method' => __('returns.debt_outstanding_method', ['amount' => '$' . number_format($owed, 2)])]);
         }
 
         $user = $request->user();
@@ -282,9 +297,10 @@ class ReturnController extends Controller
             },
         ]);
 
-        // Account credit: reduces what the customer owes us (balance can go negative = we owe them).
+        // Account credit pays down what the customer owes: this sale's debt first, then the rest of the book,
+        // and anything left over stays as store credit (a negative balance: we owe them).
         if ($return->refund_method === 'account' && $sale->customer) {
-            $sale->customer->decrement('balance', (float) $return->refund_amount_usd);
+            $this->ledger->applyReturnCredit($return);
         }
 
         $return->update(['status' => ReturnTransaction::STATUS_COMPLETED]);

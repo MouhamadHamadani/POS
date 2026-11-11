@@ -9,6 +9,8 @@ const src = fs.readFileSync(input.bladePath, 'utf8');
 const NAMES = [
     'tenderedUsd', 'cashTenderedUsd', 'nonCashUsd', 'noncashExceeds', 'cashDueUsd',
     'cashNotNeeded', 'remainingUsd', 'changeUsd', 'canComplete', 'fillRemaining', 'setPayMode',
+    // the debt book's rules: a customer, room under their limit, a due date that is not past
+    'creditUsd', 'creditRoom', 'creditAvailable', 'creditNeedsCustomer', 'creditExceeds', 'creditDueInvalid', 'todayStr', 'dateStr',
 ];
 
 function method(name) {
@@ -34,7 +36,9 @@ process.stdout.write(JSON.stringify(input.scenarios.map((s) => {
         exchangeRate: input.exchangeRate,
         paySlack: Number(slack[1]),
         totals: { total: s.total },
-        payment: Object.assign({ amount_usd: 0, amount_lbp: 0, amount_card: 0, amount_wish: 0, card_reference: '', wish_reference: '', change_usd_out: null }, s.payment),
+        payment: Object.assign({ amount_usd: 0, amount_lbp: 0, amount_card: 0, amount_wish: 0, amount_credit: 0, due_date: '', card_reference: '', wish_reference: '', change_usd_out: null }, s.payment),
+        // The till's customer chip shape (credit_limit / balance as the typeahead returns them).
+        customer: s.customer ? { credit_limit: s.customer.limit, balance: s.customer.balance } : null,
         payMode: 'split',
         processing: false,
         refreshChangePreview() {},
