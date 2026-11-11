@@ -105,17 +105,30 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('returns.refund_method') }} *</label>
                     {{-- One refund method per return. The method of the sale's largest payment line is preselected. --}}
-                    @php $suggested = $sale->suggestedRefundMethod(); @endphp
+                    {{-- A sale that still owes money on account takes only an account credit (preselected) or an
+                         exchange: cash back would leave the debt standing. --}}
+                    @php
+                        $owesDebt = ($outstanding ?? 0) > \App\Services\CustomerLedgerService::SETTLED;
+                        $suggested = $owesDebt ? 'account' : $sale->suggestedRefundMethod();
+                    @endphp
                     <select name="refund_method" required class="w-full border-gray-300 rounded text-sm">
-                        <option value="cash_usd" @selected($suggested === 'cash_usd')>{{ __('returns.opt_cash_usd') }}</option>
-                        <option value="cash_lbp" @selected($suggested === 'cash_lbp')>{{ __('returns.opt_cash_lbp') }}</option>
-                        <option value="card" @selected($suggested === 'card')>{{ __('returns.opt_card') }}</option>
-                        <option value="wish" @selected($suggested === 'wish')>{{ __('returns.opt_wish') }}</option>
+                        @unless ($owesDebt)
+                            <option value="cash_usd" @selected($suggested === 'cash_usd')>{{ __('returns.opt_cash_usd') }}</option>
+                            <option value="cash_lbp" @selected($suggested === 'cash_lbp')>{{ __('returns.opt_cash_lbp') }}</option>
+                            <option value="card" @selected($suggested === 'card')>{{ __('returns.opt_card') }}</option>
+                            <option value="wish" @selected($suggested === 'wish')>{{ __('returns.opt_wish') }}</option>
+                        @endunless
                         @if ($sale->customer_id)
                             <option value="account" @selected($suggested === 'account')>{{ __('returns.opt_account') }}</option>
                         @endif
                         <option value="exchange">{{ __('returns.opt_exchange') }}</option>
                     </select>
+                    @if ($owesDebt)
+                        <div class="mt-2 p-2 bg-amber-50 text-amber-800 rounded text-xs">
+                            <div class="font-semibold">{{ __('returns.debt_outstanding_title', ['amount' => '$'.number_format($outstanding, 2)]) }}</div>
+                            {{ __('returns.debt_outstanding_help') }}
+                        </div>
+                    @endif
                     @unless ($sale->customer_id)
                         <div class="text-xs text-gray-500 mt-1">{{ __('returns.account_needs_customer') }}</div>
                     @endunless

@@ -22,7 +22,10 @@
                 ['inventory_by_date', 'reports.inventory-by-date', '🗓️', 'reports.stock_levels'],
                 ['pnl', 'reports.pnl', '💵', 'reports.profit_loss'],
                 ['expenses', 'reports.expenses', '🧾', 'expenses'],
-            ], fn ($r) => $r[3] === null || feature($r[3]));
+                ['receivables', 'reports.receivables', '📒', 'customer_credit'],
+            ], fn ($r) => $r[3] === null || feature($r[3])
+                // The receivables card stays while anyone still owes money, even with the feature switched off.
+                || ($r[0] === 'receivables' && app(\App\Services\CustomerLedgerService::class)->anyDebt()));
         @endphp
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

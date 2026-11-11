@@ -55,6 +55,14 @@
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('customers.credit_limit_usd') }}</label>
                     <input type="number" step="0.01" min="0" name="credit_limit" dir="ltr" value="{{ old('credit_limit', $customer->credit_limit) }}" class="w-full border-gray-300 rounded text-sm" />
                 </div>
+                @feature('customer_credit')
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('customers.payment_terms_days') }}</label>
+                    <input type="number" step="1" min="0" max="3650" name="payment_terms_days" dir="ltr" value="{{ old('payment_terms_days', $customer->payment_terms_days) }}"
+                           placeholder="{{ \App\Models\Setting::get('default_credit_days', 30) }}" class="w-full border-gray-300 rounded text-sm" />
+                    <div class="text-xs text-gray-500 mt-1">{{ __('customers.payment_terms_help') }}</div>
+                </div>
+                @endfeature
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('customers.birth_date') }}</label>
                     <input type="date" name="birth_date" dir="ltr" value="{{ old('birth_date', $customer->birth_date?->format('Y-m-d')) }}" class="w-full border-gray-300 rounded text-sm" />

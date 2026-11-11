@@ -70,6 +70,12 @@ final class ReceiptRenderer
                 : '',
             'change_usd' => $money($sale->change_usd),
             'change_lbp' => number_format((float) $sale->change_lbp),
+            // Sold on account: empty for any other sale, so a template can print them unconditionally.
+            'on_account' => (float) $sale->amount_credit_usd > 0 ? $money($sale->amount_credit_usd) : '',
+            'due_date' => (float) $sale->amount_credit_usd > 0 && $sale->due_date ? $sale->due_date->format('Y-m-d') : '',
+            'balance_owed' => (float) $sale->amount_credit_usd > 0 && $sale->customer_balance_after_usd !== null
+                && ($data['showBalance'] ?? (bool) \App\Models\Setting::get('show_balance_on_receipt', true))
+                ? $money($sale->customer_balance_after_usd) : '',
             'loyalty_points_earned' => (string) (int) $sale->loyalty_points_earned,
         ];
     }

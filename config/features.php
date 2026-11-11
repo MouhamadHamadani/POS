@@ -22,7 +22,7 @@
 
 // What each plan adds on top of the one below it. Core keys are never listed.
 $starter = ['expenses', 'stock_movements'];
-$standard = [...$starter, 'reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'sales_channels'];
+$standard = [...$starter, 'reports.sales_by_product', 'reports.stock_levels', 'reports.profit_loss', 'returns', 'suppliers', 'loyalty', 'customer_credit', 'sales_channels'];
 $premium = [...$standard, 'receipts.custom_templates'];
 
 return [
@@ -50,6 +50,11 @@ return [
         // On-site vs online-order tag on a sale (bookkeeping only; no integration). No route to gate.
         'sales_channels' => ['group' => 'sales', 'requires' => []],
         'loyalty' => ['group' => 'customers', 'requires' => []],
+        // The debt book: sell on account with a due date, take repayments, statements, aging. `loyalty` is what
+        // the customers area is gated on (there is no separate `customers` key), so it is what this requires.
+        // Switching it off hides the till's On account option and the new credit, never the repayment screens
+        // for money already owed.
+        'customer_credit' => ['group' => 'customers', 'requires' => ['loyalty']],
         'suppliers' => ['group' => 'purchasing', 'requires' => ['products']],
         'receipts.custom_templates' => ['group' => 'receipts', 'requires' => ['receipts']],
         'expenses' => ['group' => 'finance', 'requires' => ['shifts']],

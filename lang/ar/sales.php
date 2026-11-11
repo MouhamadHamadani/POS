@@ -23,5 +23,11 @@ return [
     'linked_returns' => 'مرتجعات هذا البيع',
     'voided_on' => 'أُلغي بتاريخ :date',
     'loyalty_redeemed' => '-:count نقطة ولاء مستبدلة',
+    'debt' => 'على الحساب',
+    'debt_outstanding' => 'عليها متبقٍّ',
+    'debt_overdue' => 'متأخرة',
+    'debt_settled' => 'مدفوعة',
+    'debt_legacy' => 'أُجريت هذه الفاتورة قبل دفتر الديون، لذا لا يُتتبَّع المتبقي عليها لكل فاتورة على حدة، وهو جزء من الرصيد الافتتاحي للزبون.',
+    'debt_open_customer' => 'فتح ديون الزبون',
     'card_reference' => 'المرجع :ref',
 ];

@@ -52,6 +52,7 @@ class PosController extends Controller
             'products' => $products,
             'exchangeRate' => $exchangeRate,
             'lbpStep' => $lbpStep,
+            'defaultCreditDays' => (int) Setting::get('default_credit_days', 30),
             'autoPrint' => (bool) Setting::get('auto_print', false),
             'receiptFormat' => $prints->formatSetting(),
             'desktop' => $prints->inNativeShell(),

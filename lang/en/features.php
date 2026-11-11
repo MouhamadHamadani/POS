@@ -35,6 +35,7 @@ return [
         'returns' => 'Returns and refunds',
         'sales_channels' => 'On-site and online sales',
         'loyalty' => 'Customers and loyalty',
+        'customer_credit' => 'Customer debts (sell on account)',
         'suppliers' => 'Suppliers and purchase orders',
         'receipts_custom_templates' => 'Custom receipt templates',
         'expenses' => 'Expenses',

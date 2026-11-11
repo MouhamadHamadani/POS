@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivationController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DebtController;
 use App\Http\Controllers\DemoController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
@@ -164,6 +165,25 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
+    // Customer debts (the debt book). The cashier takes repayments here without getting the customer-admin
+    // screens (/customers/* stays admin + manager). There is deliberately no `feature:` key on any of it:
+    // switching customer_credit off hides the way in (till option, sidebar, tile) but money that is already
+    // owed can always be collected. Voiding a repayment, writing a debt off and moving a due date are managers'.
+    Route::middleware('role:admin,manager,cashier')->prefix('debts')->name('debts.')->group(function () {
+        Route::get('/', [DebtController::class, 'index'])->name('index');
+        Route::get('/payments/{payment}/slip', [DebtController::class, 'slip'])->name('slip');
+        Route::post('/payments/{payment}/print', [DebtController::class, 'printSlip'])->name('payments.print');
+        Route::get('/{customer}', [DebtController::class, 'show'])->name('show');
+        Route::post('/{customer}/payments', [DebtController::class, 'pay'])->name('payments.store');
+        Route::get('/{customer}/statement', [DebtController::class, 'statement'])->name('statement');
+
+        Route::middleware('role:admin,manager')->group(function () {
+            Route::post('/payments/{payment}/void', [DebtController::class, 'void'])->name('payments.void');
+            Route::post('/{customer}/write-off', [DebtController::class, 'writeOff'])->name('write-off');
+            Route::patch('/sales/{sale}/due-date', [DebtController::class, 'dueDate'])->name('due-date');
+        });
+    });
+
     // Customers + Reports — admin/manager
     Route::middleware('role:admin,manager')->group(function () {
         Route::middleware('feature:loyalty')->group(function () {
@@ -174,7 +194,6 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
             Route::put('/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
             Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
-            Route::post('/customers/{customer}/payment', [CustomerController::class, 'recordPayment'])->name('customers.payment');
         });
 
         // Expenses: fixed and running costs, optionally paid out of the open shift's drawer.
@@ -219,6 +238,8 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('feature:expenses')->name('reports.expenses');
         Route::get('/reports/financial/pnl', [ReportController::class, 'profitLoss'])
             ->middleware('feature:reports.profit_loss')->name('reports.pnl');
+        // Receivables aging: the same data as /debts. No feature key, like /debts (money owed stays reportable).
+        Route::get('/reports/financial/receivables', [DebtController::class, 'aging'])->name('reports.receivables');
     });
 
     // Admin-only — Users, Settings

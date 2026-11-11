@@ -28,6 +28,9 @@ class ResetData extends Command
      * migration set moving on without it.
      */
     private const TRANSACTIONAL = [
+        // The debt book first: its entries point at sales, returns and payments, and payments at shifts.
+        'customer_ledger_entries',
+        'customer_payments',
         'sale_items',
         'sale_payments',
         'sales',
