@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SalePayment;
@@ -42,8 +43,9 @@ class SaleService
      *
      * Cart line shape. There is deliberately no price: the server prices every
      * line from the product row and the resolved price list.
-     *   ['product_id'=>int, 'qty'=>float,
+     *   ['product_id'=>int, 'product_variant_id'=>int|null, 'qty'=>float,
      *    'discount_pct'=>float, 'discount_amount'=>float, 'note'=>string|null]
+     * `product_variant_id` names one of the product's variants (own barcode and stock, the product's price).
      *
      * $priceTier is what the client asked for; null means "the customer's
      * group, else retail" (see resolvePriceTier() for who may override it).
@@ -104,23 +106,28 @@ class SaleService
             $this->assertWithinDiscountLimit($totals, $user);
 
             // Pre-flight stock check: reject the whole sale before any DB write
-            // if any tracked product would be oversold (including duplicate cart lines).
+            // if any tracked item would be oversold (including duplicate cart lines).
+            // An item is a product's main item or one of its variants; each has its own count.
             $requested = [];
             foreach ($totals['lines'] as $line) {
                 $p = $line['product'];
                 if (!$p->track_stock || $p->type === Product::TYPE_BUNDLE) {
                     continue;
                 }
-                $requested[$p->id] = ($requested[$p->id] ?? 0) + (float) $line['qty'];
+                $key = $p->id . ':' . ($line['variant']?->id ?? 0);
+                $requested[$key] ??= ['product_id' => $p->id, 'variant_id' => $line['variant']?->id, 'needed' => 0.0];
+                $requested[$key]['needed'] += (float) $line['qty'];
             }
-            foreach ($requested as $pid => $needed) {
-                $product = Product::find($pid);
-                if ($product && (float) $product->stock_qty < $needed) {
+            foreach ($requested as $r) {
+                $product = Product::find($r['product_id']);
+                $variant = $r['variant_id'] ? ProductVariant::find($r['variant_id']) : null;
+                $available = $variant ? (float) $variant->stock_qty : $product?->mainStockQty();
+                if ($product && $available < $r['needed']) {
                     throw ValidationException::withMessages([
                         'stock' => __('messages.insufficient_stock', [
-                            'product' => $product->localName(),
-                            'available' => rtrim(rtrim(number_format((float) $product->stock_qty, 4, '.', ''), '0'), '.'),
-                            'requested' => rtrim(rtrim(number_format($needed, 4, '.', ''), '0'), '.'),
+                            'product' => $variant ? $variant->displayName(product: $product) : $product->localName(),
+                            'available' => rtrim(rtrim(number_format($available, 4, '.', ''), '0'), '.'),
+                            'requested' => rtrim(rtrim(number_format($r['needed'], 4, '.', ''), '0'), '.'),
                         ]),
                     ]);
                 }
@@ -209,8 +216,11 @@ class SaleService
                 SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_id' => $line['product']->id,
-                    'product_name' => $line['product']->name,
-                    'product_sku' => $line['product']->sku,
+                    'product_variant_id' => $line['variant']?->id,
+                    // Snapshots, so history reads the same if a name or label changes later. A variant line is
+                    // "Product — Red" (English, like every snapshot); price, cost and tax are the product's.
+                    'product_name' => $line['variant']?->displayName(false, $line['product']) ?? $line['product']->name,
+                    'product_sku' => $line['variant']?->sku ?? $line['product']->sku,
                     'qty' => $line['qty'],
                     'unit_price_usd' => $line['unit_price'],
                     'price_tier' => $tier,
@@ -224,7 +234,7 @@ class SaleService
                     'note' => $line['note'] ?? null,
                 ]);
 
-                $this->inventory->deductForSale($line['product'], (float) $line['qty'], $userId, $sale->id);
+                $this->inventory->deductForSale($line['product'], (float) $line['qty'], $userId, $sale->id, $line['variant']);
             }
 
             // The itemised record, beside the flat columns above (which stay the drawer's ledger).
@@ -365,6 +375,19 @@ class SaleService
                 throw ValidationException::withMessages(['cart' => __('messages.product_missing', ['id' => $row['product_id']])]);
             }
 
+            // A variant is a barcode under the product: same price list, own stock. It must be this product's,
+            // alive and active. Its legacy price_modifier is never read.
+            $variant = null;
+            if (!empty($row['product_variant_id'])) {
+                $variant = $row['variant'] ?? ProductVariant::find($row['product_variant_id']);
+                if (!$variant || $variant->product_id !== $product->id) {
+                    throw ValidationException::withMessages(["cart.$i.product_variant_id" => __('products.variants.err_variant_missing')]);
+                }
+                if (!$variant->is_active) {
+                    throw ValidationException::withMessages(["cart.$i.product_variant_id" => __('products.variants.err_inactive', ['name' => $variant->displayName(product: $product)])]);
+                }
+            }
+
             $qty = (float) ($row['qty'] ?? 1);
             $unitPrice = $product->priceForGroup($tier);
             $discountPct = (float) ($row['discount_pct'] ?? 0);
@@ -386,6 +409,7 @@ class SaleService
 
             $lines[$i] = [
                 'product' => $product,
+                'variant' => $variant,
                 'qty' => $qty,
                 'unit_price' => $unitPrice,
                 'discount_pct' => $discountPct,
@@ -458,6 +482,7 @@ class SaleService
 
             $out[] = [
                 'product' => $product,
+                'variant' => $l['variant'],
                 'qty' => $l['qty'],
                 'unit_price' => $l['unit_price'],
                 'discount_pct' => $l['discount_pct'],
@@ -524,6 +549,7 @@ class SaleService
                         reason: 'sale_void',
                         referenceType: 'sale',
                         referenceId: $sale->id,
+                        variant: $item->variant,
                     );
                 }
             }

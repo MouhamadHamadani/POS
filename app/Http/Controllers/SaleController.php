@@ -20,6 +20,8 @@ class SaleController extends Controller
         $data = $request->validate([
             'cart' => 'required|array|min:1',
             'cart.*.product_id' => 'required|integer|exists:products,id',
+            // A variant of that product (SaleService checks it is the product's, alive and active).
+            'cart.*.product_variant_id' => 'nullable|integer',
             'cart.*.qty' => 'required|numeric|min:0.0001',
             // No cart.*.unit_price: the server prices every line (SaleService).
             'cart.*.discount_pct' => 'nullable|numeric|min:0|max:100',

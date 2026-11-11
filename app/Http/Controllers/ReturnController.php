@@ -264,7 +264,7 @@ class ReturnController extends Controller
             }
 
             if ($ri->restock && $ri->product) {
-                $this->inventory->restockFromReturn($ri->product, $qty, $return->user_id, $return->id);
+                $this->inventory->restockFromReturn($ri->product, $qty, $return->user_id, $return->id, $ri->saleItem?->variant);
             }
         }
 
