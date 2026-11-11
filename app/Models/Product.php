@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPackaging;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use HasFactory, HasUuid, SoftDeletes;
+    use HasFactory, HasPackaging, HasUuid, SoftDeletes;
 
     public const TYPE_SIMPLE = 'simple';
     public const TYPE_VARIANT = 'variant';

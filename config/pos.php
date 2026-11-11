@@ -81,6 +81,15 @@ return [
     'fake_data_days' => (int) env('POS_FAKE_DATA_DAYS', 21),
 
     /**
+     * Client-branch switches (client/tobacco). Everything under a key here is off unless the build's env turns it on.
+     * `packaging`: sell one product as a pack, a package of N packs and a carton (docs/packaging.md). Off means the
+     * product form shows no Packaging section, the till ignores the fields and Product::supportsUnit() allows only 'pack'.
+     */
+    'features' => [
+        'packaging' => (bool) env('POS_PACKAGING', false),
+    ],
+
+    /**
      * The vendor's built-in super_admin, created on launch by
      * App\Support\SuperAdmin::ensure(). The password is a bcrypt HASH — never
      * the plain password — and has no default: with none, no account is made
