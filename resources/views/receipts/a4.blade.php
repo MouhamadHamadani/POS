@@ -154,7 +154,7 @@
                 <td class="c-n muted"><bdi dir="ltr">{{ $line['n'] }}</bdi></td>
                 <td class="c-code small"><bdi dir="ltr">{{ $line['code'] ?: '—' }}</bdi></td>
                 <td>{{ $rtl && $line['name_ar'] ? $line['name_ar'] : $line['name'] }}</td>
-                <td class="num">{{ $line['qty'] }}@if ($line['unit']) {{ \App\Support\EnumLabel::get('unit', $line['unit']) }}@endif</td>
+                <td class="num">{{ $line['qty'] }}@if ($line['unit']) {{ \App\Support\EnumLabel::get('unit', $line['unit']) }}@elseif ($line['item']->isPackagedUnit()) {{ $line['item']->unitLabel($rtl ? 'ar' : 'en') }}@endif</td>
                 <td class="num">{{ $money($line['unit_price']) }}</td>
                 @if ($inv['has_line_discount'])
                     <td class="num">{{ $line['discount'] > 0 ? '-'.$money($line['discount']) : '' }}</td>

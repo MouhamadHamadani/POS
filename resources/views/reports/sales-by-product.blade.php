@@ -20,7 +20,19 @@
                 @forelse ($rows as $r)
                     <tr>
                         <td class="p-3">{{ $r['local_name'] ?? $r['product_name'] }}</td>
-                        <td class="p-3 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $r['units'], 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                        <td class="p-3 text-end">
+                            <x-ltr>{{ rtrim(rtrim(number_format((float) $r['units'], 4, '.', ''), '0'), '.') }}</x-ltr>
+                            {{-- Packaging: a product sold by the package or the carton counts in packs, with the split underneath. --}}
+                            @if (! empty($r['has_package']) || (float) ($r['packages'] ?? 0) > 0 || (float) ($r['cartons'] ?? 0) > 0)
+                                <span class="text-xs text-gray-500">{{ __('packaging.report.packs') }}</span>
+                                @if ((float) ($r['packages'] ?? 0) > 0 || (float) ($r['cartons'] ?? 0) > 0)
+                                    <div class="text-xs text-gray-500">
+                                        @if ((float) $r['packages'] > 0){{ __('packaging.report.packages_n', ['n' => rtrim(rtrim(number_format((float) $r['packages'], 4, '.', ''), '0'), '.')]) }}@endif
+                                        @if ((float) $r['cartons'] > 0){{ __('packaging.report.cartons_n', ['n' => rtrim(rtrim(number_format((float) $r['cartons'], 4, '.', ''), '0'), '.')]) }}@endif
+                                    </div>
+                                @endif
+                            @endif
+                        </td>
                         <td class="p-3 text-end"><x-ltr>${{ number_format((float) $r['revenue'], 2) }}</x-ltr></td>
                         <td class="p-3 text-end text-gray-500"><x-ltr>${{ number_format((float) $r['cogs'], 2) }}</x-ltr></td>
                         <td class="p-3 text-end font-medium {{ $r['profit'] > 0 ? 'text-success' : 'text-danger' }}"><x-ltr>${{ number_format((float) $r['profit'], 2) }}</x-ltr></td>

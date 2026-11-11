@@ -264,7 +264,9 @@ class ReturnController extends Controller
             }
 
             if ($ri->restock && $ri->product) {
-                $this->inventory->restockFromReturn($ri->product, $qty, $return->user_id, $return->id);
+                // qty_returned is in the line's sale units (1 package); stock is in packs.
+                $packs = $qty * (float) (SaleItem::whereKey($ri->sale_item_id)->value('unit_multiplier') ?: 1);
+                $this->inventory->restockFromReturn($ri->product, $packs, $return->user_id, $return->id);
             }
         }
 

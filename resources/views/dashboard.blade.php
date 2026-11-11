@@ -6,7 +6,7 @@
     $sales = Sale::where('status', Sale::STATUS_COMPLETED)->whereDate('created_at', $today)->get();
     $revenue = (float) $sales->sum('total_usd');
     $txnCount = $sales->count();
-    $itemsSold = (float) \App\Models\SaleItem::whereIn('sale_id', $sales->pluck('id'))->sum('qty');
+    $itemsSold = (float) \App\Models\SaleItem::whereIn('sale_id', $sales->pluck('id'))->sum('base_qty'); // packs, whatever unit a line was sold in
     $lowStock = Product::where('is_active', true)->where('track_stock', true)
         ->whereColumn('stock_qty', '<=', 'min_stock')->count();
     $outOfStock = Product::where('is_active', true)->where('track_stock', true)

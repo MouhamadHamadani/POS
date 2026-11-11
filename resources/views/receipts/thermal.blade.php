@@ -121,7 +121,7 @@
                 $itemSecondary = $receiptLang === 'bilingual' && $itemAr && $itemAr !== $item->product_name ? $itemAr : null;
             @endphp
         <tr class="item-row">
-            <td colspan="2">{{ $itemName }}@if ($itemSecondary)<br><span class="name-ar" dir="rtl">{{ $itemSecondary }}</span>@endif</td>
+            <td colspan="2">{{ $itemName }}{!! $item->isPackagedUnit() ? ' — <bdi>'.e($item->unitLabel($rtl ? 'ar' : 'en')).'</bdi>' : '' !!}@if ($itemSecondary)<br><span class="name-ar" dir="rtl">{{ $itemSecondary }}</span>@endif</td>
         </tr>
         <tr class="item-row small">
             <td>

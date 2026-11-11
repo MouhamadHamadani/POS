@@ -174,7 +174,9 @@ class ReceiptPrintService
                 'name' => $item->product_name,
                 'name_ar' => $product?->name_ar,
                 'qty' => rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.'),
-                'unit' => $product?->unit,
+                // A package / carton line is counted in that unit ("2 Package ×10"), not in the product's own unit.
+                'unit' => $item->isPackagedUnit() ? null : $product?->unit,
+                'item' => $item,
                 'unit_price' => (float) $item->unit_price_usd,
                 'discount' => (float) $item->discount_amount_usd,
                 'total' => (float) $item->line_total_usd,

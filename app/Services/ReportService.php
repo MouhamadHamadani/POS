@@ -117,7 +117,11 @@ class ReportService
                 'sale_items.product_id',
                 'sale_items.product_name',
                 'products.name_ar as product_name_ar',
-                DB::raw('SUM(sale_items.qty) as units'),
+                // Packs (base_qty), whatever unit the lines were sold in; the breakdown below is for the packaged ones.
+                DB::raw('SUM(sale_items.base_qty) as units'),
+                DB::raw("SUM(CASE WHEN sale_items.sale_unit = 'package' THEN sale_items.qty ELSE 0 END) as packages"),
+                DB::raw("SUM(CASE WHEN sale_items.sale_unit = 'carton' THEN sale_items.qty ELSE 0 END) as cartons"),
+                DB::raw('MAX(products.has_package) as has_package'),
                 // Revenue net of VAT: line_total carries the tax for an
                 // exclusive rate and contains it for an inclusive one, so
                 // subtracting the line's tax is right either way. VAT is

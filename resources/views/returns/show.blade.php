@@ -70,7 +70,7 @@
                 @foreach ($return->items as $i)
                     <tr>
                         <td class="py-2">{{ $i->product?->localName() ?? '—' }}</td>
-                        <td class="py-2 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $i->qty_returned, 4, '.', ''), '0'), '.') }}</x-ltr></td>
+                        <td class="py-2 text-end"><x-ltr>{{ rtrim(rtrim(number_format((float) $i->qty_returned, 4, '.', ''), '0'), '.') }}</x-ltr>@if ($i->saleItem?->isPackagedUnit()) <span class="text-xs text-gray-500">{{ $i->saleItem->unitLabel() }}</span>@endif</td>
                         <td class="py-2 text-center">{{ $i->restock ? __('common.yes') : __('common.no') }}</td>
                         <td class="py-2 text-center text-xs">{{ $i->conditionLabel() }}</td>
                         <td class="py-2 text-end font-medium"><x-ltr>${{ number_format((float) $i->refund_amount_usd, 2) }}</x-ltr></td>

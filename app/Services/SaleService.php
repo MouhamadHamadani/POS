@@ -535,7 +535,7 @@ class SaleService
                 if ($item->product) {
                     $this->inventory->adjust(
                         $item->product,
-                        (float) $item->qty,
+                        $item->baseQty(), // packs, not sale units
                         \App\Models\InventoryAdjustment::TYPE_RETURN,
                         $userId,
                         reason: 'sale_void',

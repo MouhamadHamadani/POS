@@ -98,7 +98,7 @@
                             {{ $rtl && $product?->name_ar ? $product->name_ar : $item->product_name }}
                             @if ($item->product_sku)<div class="text-xs text-gray-500"><x-ltr>{{ $item->product_sku }}</x-ltr></div>@endif
                         </td>
-                        <td class="p-3 text-end whitespace-nowrap"><x-ltr>{{ $qty($item->qty) }}</x-ltr>@if ($product?->unit) {{ \App\Support\EnumLabel::get('unit', $product->unit) }}@endif</td>
+                        <td class="p-3 text-end whitespace-nowrap"><x-ltr>{{ $qty($item->qty) }}</x-ltr>@if ($item->isPackagedUnit()) {{ $item->unitLabel() }}@elseif ($product?->unit) {{ \App\Support\EnumLabel::get('unit', $product->unit) }}@endif</td>
                         <td class="p-3 text-end"><x-ltr>{{ $money($item->unit_price_usd) }}</x-ltr></td>
                         @if ($inv['has_line_discount'])
                             <td class="p-3 text-end text-gray-500"><x-ltr>{{ (float) $item->discount_amount_usd > 0 ? '-'.$money($item->discount_amount_usd) : '' }}</x-ltr></td>

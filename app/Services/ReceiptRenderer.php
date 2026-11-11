@@ -103,7 +103,7 @@ final class ReceiptRenderer
                 $out = '';
                 foreach ($sale->items as $item) {
                     $out .= self::substitute($m[1], [
-                        'name' => (string) $item->product_name,
+                        'name' => (string) $item->product_name.($item->isPackagedUnit() ? ' — '.$item->unitLabel() : ''),
                         'qty' => rtrim(rtrim(number_format((float) $item->qty, 4, '.', ''), '0'), '.'),
                         'unit_price' => number_format((float) $item->unit_price_usd, 2),
                         'discount' => number_format((float) $item->discount_amount_usd, 2),
