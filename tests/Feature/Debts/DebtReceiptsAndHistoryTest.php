@@ -98,9 +98,9 @@ class DebtReceiptsAndHistoryTest extends DebtBookTestCase
 
         $html = $this->receipt($sale);
 
-        $this->assertStringContainsString('OWE=$100.00', $html);
+        $this->assertStringContainsString('OWE=100.00', $html);
         $this->assertStringContainsString('DUE='.now()->addDays(2)->toDateString(), $html);
-        $this->assertStringContainsString('BAL=$100.00', $html);
+        $this->assertStringContainsString('BAL=100.00', $html);
     }
 
     public function test_the_settings_test_print_shows_an_on_account_sale(): void

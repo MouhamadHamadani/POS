@@ -100,7 +100,8 @@ class SaleHistoryService
         }
         if ($f['debt']) {
             // Half a cent or less is settled. Overdue = still owed and the due date is before today (due today is not late).
-            $q->whereRaw(self::OUTSTANDING_SQL.' > ?', [CustomerLedgerService::SETTLED]);
+            // CAST: PDO binds the float as text and SQLite sorts any text above any number, so a bare `> ?` is never true.
+            $q->whereRaw(self::OUTSTANDING_SQL.' > CAST(? AS REAL)', [CustomerLedgerService::SETTLED]);
             if ($f['debt'] === 'overdue') {
                 $q->whereNotNull('sales.due_date')->whereRaw('date(sales.due_date) < ?', [today()->toDateString()]);
             }
