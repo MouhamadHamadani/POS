@@ -38,7 +38,10 @@ with a "packaging" comment or a `pkg*` / `packaging` name, so a conflict is quic
    right without knowing about units. The product's own `cost_usd` stays per pack.
 5. A package or carton uses the same price tiers: a missing wholesale / VIP price falls back to that unit's retail price
    (the `priceForGroup` rule).
-6. Only simple products, without variants, can be packaged (form and server both refuse otherwise).
+6. Only simple products, without variants, can be packaged (form and server both refuse otherwise), and a packaged product cannot get
+   variant rows either (`StoreProductRequest`). Variant barcodes, pack barcodes and carton barcodes are one namespace:
+   `BarcodeService::findByBarcode()` answers `{product, variant, kind}` with `kind` = product | carton | variant. A variant is sold as a
+   pack (`sale_unit` pack, multiplier 1) from its own stock; the till's cart line is product + variant + unit.
 7. `sell_carton_at_pos` (default off) decides whether a carton can be rung up. Receiving by carton always works, switch or not.
 
 ## Files
