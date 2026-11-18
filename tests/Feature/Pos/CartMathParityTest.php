@@ -25,7 +25,7 @@ class CartMathParityTest extends TestCase
         return $code === 0;
     }
 
-    /** @return array{0: array, 1: array} [PHP expectation, scenario for JS] */
+    /** @return array{0: array, 1: array} [PHP inputs, scenario for JS] */
     private function scenario(int $n): array
     {
         $tiers = ['retail', 'wholesale', 'vip'];
@@ -36,6 +36,7 @@ class CartMathParityTest extends TestCase
         $taxChoices = [null, [0.11, false], [0.11, true], [0.05, false], [0.18, true]];
         $cart = [];
         $jsCart = [];
+        $overrides = [];
         for ($i = 0, $lines = mt_rand(1, 6); $i < $lines; $i++) {
             $retail = mt_rand(5, 20000) / 100;
             $product = (new Product())->forceFill([
@@ -68,9 +69,15 @@ class CartMathParityTest extends TestCase
                 'wholesale' => (float) ($product->wholesale_price_usd ?? $retail),
                 'vip' => (float) ($product->vip_price_usd ?? $retail),
             ];
+            // A cashier price override replaces the list price on a quarter of the lines.
+            $unitPrice = $prices[$tier];
+            if (mt_rand(1, 4) === 1) {
+                $unitPrice = round($unitPrice * mt_rand(50, 150) / 100, 4);
+                $overrides[$i] = ['price' => $unitPrice];
+            }
             $jsCart[] = [
                 'name' => $product->name, 'qty' => $qty,
-                'unit_price' => $prices[$tier],
+                'unit_price' => $unitPrice,
                 'discount_pct' => $row['discount_pct'] ?? 0,
                 'discount_amount' => $row['discount_amount'] ?? 0,
                 'allow_discount' => (bool) $product->allow_discount,
@@ -86,7 +93,7 @@ class CartMathParityTest extends TestCase
             default => ['type' => 'pct', 'value' => 0],
         };
 
-        return [[$cart, $customer, $tier, $cartDiscount], ['cart' => $jsCart, 'cartDiscount' => $cartDiscount, 'customer' => ['tax_exempt' => $exempt]]];
+        return [[$cart, $customer, $tier, $cartDiscount, $overrides], ['cart' => $jsCart, 'cartDiscount' => $cartDiscount, 'customer' => ['tax_exempt' => $exempt]]];
     }
 
     public function test_the_browser_arithmetic_matches_the_server_to_the_stored_decimal(): void
@@ -101,12 +108,12 @@ class CartMathParityTest extends TestCase
         $scenarios = [];
 
         for ($n = 1; count($expected) < 300 && $n < 2000; $n++) {
-            [[$cart, $customer, $tier, $cd], $js] = $this->scenario($n);
+            [[$cart, $customer, $tier, $cd, $overrides], $js] = $this->scenario($n);
             try {
                 $totals = $service->totalsFromCart($cart, $customer, $tier, [
                     'pct' => $cd['type'] === 'pct' ? $cd['value'] : 0,
                     'amount' => $cd['type'] === 'amount' ? $cd['value'] : 0,
-                ]);
+                ], $overrides);
             } catch (ValidationException) {
                 continue; // an invalid cart (discount bigger than the line): the screen blocks these, nothing to compare
             }

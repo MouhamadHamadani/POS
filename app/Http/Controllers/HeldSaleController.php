@@ -25,8 +25,8 @@ class HeldSaleController extends Controller
 
         $holds = $query->limit(50)->get();
 
-        // A hold stores no prices (the server prices at checkout), so the list's
-        // subtotal is worked out from today's prices on each hold's price list.
+        // A hold stores no prices (the server prices at checkout) apart from overrides, so the
+        // list's subtotal is worked out from today's prices on each hold's price list.
         $products = Product::whereIn('id', $holds->flatMap(fn (HeldSale $h) => array_column((array) $h->cart, 'product_id')))
             ->get(array_merge(['id', 'price_usd', 'wholesale_price_usd', 'vip_price_usd'], Product::packagingColumns(), ['type']))
             ->keyBy('id');
@@ -53,8 +53,13 @@ class HeldSaleController extends Controller
             'cart.*.product_variant_id' => 'nullable|integer',
             'cart.*.qty' => 'required|numeric|min:0.0001',
             'cart.*.sale_unit' => ['nullable', Rule::in(Product::SALE_UNITS)],
-            // No cart.*.unit_price: a hold keeps no prices, the sell screen
-            // re-prices from current product data on recall.
+            // A hold keeps no prices, except a cashier's price override (with its reason and
+            // manager approval) so it survives the park. Everything else is re-priced on recall,
+            // and an override is re-checked in full when the sale is finally rung up.
+            'cart.*.unit_price' => 'nullable|numeric|gt:0',
+            'cart.*.original_unit_price' => 'nullable|numeric|min:0',
+            'cart.*.price_reason' => 'nullable|string|max:255',
+            'cart.*.price_approval' => 'nullable|string|max:2000',
             'cart.*.discount_pct' => 'nullable|numeric|min:0|max:100',
             'cart.*.discount_amount' => 'nullable|numeric|min:0',
             'cart.*.note' => 'nullable|string|max:255',
@@ -172,7 +177,7 @@ class HeldSaleController extends Controller
             $product = $products->get($line['product_id'] ?? 0);
             $unit = $line['sale_unit'] ?? Product::UNIT_PACK;
             // A unit the product no longer sells is shown at the pack price, like the till drops the line on recall.
-            $price = $product ? $product->priceForUnit($product->supportsUnit($unit) ? $unit : Product::UNIT_PACK, $hold->price_tier) : 0;
+            $price = $line['unit_price'] ?? $product?->priceForUnit($product->supportsUnit($unit) ? $unit : Product::UNIT_PACK, $hold->price_tier) ?? 0;
             $qty = (float) ($line['qty'] ?? 0);
             $total += $price * $qty;
         }

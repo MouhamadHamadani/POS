@@ -124,7 +124,7 @@ class PackageCartonSaleTest extends TestCase
 
         $this->sell($admin, [[
             'product_id' => $product->id, 'qty' => 1, 'sale_unit' => 'package',
-            'unit_price' => 0.01, 'unit_price_usd' => 0.01, 'unit_multiplier' => 1, 'base_qty' => 1,
+            'unit_price_usd' => 0.01, 'unit_multiplier' => 1, 'base_qty' => 1,
         ]])->assertCreated();
 
         $item = SaleItem::sole();

@@ -11,6 +11,7 @@ use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\HeldSaleController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\PriceApprovalController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\ProfileController;
@@ -85,6 +86,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/pos/api/customers/quick-add', [CustomerController::class, 'quickAdd'])->name('pos.api.customers.quick-add');
         });
         Route::post('/pos/api/sales', [SaleController::class, 'store'])->name('pos.api.sales');
+        Route::post('/pos/api/price-approval', [PriceApprovalController::class, 'store'])->name('pos.api.price-approval');
         Route::get('/pos/api/sales/{sale}', [SaleController::class, 'show'])->name('pos.api.sales.show');
 
         // Hold / recall (in-flight carts that survive serving other customers)
@@ -227,6 +229,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/reports/sales/daily', [ReportController::class, 'dailySales'])->name('reports.daily-sales');
         Route::get('/reports/sales/by-product', [ReportController::class, 'salesByProduct'])
             ->middleware('feature:reports.sales_by_product')->name('reports.sales-by-product');
+        // Cashier price overrides: an audit of prices changed at the till, so it ships on every tier.
+        Route::get('/reports/sales/price-overrides', [ReportController::class, 'priceOverrides'])->name('reports.price-overrides');
         Route::get('/reports/inventory/stock-levels', [ReportController::class, 'stockLevels'])
             ->middleware('feature:reports.stock_levels')->name('reports.stock-levels');
         // Shows value at cost and retail like stock-levels does, so it ships with it.

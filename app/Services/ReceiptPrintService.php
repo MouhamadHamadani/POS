@@ -178,6 +178,8 @@ class ReceiptPrintService
                 'unit' => $item->isPackagedUnit() ? null : $product?->unit,
                 'item' => $item,
                 'unit_price' => (float) $item->unit_price_usd,
+                // The price list's price, when the cashier sold the line at another one and the store shows it.
+                'was' => $item->receiptWasPrice(),
                 'discount' => (float) $item->discount_amount_usd,
                 'total' => (float) $item->line_total_usd,
             ];
