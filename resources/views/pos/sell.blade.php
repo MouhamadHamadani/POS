@@ -170,7 +170,7 @@
                                             <span x-show="line.override" x-cloak
                                                   :class="line.unit_price < catalogPrice(line) ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
                                                   :title="line.unit_price < catalogPrice(line) ? t('price_lowered') : t('price_raised')"
-                                                  class="px-1 rounded text-[10px] font-bold leading-4"
+                                                  class="px-1 rounded text-[0.625rem] font-bold leading-4"
                                                   x-text="line.unit_price < catalogPrice(line) ? '↓' : '↑'"></span>
                                             <button type="button" x-show="line.override" x-cloak @click="resetPrice(idx)" :title="t('price_reset')"
                                                     class="text-gray-400 hover:text-gray-700 leading-none">↺</button>

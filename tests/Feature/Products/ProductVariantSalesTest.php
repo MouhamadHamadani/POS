@@ -126,7 +126,7 @@ class ProductVariantSalesTest extends TestCase
 
         $paid = [];
         foreach (['retail' => 10, 'wholesale' => 8, 'vip' => 6] as $tier => $price) {
-            $cart = [$this->line($this->red) + ['unit_price' => 1, 'price' => 1]];
+            $cart = [$this->line($this->red) + ['price' => 1]];
             $this->sell($cart, ['price_tier' => $tier], $manager)->assertCreated();
             $paid[$tier] = (float) Sale::latest('id')->first()->items->sole()->unit_price_usd;
         }
