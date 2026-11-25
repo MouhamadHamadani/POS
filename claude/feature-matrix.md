@@ -63,6 +63,9 @@ Roles come from `routes/web.php` middleware. `super_admin` passes every `role:` 
 | 19e | – Backup tab | `/settings/backup/*` | super_admin | role + `demo:blocked` | — |
 | 19f | – Plan tab | `/settings/plan`, `/settings/activation*` | super_admin | role + `demo:blocked` | — |
 | 19g | – Receipt tab: Receipt text size (`receipt_font_size`) | `/settings` (`group=receipt`) | admin | role; not a feature key, core on every plan | — |
+| 19i | – Receipt tab: receipt logo (`receipt_logo` image, `receipt_logo_thermal`, `receipt_logo_a4`) | `/settings` (`group=receipt`), `/settings/receipt/logo` | admin | role; not a feature key, core on every plan | — |
+| 19j | – Receipt tab: QR code at the bottom (`receipt_qr_enabled`, `receipt_qr_content`, `receipt_qr_caption`) | `/settings` (`group=receipt`) | admin | role; not a feature key, core on every plan | — |
+| 19k | – Receipt tab: receipt-number barcode (`receipt_barcode_enabled`) | `/settings` (`group=receipt`) | admin | role; not a feature key, core on every plan | — |
 | 19h | My preferences: interface size (`users.ui_scale`, per user) | `PATCH /profile/ui-scale` | **every role**, own row only | auth; hidden and 100% in a demo build | — |
 | 20 | Demo reset | `/demo/reset` | any | `demo:only` | demo build |
 

@@ -114,8 +114,8 @@ class DirectPrintTest extends TestCase
                 && ! isset($request['settings']['header']) && ! isset($request['settings']['footer'])   // no browser header/footer
                 && ! isset($request['settings']['pageSize'])                                           // the roll driver sizes the page
                 && ! str_contains($request['html'], '#')                                               // percent-encoded: a bare # would cut a data: URL short
-                && str_contains($html, '@page { size: 58mm auto; margin: 0; }')                        // width follows receipt_width...
-                && str_contains($html, 'width: 58mm')
+                && str_contains($html, '--rw: 48mm')                                                   // printable width follows receipt_width...
+                && str_contains($html, 'max-width: var(--rw)')
                 && str_contains($html, 'box-sizing: border-box')                                       // ...padding included
                 && str_contains($html, $sale->receipt_number)
                 && ! str_contains($html, 'window.print()')                                             // the app prints it; the page must not
@@ -133,7 +133,7 @@ class DirectPrintTest extends TestCase
 
         $this->printThermal($this->sale())->assertOk();
 
-        Http::assertSent(fn (HttpRequest $r) => str_contains(rawurldecode($r['html']), '@page { size: 80mm auto; margin: 0; }'));
+        Http::assertSent(fn (HttpRequest $r) => str_contains(rawurldecode($r['html']), '--rw: 72mm'));
     }
 
     public function test_with_no_printer_chosen_the_receipt_goes_to_the_windows_default_printer(): void
@@ -335,7 +335,7 @@ class DirectPrintTest extends TestCase
         Http::assertSent(fn (HttpRequest $r) => $r['printer'] === 'EPSON TM-T20'
             && str_contains(rawurldecode($r['html']), 'TEST PRINT')
             && str_contains(rawurldecode($r['html']), 'Typed header')
-            && str_contains(rawurldecode($r['html']), 'size: 58mm')
+            && str_contains(rawurldecode($r['html']), '--rw: 48mm')
             && ! str_contains(rawurldecode($r['html']), 'window.print()'));
         $this->assertSame($auditsBefore, AuditLog::count());
 

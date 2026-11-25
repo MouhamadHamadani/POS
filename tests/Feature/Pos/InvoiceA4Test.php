@@ -134,7 +134,7 @@ class InvoiceA4Test extends TestCase
 
         $this->show($sale, '?format=thermal')->assertOk()
             ->assertSee('REC-', false)->assertSee('TOTAL')->assertSee('$11.10')->assertSee('Change USD')
-            ->assertSee('size: 80mm auto', false)
+            ->assertSee('--rw: 72mm', false)
             ->assertDontSee('data-part="top"', false);
     }
 

@@ -240,6 +240,29 @@
                     </form>
 
                 @elseif ($tab === 'receipt')
+                    {{-- The logo has its own forms: upload and remove act at once, so they cannot ride on Save below. --}}
+                    <div class="mb-6 pb-6 border-b text-sm">
+                        <div class="font-medium text-gray-800">{{ __('settings.receipt_logo') }}</div>
+                        <p class="text-xs text-gray-500 mt-1">{{ __('settings.receipt_logo_help') }}</p>
+                        <div class="mt-3 flex flex-wrap items-center gap-4">
+                            @if ($logo)
+                                <img src="{{ $logo['uri'] }}" alt="{{ __('settings.receipt_logo') }}" class="max-h-16 max-w-[12rem] border rounded p-1 bg-white">
+                            @else
+                                <span class="text-xs text-gray-500">{{ __('settings.receipt_logo_none') }}</span>
+                            @endif
+                            <form method="POST" action="{{ route('settings.receipt.logo') }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
+                                @csrf
+                                <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required class="text-xs">
+                                <button class="px-3 py-1.5 border border-gray-300 rounded text-sm hover:bg-gray-50">{{ $logo ? __('settings.receipt_logo_replace') : __('settings.receipt_logo_upload') }}</button>
+                            </form>
+                            @if ($logo)
+                                <form method="POST" action="{{ route('settings.receipt.logo.destroy') }}">
+                                    @csrf @method('DELETE')
+                                    <button class="px-3 py-1.5 border border-red-300 text-red-700 rounded text-sm hover:bg-red-50">{{ __('settings.receipt_logo_remove') }}</button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
                     <form method="POST" action="{{ route('settings.update') }}" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         @csrf <input type="hidden" name="group" value="receipt">
                         <div>
@@ -319,6 +342,45 @@
                         <div class="md:col-span-2">
                             <label class="block text-xs text-gray-500">{{ __('settings.receipt_footer') }}</label>
                             <textarea name="settings[receipt_footer]" dir="auto" rows="2" class="w-full border-gray-300 rounded text-sm">{{ $get('receipt_footer') }}</textarea>
+                        </div>
+                        {{-- Logo / QR / barcode on the receipt. Each switch posts a 0 first, so an unticked box is a typed "off"
+                             (the test print and Save both read it), never a missing field. --}}
+                        <div class="md:col-span-2 border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            @foreach (['receipt_logo_thermal', 'receipt_logo_a4'] as $k)
+                                <label class="flex items-center gap-2">
+                                    <input type="hidden" name="settings[{{ $k }}]" value="0">
+                                    <input type="checkbox" name="settings[{{ $k }}]" value="1" @checked((bool) $get($k, false))>
+                                    {{ __("settings.$k") }}
+                                </label>
+                            @endforeach
+                            @unless ($logo)
+                                <div class="md:col-span-2 text-xs text-gray-500">{{ __('settings.receipt_logo_toggle_help') }}</div>
+                            @endunless
+                        </div>
+                        <div class="md:col-span-2 border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <label class="md:col-span-2 flex items-center gap-2">
+                                <input type="hidden" name="settings[receipt_qr_enabled]" value="0">
+                                <input type="checkbox" name="settings[receipt_qr_enabled]" value="1" @checked((bool) $get('receipt_qr_enabled', false))>
+                                {{ __('settings.receipt_qr_enabled') }}
+                            </label>
+                            <div>
+                                <label class="block text-xs text-gray-500">{{ __('settings.qr_content') }}</label>
+                                <input type="text" name="settings[receipt_qr_content]" dir="ltr" maxlength="{{ \App\Services\ReceiptExtras::QR_MAX_CHARS }}" value="{{ $get('receipt_qr_content') }}" class="w-full border-gray-300 rounded text-sm" />
+                                <div class="text-xs text-gray-500 mt-1">{{ __('settings.qr_content_help') }}</div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500">{{ __('settings.qr_caption') }}</label>
+                                <input type="text" name="settings[receipt_qr_caption]" dir="auto" maxlength="{{ \App\Services\ReceiptExtras::QR_CAPTION_MAX }}" value="{{ $get('receipt_qr_caption') }}" class="w-full border-gray-300 rounded text-sm" />
+                                <div class="text-xs text-gray-500 mt-1">{{ __('settings.qr_caption_help') }}</div>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2 border-t pt-4">
+                            <label class="flex items-center gap-2">
+                                <input type="hidden" name="settings[receipt_barcode_enabled]" value="0">
+                                <input type="checkbox" name="settings[receipt_barcode_enabled]" value="1" @checked((bool) $get('receipt_barcode_enabled', false))>
+                                {{ __('settings.receipt_barcode_enabled') }}
+                            </label>
+                            <div class="text-xs text-gray-500 mt-1">{{ __('settings.receipt_barcode_help') }}</div>
                         </div>
                         {{-- Save stays first: Enter in a field submits via the first submit button. --}}
                         <div class="md:col-span-2 flex justify-end items-center gap-2" x-data="{ state: '' }">

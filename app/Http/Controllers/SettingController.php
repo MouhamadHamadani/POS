@@ -13,6 +13,7 @@ use App\Models\Setting;
 use App\Models\Tax;
 use App\Services\BackupService;
 use App\Services\CurrencyService;
+use App\Services\ReceiptExtras;
 use App\Services\ReceiptPrintService;
 use App\Services\ReceiptRenderer;
 use App\Support\Activation;
@@ -66,6 +67,11 @@ class SettingController extends Controller
             'receipt_header' => 'string', 'receipt_footer' => 'string',
             'receipt_format' => 'string', 'a4_printer_name' => 'string', 'thermal_printer_name' => 'string',
             'receipt_font_size' => 'string',
+            // what a receipt prints besides the sale (ReceiptExtras): the logo itself is uploaded on its own
+            // route, so only its two toggles are here
+            'receipt_logo_thermal' => 'bool', 'receipt_logo_a4' => 'bool',
+            'receipt_qr_enabled' => 'bool', 'receipt_qr_content' => 'string', 'receipt_qr_caption' => 'string',
+            'receipt_barcode_enabled' => 'bool',
         ],
         'numbering' => [
             'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
@@ -134,7 +140,8 @@ class SettingController extends Controller
         }
         $backups = $isSuperAdmin ? $this->backups->listBackups() : [];
 
-        $all = Setting::all()->keyBy('key')->map(fn ($s) => $s->value)->toArray();
+        // Not the logo: it is a few hundred KB of image data the form never edits.
+        $all = Setting::where('key', '!=', ReceiptExtras::LOGO_KEY)->get()->keyBy('key')->map(fn ($s) => $s->value)->toArray();
 
         $receiptTemplate = feature('receipts.custom_templates')
             ? PrintTemplate::where('type', 'receipt')->orderByDesc('is_default')->first()
@@ -148,8 +155,38 @@ class SettingController extends Controller
         $prints = app(ReceiptPrintService::class);
         $printers = $tab === 'receipt' ? $prints->printers() : [];
         $desktop = $prints->inNativeShell();
+        $logo = $tab === 'receipt' ? app(ReceiptExtras::class)->logoMeta() : null;
 
-        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate', 'expenseCategories', 'printers', 'desktop'));
+        return view('settings.index', compact('tab', 'taxes', 'backups', 'all', 'receiptTemplate', 'expenseCategories', 'printers', 'desktop', 'logo'));
+    }
+
+    /**
+     * Settings -> Receipt -> logo. Its own action, not the form's Save: the file takes effect at once.
+     * PNG / JPG / WebP only (an SVG can carry script), at most 1 MB and 2500 px a side; the bytes are then
+     * re-encoded by GD, so what is stored is pixels and nothing else. Same gate as the rest of the tab.
+     */
+    public function uploadReceiptLogo(Request $request, ReceiptExtras $extras): RedirectResponse
+    {
+        $request->validate(
+            ['logo' => ['required', 'file', 'image', 'mimes:png,jpg,jpeg,webp', 'max:'.ReceiptExtras::LOGO_MAX_KB, 'dimensions:max_width=2500,max_height=2500']],
+            ['logo.*' => __('messages.logo_invalid')],
+        );
+
+        $had = $extras->hasLogo();
+        $facts = $extras->storeLogo($request->file('logo'));
+
+        AuditLog::record($request->user()->id, 'receipt_logo_upload', null, null, $had ? ['logo' => true] : null, $facts);
+
+        return redirect()->route('settings.index', ['tab' => 'receipt'])->with('success', __('messages.logo_saved'));
+    }
+
+    public function destroyReceiptLogo(Request $request, ReceiptExtras $extras): RedirectResponse
+    {
+        if ($extras->removeLogo()) {
+            AuditLog::record($request->user()->id, 'receipt_logo_remove', null, null, ['logo' => true], null);
+        }
+
+        return redirect()->route('settings.index', ['tab' => 'receipt'])->with('success', __('messages.logo_removed'));
     }
 
     public function update(Request $request): RedirectResponse
@@ -167,12 +204,24 @@ class SettingController extends Controller
             'settings.a4_printer_name' => 'nullable|string|max:255',
             'settings.thermal_printer_name' => 'nullable|string|max:255',
             'settings.receipt_font_size' => ['nullable', Rule::in(array_keys(ReceiptPrintService::FONT_SIZES))],
+            // The QR code must stay scannable at ~28 mm: bounded in characters and (Arabic is two bytes a letter) in
+            // bytes, and not switched on with nothing to encode.
+            'settings.receipt_qr_content' => [
+                'nullable', 'string', 'max:'.ReceiptExtras::QR_MAX_CHARS,
+                fn ($attr, $value, $fail) => strlen((string) $value) > ReceiptExtras::QR_MAX_BYTES ? $fail(__('messages.qr_too_long')) : null,
+                Rule::requiredIf(fn () => $request->has('settings.receipt_qr_content') && $request->boolean('settings.receipt_qr_enabled')),
+            ],
+            'settings.receipt_qr_caption' => ['nullable', 'string', 'max:'.ReceiptExtras::QR_CAPTION_MAX],
         ] + $this->numericSettingRules(), [
             // A rate of 0 prices everything at 0 LBP and counts every LBP note as $0 tendered.
             'settings.exchange_rate.required' => __('messages.exchange_rate_invalid'),
             'settings.exchange_rate.numeric' => __('messages.exchange_rate_invalid'),
             'settings.exchange_rate.gt' => __('messages.exchange_rate_invalid'),
-        ], $this->numericSettingLabels());
+            'settings.receipt_qr_content.required' => __('messages.qr_content_required'),
+        ], $this->numericSettingLabels() + [
+            'settings.receipt_qr_content' => __('settings.qr_content'),
+            'settings.receipt_qr_caption' => __('settings.qr_caption'),
+        ]);
 
         // The same lock, by key: which keys get written is decided by name, not by the posted
         // group, so `group=pos` carrying a key of a locked group must be refused too.
@@ -299,7 +348,7 @@ class SettingController extends Controller
      * the Receipt tab's typed-but-unsaved width/header/footer. Pure render:
      * nothing is persisted, no receipt number is consumed, nothing is audited.
      */
-    public function testPrintReceipt(Request $request, CurrencyService $currency, ReceiptPrintService $prints): View|Response
+    public function testPrintReceipt(Request $request, CurrencyService $currency, ReceiptPrintService $prints, ReceiptExtras $extras): View|Response
     {
         $input = fn (string $key, $default) => $request->input("settings.$key", Setting::get($key, $default));
         $width = (int) $input('receipt_width', 80);
@@ -381,6 +430,8 @@ class SettingController extends Controller
             'autoPrint' => true,
             'isTest' => true,
         ];
+        // The logo / QR / barcode toggles as typed, saved or not, like the width and the footer above.
+        $data['extras'] = $extras->forReceipt('thermal', (string) $sale->receipt_number, $data['width'], $input);
 
         // The desktop app prints it silently, like a real receipt (no popup, no dialog), and answers
         // with {printed, desktop}; a browser tab still gets the page and prints it itself.
