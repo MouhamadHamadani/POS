@@ -10,4 +10,4 @@
 :root { --rw: {{ \App\Services\ReceiptPrintService::printableMm((int) $width) }}mm; }
 @page { margin: 0; }
 html, body { margin: 0; padding: 0; background: white; font-family: 'Cairo', 'Courier New', monospace; }
-body { box-sizing: border-box; width: auto; max-width: var(--rw); padding: 4mm 1.5mm; overflow-wrap: anywhere; }
+body { box-sizing: border-box; width: auto; max-width: var(--rw); padding: 4mm {{ \App\Services\ReceiptPrintService::PAGE_PAD_MM }}mm; overflow-wrap: anywhere; }

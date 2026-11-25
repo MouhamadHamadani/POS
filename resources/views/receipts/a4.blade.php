@@ -28,6 +28,8 @@
     $footerText = trim((string) $footer) !== '' ? $footer : null;
     $pageOf = __('invoice.page_n_of', ['n' => ':n', 'total' => ':total'], $rtl ? 'ar' : 'en');
     $vatRates = collect($inv['vat_rates'])->map(fn ($r) => $rate($r).'%')->implode(', ');
+    // Logo, QR code and receipt barcode: each is null unless its Settings toggle is on (see ReceiptExtras).
+    $extras = $extras ?? app(\App\Services\ReceiptExtras::class)->forReceipt('a4', (string) $sale->receipt_number, (int) ($width ?? 80));
 @endphp
 <!doctype html>
 <html lang="{{ $rtl ? 'ar' : 'en' }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}" class="{{ $embedded ? 'embedded' : '' }}">
@@ -57,6 +59,8 @@
     .pageno { margin-top: auto; text-align: center; font-size: calc(9pt * var(--fs)); color: #555; padding-top: 2mm; }
 
     .notice { text-align: center; font-weight: 700; border: 1px solid #111; padding: 2mm; margin-bottom: 4mm; }
+    .logo { text-align: center; margin-bottom: 4mm; }
+    .logo img { display: inline-block; }
     .top { display: flex; justify-content: space-between; gap: 10mm; padding-bottom: 4mm; border-bottom: 2px solid #124F4A; }
     .top .biz { flex: 1 1 auto; }
     .top .biz .name { font-size: calc(16pt * var(--fs)); font-weight: 700; color: #124F4A; }
@@ -107,6 +111,10 @@
         @foreach ($banners as $b)
             <div class="notice">*** {{ $b['label'] }} *** {{ $b['en'] }}<br><span dir="rtl">{{ $b['ar'] }}</span></div>
         @endforeach
+
+        @if ($extras['logo'])
+            <div class="logo"><img src="{{ $extras['logo']['uri'] }}" alt="" style="width: {{ $extras['logo']['w_mm'] }}mm; height: {{ $extras['logo']['h_mm'] }}mm;"></div>
+        @endif
 
         <div class="top">
             <div class="biz">
@@ -298,7 +306,8 @@
 @if ($autoPrint && ! $embedded)
     <script>
         window.addEventListener('load', () => {
-            (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => {
+            // Fonts and the logo (a data: image) must be ready, or the first print is blank / in the wrong font.
+            Promise.all([document.fonts && document.fonts.ready ? document.fonts.ready : null, ...[...document.images].map((i) => (i.decode ? i.decode().catch(() => {}) : null))]).then(() => {
                 setTimeout(() => {
                     window.print();
                     setTimeout(() => { if (window.opener) window.close(); }, 500);

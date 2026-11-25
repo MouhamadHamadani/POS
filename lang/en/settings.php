@@ -114,4 +114,13 @@ return [
     'thermal_printer_ask' => 'Default Windows printer',
     'thermal_printer_help' => 'Receipts print straight to this printer after payment, with no dialog. Leave "Default Windows printer" to use the printer Windows has set as default. Direct printing works only in the installed desktop app.',
     'thermal_printer_text_help' => 'The list of installed printers appears in the desktop app. Type the receipt printer name exactly as Windows shows it, or leave empty for the default Windows printer.',
+    'receipt_logo' => 'Receipt logo',
+    'receipt_logo_help' => 'Printed at the very top, above the business name. PNG, JPG or WebP, up to 1 MB. On the small receipt it is turned into sharp black and white and shrunk to the paper; the A4 invoice keeps its colours. Uploading or removing takes effect at once, without Save.',
+    'receipt_logo_none' => 'No logo uploaded.',
+    'receipt_logo_upload' => 'Upload logo',
+    'receipt_logo_replace' => 'Replace logo',
+    'receipt_logo_remove' => 'Remove logo',
+    'receipt_logo_thermal' => 'Show the logo on the small receipt',
+    'receipt_logo_a4' => 'Show the logo on the A4 invoice',
+    'receipt_logo_toggle_help' => 'Upload a logo above first; these switches only matter once there is one.',
 ];

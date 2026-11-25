@@ -32,6 +32,9 @@
     $wasLabel = __('receipt.was', [], $rtl ? 'ar' : 'en'); // a line the cashier sold off the price list
     $money = fn ($v) => '$'.number_format((float) $v, 2);
     $footerText = trim((string) $footer) !== '' ? $footer : null;
+    // Logo (top), QR code and receipt barcode (bottom): each is null unless its Settings toggle is on. A test
+    // print passes the typed, unsaved toggles in $extras; a real receipt reads the saved ones.
+    $extras = $extras ?? app(\App\Services\ReceiptExtras::class)->forReceipt('thermal', (string) $sale->receipt_number, (int) ($width ?? 80));
 @endphp
 <!doctype html>
 <html lang="{{ $rtl ? 'ar' : 'en' }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}">
@@ -60,6 +63,8 @@
     .item-row td { padding-top: 0.5mm; padding-bottom: 0.5mm; }
     .totals td { padding: 0.5mm 0; }
     .grand { font-size: calc(13px * var(--fs)); font-weight: bold; }
+    /* A 1-bit image made at the printer's dots: no smoothing, or the edges turn grey and print as a smudge. */
+    .logo img { display: block; margin: 0 auto 2mm; max-width: 100%; height: auto; image-rendering: pixelated; }
     .actions { padding: 10mm 0; text-align: center; direction: ltr; }
     .actions button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
     @media print { .actions { display: none; } }
@@ -88,6 +93,9 @@
         $nameAr = $business['name_ar'] ?? null;
         $primaryName = $rtl && $nameAr ? $nameAr : $business['name'];
     @endphp
+    @if ($extras['logo'])
+        <div class="logo"><img src="{{ $extras['logo']['uri'] }}" alt="" style="width: {{ $extras['logo']['w_mm'] }}mm;"></div>
+    @endif
     <div class="center bold">{{ $primaryName }}</div>
     @if ($receiptLang === 'bilingual' && $nameAr) <div class="center" dir="rtl">{{ $nameAr }}</div> @endif
     @if ($business['address']) <div class="center small">{{ $business['address'] }}</div> @endif
@@ -214,10 +222,11 @@
     @if ($autoPrint && ! $embedded)
         <script>
             window.addEventListener('load', () => {
-                setTimeout(() => {
+                // The logo is a data: image: print only once it is decoded, or it comes out blank.
+                Promise.all([...document.images].map((i) => (i.decode ? i.decode().catch(() => {}) : null))).then(() => setTimeout(() => {
                     window.print();
                     setTimeout(() => { if (window.opener) window.close(); }, 500);
-                }, 250);
+                }, 250));
             });
         </script>
     @endif
