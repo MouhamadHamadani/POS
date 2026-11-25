@@ -7,6 +7,7 @@ use BaconQrCode\Common\ErrorCorrectionLevel;
 use BaconQrCode\Encoder\Encoder;
 use Closure;
 use Illuminate\Http\UploadedFile;
+use Picqer\Barcode\Types\TypeCode128;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
@@ -51,6 +52,8 @@ class ReceiptExtras
     private const QR_TARGET_MM = ['thermal' => 28, 'a4' => 34];
     /** Width of the A4 invoice's text column, in mm: what the QR code and barcode may use. */
     private const A4_TEXT_MM = 80;
+    /** Bar height, in mm (10-12 is plenty for a hand scanner). */
+    private const BARCODE_HEIGHT_MM = ['thermal' => 11, 'a4' => 12];
 
     // ---- the logo -------------------------------------------------------------
 
@@ -203,8 +206,6 @@ class ReceiptExtras
         return 'data:image/png;base64,'.base64_encode((string) ob_get_clean());
     }
 
-    // ---- what one receipt prints ----------------------------------------------
-
     // ---- the QR code ----------------------------------------------------------
 
     /**
@@ -266,6 +267,60 @@ class ReceiptExtras
         return $qr ? $qr + ['caption' => mb_substr(trim($caption), 0, self::QR_CAPTION_MAX) ?: null] : null;
     }
 
+    // ---- the receipt-number barcode ----------------------------------------------
+
+    /**
+     * The receipt number as a Code 128 barcode (inline SVG), or null when it cannot be printed
+     * scannably, in which case the receipt still prints the number as text.
+     *
+     * Code 128 holds any printable ASCII (space to ~), so a number with another character (an Arabic
+     * prefix, say) is not encoded. picqer picks and switches the code sets itself (a run of digits goes
+     * out as set C, about half the width). Every bar is a whole number of printer dots: 4, 3 or 2 dots
+     * (0.5 / 0.375 / 0.25 mm), the widest that fits $availableMm; below 0.25 mm a thermal head and a
+     * scanner stop agreeing, so then there is no barcode. Quiet zones are the paper's own unprinted margin
+     * plus the page padding (at least 5 mm each side on both roll widths, 10 modules at 0.5 mm).
+     *
+     * @return array{svg:string,w_mm:float,h_mm:float,modules:int}|null
+     */
+    public function barcode(string $number, float $availableMm, float $heightMm): ?array
+    {
+        if ($number === '' || ! preg_match('/^[\x20-\x7e]+$/', $number)) {
+            return null;
+        }
+
+        $code = (new TypeCode128())->getBarcode($number);
+        $modules = $code->getWidth();
+
+        for ($k = 4; $k >= 2 && $modules * $k * self::DOT_MM > $availableMm; $k--);
+        if ($k < 2) {
+            return null;
+        }
+
+        $d = '';
+        $x = 0;
+        foreach ($code->getBars() as $bar) {
+            if ($bar->isBar()) {
+                $d .= "M{$x} 0h{$bar->getWidth()}v1h-{$bar->getWidth()}z";
+            }
+            $x += $bar->getWidth();
+        }
+
+        return [
+            'svg' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '.$modules.' 1" preserveAspectRatio="none" shape-rendering="crispEdges" role="img">'
+                .'<path d="'.$d.'" fill="#000"/></svg>',
+            'w_mm' => round($modules * $k * self::DOT_MM, 3),
+            'h_mm' => $heightMm,
+            'modules' => $modules,
+        ];
+    }
+
+    private function barcodeBlock(string $format, string $number, int $paper): ?array
+    {
+        $textMm = $format === 'a4' ? self::A4_TEXT_MM : ReceiptPrintService::printableMm($paper) - 2 * ReceiptPrintService::PAGE_PAD_MM;
+
+        return $this->barcode($number, $textMm, self::BARCODE_HEIGHT_MM[$format === 'a4' ? 'a4' : 'thermal']);
+    }
+
     // ---- what one receipt prints ----------------------------------------------
 
     /**
@@ -276,7 +331,7 @@ class ReceiptExtras
      * $input reads a form field, falling back to the saved setting: the Settings test print passes the
      * values typed but not yet saved.
      *
-     * @return array{logo: ?array, qr: ?array}
+     * @return array{logo: ?array, qr: ?array, barcode: ?array}
      */
     public function forReceipt(string $format, string $number, int $paper, ?Closure $input = null): array
     {
@@ -286,6 +341,7 @@ class ReceiptExtras
         return [
             'logo' => $on($format === 'a4' ? 'receipt_logo_a4' : 'receipt_logo_thermal') ? $this->logo($format, $paper) : null,
             'qr' => $on('receipt_qr_enabled') ? $this->qrBlock($format, (string) $read('receipt_qr_content', ''), (string) $read('receipt_qr_caption', ''), $paper) : null,
+            'barcode' => $on('receipt_barcode_enabled') ? $this->barcodeBlock($format, $number, $paper) : null,
         ];
     }
 }

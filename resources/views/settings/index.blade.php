@@ -374,6 +374,14 @@
                                 <div class="text-xs text-gray-500 mt-1">{{ __('settings.qr_caption_help') }}</div>
                             </div>
                         </div>
+                        <div class="md:col-span-2 border-t pt-4">
+                            <label class="flex items-center gap-2">
+                                <input type="hidden" name="settings[receipt_barcode_enabled]" value="0">
+                                <input type="checkbox" name="settings[receipt_barcode_enabled]" value="1" @checked((bool) $get('receipt_barcode_enabled', false))>
+                                {{ __('settings.receipt_barcode_enabled') }}
+                            </label>
+                            <div class="text-xs text-gray-500 mt-1">{{ __('settings.receipt_barcode_help') }}</div>
+                        </div>
                         {{-- Save stays first: Enter in a field submits via the first submit button. --}}
                         <div class="md:col-span-2 flex justify-end items-center gap-2" x-data="{ state: '' }">
                             @if ($desktop)

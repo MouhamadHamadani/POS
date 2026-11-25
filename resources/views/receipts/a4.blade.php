@@ -64,6 +64,9 @@
     .qr { margin-top: 5mm; text-align: center; break-inside: avoid; }
     .qr > div:first-child { margin: 0 auto 1.5mm; }
     .qr svg { display: block; width: 100%; height: auto; }
+    .bc { margin-top: 5mm; text-align: center; break-inside: avoid; }
+    .bc > div:first-child { margin: 0 auto 1mm; }
+    .bc svg { display: block; width: 100%; height: 100%; }
     .top { display: flex; justify-content: space-between; gap: 10mm; padding-bottom: 4mm; border-bottom: 2px solid #124F4A; }
     .top .biz { flex: 1 1 auto; }
     .top .biz .name { font-size: calc(16pt * var(--fs)); font-weight: 700; color: #124F4A; }
@@ -232,6 +235,10 @@
 
         @if ($extras['qr'])
             <div class="qr"><div style="width: {{ $extras['qr']['mm'] }}mm;">{!! $extras['qr']['svg'] !!}</div>@if ($extras['qr']['caption'])<div class="small" dir="auto">{{ $extras['qr']['caption'] }}</div>@endif</div>
+        @endif
+
+        @if ($extras['barcode'])
+            <div class="bc"><div style="width: {{ $extras['barcode']['w_mm'] }}mm; height: {{ $extras['barcode']['h_mm'] }}mm;">{!! $extras['barcode']['svg'] !!}</div><div class="small"><bdi dir="ltr">{{ $sale->receipt_number }}</bdi></div></div>
         @endif
     </div>
 </main>

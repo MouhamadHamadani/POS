@@ -59,6 +59,8 @@ class DefaultSettingsSeeder extends Seeder
             ['receipt', 'receipt_qr_enabled', '0', 'bool'],
             ['receipt', 'receipt_qr_content', '', 'string'],
             ['receipt', 'receipt_qr_caption', '', 'string'],
+            // Code 128 of the receipt number at the bottom
+            ['receipt', 'receipt_barcode_enabled', '0', 'bool'],
 
             // numbering
             ['numbering', 'receipt_prefix', 'REC-' . date('Y') . '-', 'string'],

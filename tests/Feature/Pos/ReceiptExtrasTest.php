@@ -496,6 +496,211 @@ class ReceiptExtrasTest extends TestCase
         $this->actingAs($this->admin)->get('/settings?tab=receipt')->assertOk()->assertSee('محتوى رمز QR');
     }
 
+    // ====================== the receipt-number barcode ======================
+
+    private function barcodeOn(): void
+    {
+        $this->save(['receipt_barcode_enabled' => '1']);
+    }
+
+    /** The barcode drawn in a receipt: [svg, wrapper width mm, wrapper height mm]. */
+    private function barcodeIn(string $html): array
+    {
+        $re = '/<div class="bc"[^>]*><div style="width: ([\d.]+)mm; height: ([\d.]+)mm;">(<svg .*?<\/svg>)<\/div>/s';
+        $this->assertMatchesRegularExpression($re, $html);
+        preg_match($re, $html, $m);
+
+        return [$m[3], (float) $m[1], (float) $m[2]];
+    }
+
+    /**
+     * An independent Code 128 reader for the SVG: bars -> widths -> symbols (by the standard's own pattern
+     * table) -> check digit -> text. It decodes what a scanner would see, not what the encoder meant.
+     */
+    private function scan128(string $svg): string
+    {
+        preg_match('/viewBox="0 0 (\d+) 1"/', $svg, $v);
+        preg_match('/<path d="([^"]*)"/', $svg, $p);
+        $modules = array_fill(0, (int) $v[1], 0);
+        preg_match_all('/M(\d+) 0h(\d+)v1h-\d+z/', $p[1], $runs, PREG_SET_ORDER);
+        foreach ($runs as [, $x, $w]) {
+            for ($i = 0; $i < $w; $i++) {
+                $modules[(int) $x + $i] = 1;
+            }
+        }
+
+        // run-lengths, starting with a bar, then 6 per symbol (7 for the stop)
+        $widths = [];
+        $prev = null;
+        foreach ($modules as $m) {
+            $m === $prev ? $widths[count($widths) - 1]++ : $widths[] = 1;
+            $prev = $m;
+        }
+        $this->assertSame(1, $modules[0], 'starts on a bar');
+        $this->assertSame(1, $modules[count($modules) - 1], 'ends on the stop bar');
+
+        $table = array_map('strval', (new \ReflectionProperty(\Picqer\Barcode\Types\TypeCode128::class, 'conversionTable'))->getValue(new \Picqer\Barcode\Types\TypeCode128()));
+        $symbols = [];
+        for ($i = 0; $i + 6 <= count($widths); $i += 6) {
+            $pattern = implode('', array_slice($widths, $i, 6));
+            if ($i + 7 === count($widths)) {
+                $this->assertSame('2331112', implode('', array_slice($widths, $i, 7)), 'the stop pattern');
+                break;
+            }
+            $value = array_search($pattern, $table, true);
+            $this->assertNotFalse($value, "unknown bar pattern {$pattern}");
+            $symbols[] = $value;
+        }
+
+        $start = array_shift($symbols);
+        $check = array_pop($symbols);
+        $sum = $start;
+        foreach ($symbols as $i => $s) {
+            $sum += ($i + 1) * $s;
+        }
+        $this->assertSame($sum % 103, $check, 'the check symbol');
+
+        $set = [103 => 'A', 104 => 'B', 105 => 'C'][$start];
+        $text = '';
+        foreach ($symbols as $s) {
+            if ($set === 'C') {
+                if ($s < 100) { $text .= sprintf('%02d', $s); continue; }
+                $set = $s === 100 ? 'B' : 'A';
+                continue;
+            }
+            if ($s === 99) { $set = 'C'; continue; }
+            if ($s === 100 && $set === 'A') { $set = 'B'; continue; }
+            if ($s === 101 && $set === 'B') { $set = 'A'; continue; }
+            $text .= $s < 64 || $set === 'B' ? chr($s + 32) : chr($s - 64);
+        }
+
+        return $text;
+    }
+
+    private function setReceiptNumber(string $number): void
+    {
+        Sale::whereKey($this->sale->id)->update(['receipt_number' => $number]);
+    }
+
+    public function test_the_barcode_is_off_by_default_and_on_every_kind_of_receipt_once_switched_on(): void
+    {
+        foreach (['thermal', 'a4'] as $format) {
+            $this->assertStringNotContainsString('class="bc"', $this->receipt($format));
+        }
+        $this->barcodeOn();
+        foreach (['thermal', 'a4'] as $format) {
+            $this->assertStringContainsString('class="bc"', $this->receipt($format), $format);
+        }
+        $this->assertStringContainsString('class="bc"', $this->testPrint());
+        $this->assertStringContainsString('class="bc"', $this->actingAs($this->cashier)->get("/pos/receipts/{$this->sale->id}/print?format=thermal&auto=0&copy=1")->getContent());
+
+        $this->save(['receipt_barcode_enabled' => '0']);
+        $this->assertStringNotContainsString('class="bc"', $this->receipt('thermal'));
+    }
+
+    /** @return array<string, array{string}> every shape a receipt number can take */
+    public static function numbers(): array
+    {
+        return [
+            'the default shape' => ['REC-2026-00001'], 'digits only (code set C)' => ['20260000123'], 'odd digit count' => ['2026000012'.'3'.'4'.'5'],
+            'with a space and symbols' => ['A/B 12~#'], 'lower case' => ['rec-abc-123'], 'one character' => ['7'],
+        ];
+    }
+
+    #[DataProvider('numbers')]
+    public function test_the_barcode_decodes_to_the_exact_receipt_number(string $number): void
+    {
+        $this->setReceiptNumber($number);
+        $this->barcodeOn();
+
+        foreach (['thermal', 'a4'] as $format) {
+            [$svg] = $this->barcodeIn($this->receipt($format));
+            $this->assertSame($number, $this->scan128($svg), $format);
+        }
+    }
+
+    public function test_the_test_print_barcode_is_the_marked_test_number(): void
+    {
+        [$svg] = $this->barcodeIn($this->testPrint(['receipt_barcode_enabled' => '1']));
+        $html = $this->testPrint(['receipt_barcode_enabled' => '1']);
+
+        $this->assertMatchesRegularExpression('/^TEST-\d{6}$/', $this->scan128($svg));
+        $this->assertStringContainsString('TEST PRINT', $html);                                              // and the page says so, top and bottom
+        $this->assertFalse((bool) Setting::get('receipt_barcode_enabled'), 'typed, not saved');
+        $this->assertStringNotContainsString('class="bc"', $this->testPrint());
+    }
+
+    #[DataProvider('rolls')]
+    public function test_the_barcode_is_a_scannable_size_in_whole_dots_inside_the_printable_width(int $paper): void
+    {
+        $this->barcodeOn();
+        $this->save(['receipt_width' => $paper]);
+
+        [$svg, $w, $h] = $this->barcodeIn($this->receipt('thermal'));
+        preg_match('/viewBox="0 0 (\d+) 1"/', $svg, $v);
+        $module = $w / (int) $v[1];
+
+        $this->assertGreaterThanOrEqual(0.25 - 1e-9, $module, 'a bar is at least 2 printer dots (0.25 mm)');
+        $this->assertEqualsWithDelta(round($module / 0.125), $module / 0.125, 1e-6, 'a whole number of dots');
+        $this->assertLessThanOrEqual(\App\Services\ReceiptPrintService::printableMm($paper) - 3, $w, 'inside the printable width, padding kept');
+        $this->assertGreaterThanOrEqual(10.0, $h);
+        $this->assertLessThanOrEqual(12.0, $h);
+        $this->assertStringContainsString('preserveAspectRatio="none"', $svg);                              // stretched to the mm width, never scaled by the browser
+    }
+
+    public function test_a_number_of_digits_is_encoded_in_set_c_and_comes_out_shorter(): void
+    {
+        $this->barcodeOn();
+        $widthOf = function (string $number): int {
+            $this->setReceiptNumber($number);
+            preg_match('/viewBox="0 0 (\d+) 1"/', $this->barcodeIn($this->receipt('thermal'))[0], $v);
+
+            return (int) $v[1];
+        };
+
+        $this->assertLessThan($widthOf('abcdefghijk'), $widthOf('20260000123'), '11 digits in set C vs 11 letters in set B');
+    }
+
+    public function test_a_number_that_cannot_be_encoded_or_will_not_fit_prints_as_text_and_never_clips(): void
+    {
+        $this->barcodeOn();
+        $this->save(['receipt_width' => 58]);
+
+        foreach (['فاتورة-0001' => 'Arabic prefix (not Code 128)', 'A-VERY-LONG-RECEIPT-PREFIX-2026-000001' => 'too wide for a 58 mm roll at 0.25 mm'] as $number => $why) {
+            $this->setReceiptNumber($number);
+            foreach (['thermal', 'a4'] as $format) {
+                $html = $this->receipt($format);
+                if ($format === 'thermal' || $number === 'فاتورة-0001') {
+                    $this->assertStringNotContainsString('class="bc"', $html, "{$why} / {$format}");
+                }
+                $this->assertStringContainsString($number, $html, 'the number itself still prints');
+            }
+        }
+
+        $this->setReceiptNumber('REC-2026-00001');
+        $this->assertStringContainsString('class="bc"', $this->receipt('thermal'), 'the default number does fit a 58 mm roll');
+    }
+
+    public function test_the_receipt_number_line_is_the_barcodes_readable_text(): void
+    {
+        $html = $this->receipt('thermal');
+        $this->assertSame(1, substr_count($html, $this->sale->receipt_number . '</bdi></div>'), 'one number line without the barcode');
+
+        $this->barcodeOn();
+        $html = $this->receipt('thermal');
+        $this->assertSame(1, substr_count($html, 'Receipt #'), 'and still one with it: no duplicate readable number');
+        $this->assertLessThan(strpos($html, 'Receipt #'), strpos($html, 'class="bc"'), 'the number sits under the bars');
+    }
+
+    public function test_the_receipt_tab_has_the_barcode_switch_in_both_languages(): void
+    {
+        $this->actingAs($this->admin)->get('/settings?tab=receipt')->assertOk()
+            ->assertSee('name="settings[receipt_barcode_enabled]"', false)->assertSee('Print the receipt number as a barcode');
+
+        $this->admin->update(['language' => 'ar']);
+        $this->actingAs($this->admin)->get('/settings?tab=receipt')->assertOk()->assertSee('طباعة رقم الإيصال كباركود');
+    }
+
     // ===================== every plan, no plan check =====================
 
     /** @return array<string, array{string, bool}> */
@@ -514,15 +719,17 @@ class ReceiptExtrasTest extends TestCase
         }
 
         $this->upload()->assertSessionHasNoErrors();
-        $this->save(['receipt_logo_thermal' => '1', 'receipt_logo_a4' => '1', 'receipt_qr_enabled' => '1', 'receipt_qr_content' => self::QR_URL]);
+        $this->save(['receipt_logo_thermal' => '1', 'receipt_logo_a4' => '1', 'receipt_qr_enabled' => '1', 'receipt_qr_content' => self::QR_URL, 'receipt_barcode_enabled' => '1']);
 
         foreach (['thermal', 'a4'] as $format) {
             $html = $this->receipt($format);
-            $this->assertStringContainsString('class="logo"', $html, "{$plan}/{$format}");
-            $this->assertStringContainsString('class="qr"', $html, "{$plan}/{$format}");
+            foreach (['logo', 'qr', 'bc'] as $class) {
+                $this->assertStringContainsString("class=\"{$class}\"", $html, "{$plan}/{$format}/{$class}");
+            }
         }
-        $this->assertStringContainsString('class="logo"', $this->testPrint());
-        $this->assertStringContainsString('class="qr"', $this->testPrint());
+        foreach (['logo', 'qr', 'bc'] as $class) {
+            $this->assertStringContainsString("class=\"{$class}\"", $this->testPrint(), "{$plan}/test print/{$class}");
+        }
     }
 
     public function test_no_plan_feature_key_or_route_gate_exists_for_these(): void

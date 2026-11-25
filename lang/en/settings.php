@@ -128,4 +128,6 @@ return [
     'qr_content_help' => 'A web address or any short text, up to 200 characters: your Instagram or Facebook page, a WhatsApp link, your website. Customers scan it with a phone camera.',
     'qr_caption' => 'Text under the QR code (optional)',
     'qr_caption_help' => 'For example "Follow us on Instagram". Up to 60 characters.',
+    'receipt_barcode_enabled' => 'Print the receipt number as a barcode',
+    'receipt_barcode_help' => 'A Code 128 barcode above the receipt number: a barcode scanner reads it straight into the search box on Sales History or Start a Return. It is left off a receipt whose number is too long to print at a scannable size, or that holds letters a barcode cannot carry; the number itself always prints.',
 ];

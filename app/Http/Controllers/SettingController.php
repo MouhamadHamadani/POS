@@ -71,6 +71,7 @@ class SettingController extends Controller
             // route, so only its two toggles are here
             'receipt_logo_thermal' => 'bool', 'receipt_logo_a4' => 'bool',
             'receipt_qr_enabled' => 'bool', 'receipt_qr_content' => 'string', 'receipt_qr_caption' => 'string',
+            'receipt_barcode_enabled' => 'bool',
         ],
         'numbering' => [
             'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',

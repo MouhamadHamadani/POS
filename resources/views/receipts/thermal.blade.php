@@ -69,6 +69,9 @@
     .qr { margin-top: 3mm; }
     .qr > div:first-child { margin: 0 auto 1mm; max-width: 100%; }
     .qr svg { display: block; width: 100%; height: auto; }
+    /* Bars are stretched to the wrapper's mm width only (preserveAspectRatio none): one module = a whole number of dots. */
+    .bc > div { margin: 0 auto; max-width: 100%; }
+    .bc svg { display: block; width: 100%; height: 100%; }
     .actions { padding: 10mm 0; text-align: center; direction: ltr; }
     .actions button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
     @media print { .actions { display: none; } }
@@ -210,7 +213,12 @@
         <div class="qr"><div style="width: {{ $extras['qr']['mm'] }}mm;">{!! $extras['qr']['svg'] !!}</div>@if ($extras['qr']['caption'])<div class="center small" dir="auto">{{ $extras['qr']['caption'] }}</div>@endif</div>
     @endif
 
-    <div class="center small" style="margin-top: 6mm;">{!! $L('receipt_no') !!} <bdi dir="ltr">{{ $sale->receipt_number }}</bdi></div>
+    {{-- Code 128 of the receipt number. The "Receipt #" line below is its readable text; it is printed with or
+         without the barcode (a number that cannot be encoded or does not fit prints as text only, never clipped). --}}
+    @if ($extras['barcode'])
+        <div class="bc" style="margin-top: 4mm;"><div style="width: {{ $extras['barcode']['w_mm'] }}mm; height: {{ $extras['barcode']['h_mm'] }}mm;">{!! $extras['barcode']['svg'] !!}</div></div>
+    @endif
+    <div class="center small" style="margin-top: {{ $extras['barcode'] ? '1' : '6' }}mm;">{!! $L('receipt_no') !!} <bdi dir="ltr">{{ $sale->receipt_number }}</bdi></div>
 
     @if ($banners)
         <hr>
