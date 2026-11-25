@@ -36,6 +36,14 @@ class ReceiptPrintService
         return self::FONT_SIZES[$size] ?? 1.0;
     }
 
+    /** The width a roll-paper page may print in, in mm, for a 58 or 80 mm roll (anything else reads as 80). */
+    public static function printableMm(int $paper): int
+    {
+        $widths = (array) config('pos.receipt.printable_mm');
+
+        return (int) ($widths[$paper] ?? $widths[80] ?? 72);
+    }
+
     /** The `receipt_format` setting; anything unrecognised reads as thermal. */
     public function formatSetting(): string
     {

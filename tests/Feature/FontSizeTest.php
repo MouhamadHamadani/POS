@@ -125,13 +125,13 @@ class FontSizeTest extends TestCase
         Setting::set('receipt_font_size', 'large', 'receipt');
         $sale = $this->sale();
 
-        foreach ([58, 80] as $width) {
+        foreach ([58 => 48, 80 => 72] as $width => $printable) {
             Setting::set('receipt_width', $width, 'receipt', 'int');
             $this->actingAs($this->cashier)->get("/pos/receipts/{$sale->id}/print?format=thermal&auto=0")
                 ->assertOk()
-                ->assertSee("@page { size: {$width}mm auto; margin: 0; }", false)   // the paper is still the paper
-                ->assertSee("width: {$width}mm", false)
-                ->assertSee('padding: 4mm', false);                                  // and the mm layout is untouched
+                ->assertSee("--rw: {$printable}mm", false)                          // the printable width is still the paper's
+                ->assertSee('max-width: var(--rw)', false)
+                ->assertSee('padding: 4mm 1.5mm', false);                            // and the mm layout is untouched
         }
     }
 

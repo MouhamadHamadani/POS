@@ -43,10 +43,9 @@
     @include('receipts._fonts', ['embedded' => $embedded])
     /* Every size below is its px value times --fs, so the text scales together and the mm layout stays put. */
     :root { --fs: {{ $fontScale }}; }
-    @page { size: {{ $width }}mm auto; margin: 0; }
-    html, body { margin: 0; padding: 0; background: white; font-family: 'Cairo', 'Courier New', monospace; }
-    /* border-box: the paper is exactly receipt_width wide, so the padding must sit inside it or the right edge is cut. */
-    body { box-sizing: border-box; width: {{ $width }}mm; padding: 4mm; font-size: calc(11px * var(--fs)); color: #111; }
+    /* Page geometry (printable width, margins, wrapping) is receipts/_paper.blade.php, shared with the debt slip. */
+    @include('receipts._paper', ['width' => $width])
+    body { font-size: calc(11px * var(--fs)); color: #111; }
     .center { text-align: center; }
     /* Amounts: left-to-right, isolated, and always on the same (end) edge of the line. */
     .amt    { text-align: right; direction: ltr; unicode-bidi: isolate; white-space: nowrap; padding-inline-start: 2mm; }

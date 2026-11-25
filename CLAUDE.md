@@ -210,6 +210,13 @@ about this repo being read-only; they no longer apply.)
   the silent `print-thermal` / `print-a4` route (desktop): that stamps COPY / نسخة on the page and
   writes the `receipt_reprint` audit row server-side, and only for a print that actually went
   out. The copy flag is opt-in by the caller, not enforced by the server.
+- Roll-paper page geometry (`receipts/_paper.blade.php`, shared by the thermal receipt and the debt slip):
+  a thermal printer prints only ~72 mm of an 80 mm roll (~48 of 58), and Chromium lays the page out in
+  that printable area, so the body is `width: auto; max-width: var(--rw)` with `--rw` from
+  `config('pos.receipt.printable_mm')` (`ReceiptPrintService::printableMm()`), and long words break
+  (`overflow-wrap: anywhere`). Never give the body the paper's own width, never add `@page { size: Nmm auto }`
+  (invalid CSS, dropped by Chromium, never read by the silent print), and only `.amt` may be `nowrap`.
+  `ReceiptPrintableWidthTest` pins this. A printer whose real printable width differs is a one-line config edit.
 - Two text-size options, kept apart on purpose. **Receipt text size** is the install-wide setting
   `receipt_font_size` (`small` 0.9 | `normal` 1 | `large` 1.2, `ReceiptPrintService::FONT_SIZES`,
   validated with `Rule::in`), saved with the rest of the Receipt group. `receipts/thermal` and
