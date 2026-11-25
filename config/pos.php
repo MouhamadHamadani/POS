@@ -21,6 +21,9 @@ return [
 
     'receipt' => [
         'width' => env('POS_RECEIPT_WIDTH', 80), // 58 or 80 mm
+        // What a thermal printer can really print on each paper width, in mm (it cannot go edge to edge).
+        // Read through ReceiptPrintService::printableMm(); receipts/_paper.blade.php is the only consumer.
+        'printable_mm' => [80 => 72, 58 => 48],
         'auto_print' => env('POS_AUTO_PRINT', true),
         'prefix' => env('POS_RECEIPT_PREFIX', 'REC-' . date('Y') . '-'),
     ],

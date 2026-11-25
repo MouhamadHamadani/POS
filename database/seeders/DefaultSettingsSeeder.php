@@ -51,6 +51,16 @@ class DefaultSettingsSeeder extends Seeder
             ['receipt', 'a4_printer_name', '', 'string'],
             ['receipt', 'thermal_printer_name', '', 'string'],
             ['receipt', 'receipt_font_size', 'normal', 'string'],
+            // logo on the receipt: off until the client uploads one and switches it on (the logo itself is
+            // not seeded; see ReceiptExtras)
+            ['receipt', 'receipt_logo_thermal', '0', 'bool'],
+            ['receipt', 'receipt_logo_a4', '0', 'bool'],
+            // QR code at the bottom: off, and nothing to encode until the client types something
+            ['receipt', 'receipt_qr_enabled', '0', 'bool'],
+            ['receipt', 'receipt_qr_content', '', 'string'],
+            ['receipt', 'receipt_qr_caption', '', 'string'],
+            // Code 128 of the receipt number at the bottom
+            ['receipt', 'receipt_barcode_enabled', '0', 'bool'],
 
             // numbering
             ['numbering', 'receipt_prefix', 'REC-' . date('Y') . '-', 'string'],

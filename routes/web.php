@@ -267,6 +267,10 @@ Route::middleware(['auth'])->group(function () {
         });
 
         Route::post('/settings/receipt/test-print', [SettingController::class, 'testPrintReceipt'])->name('settings.receipt.test-print');
+        // Receipt logo / QR / barcode are on every plan: client settings behind the Receipt tab's own role gate,
+        // deliberately no feature: key (see App\Services\ReceiptExtras).
+        Route::post('/settings/receipt/logo', [SettingController::class, 'uploadReceiptLogo'])->name('settings.receipt.logo');
+        Route::delete('/settings/receipt/logo', [SettingController::class, 'destroyReceiptLogo'])->name('settings.receipt.logo.destroy');
 
         // Premium's receipt differentiator. Starter/Standard keep the
         // header/footer/paper-width fields on the Receipt tab and nothing more.

@@ -252,6 +252,9 @@ class DebtScreensTest extends DebtBookTestCase
             $res = $this->actingAs($this->cashier)->get(route('debts.slip', ['payment' => $payment, 'format' => $format]))->assertOk()->assertViewIs($view);
             $res->assertSee($payment->number)->assertSee($sale->receipt_number)->assertSee('4,500,000')->assertSee('$50.00')->assertSee('R-9');
         }
+        // The roll-paper slip shares the receipt's printable-width rule (ReceiptPrintableWidthTest), not a full-paper body.
+        $this->actingAs($this->cashier)->get(route('debts.slip', ['payment' => $payment, 'format' => 'thermal']))
+            ->assertSee('--rw: 72mm', false)->assertSee('max-width: var(--rw)', false)->assertDontSee('width: 80mm', false);
 
         // Outside the desktop shell the silent-print route answers "not printed, not desktop" so the page opens the popup.
         $this->actingAs($this->cashier)->postJson(route('debts.payments.print', $payment))->assertOk()->assertJson(['printed' => false, 'desktop' => false]);

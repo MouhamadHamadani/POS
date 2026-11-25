@@ -32,6 +32,9 @@
     $wasLabel = __('receipt.was', [], $rtl ? 'ar' : 'en'); // a line the cashier sold off the price list
     $money = fn ($v) => '$'.number_format((float) $v, 2);
     $footerText = trim((string) $footer) !== '' ? $footer : null;
+    // Logo (top), QR code and receipt barcode (bottom): each is null unless its Settings toggle is on. A test
+    // print passes the typed, unsaved toggles in $extras; a real receipt reads the saved ones.
+    $extras = $extras ?? app(\App\Services\ReceiptExtras::class)->forReceipt('thermal', (string) $sale->receipt_number, (int) ($width ?? 80));
 @endphp
 <!doctype html>
 <html lang="{{ $rtl ? 'ar' : 'en' }}" dir="{{ $rtl ? 'rtl' : 'ltr' }}">
@@ -43,10 +46,9 @@
     @include('receipts._fonts', ['embedded' => $embedded])
     /* Every size below is its px value times --fs, so the text scales together and the mm layout stays put. */
     :root { --fs: {{ $fontScale }}; }
-    @page { size: {{ $width }}mm auto; margin: 0; }
-    html, body { margin: 0; padding: 0; background: white; font-family: 'Cairo', 'Courier New', monospace; }
-    /* border-box: the paper is exactly receipt_width wide, so the padding must sit inside it or the right edge is cut. */
-    body { box-sizing: border-box; width: {{ $width }}mm; padding: 4mm; font-size: calc(11px * var(--fs)); color: #111; }
+    /* Page geometry (printable width, margins, wrapping) is receipts/_paper.blade.php, shared with the debt slip. */
+    @include('receipts._paper', ['width' => $width])
+    body { font-size: calc(11px * var(--fs)); color: #111; }
     .center { text-align: center; }
     /* Amounts: left-to-right, isolated, and always on the same (end) edge of the line. */
     .amt    { text-align: right; direction: ltr; unicode-bidi: isolate; white-space: nowrap; padding-inline-start: 2mm; }
@@ -61,6 +63,15 @@
     .item-row td { padding-top: 0.5mm; padding-bottom: 0.5mm; }
     .totals td { padding: 0.5mm 0; }
     .grand { font-size: calc(13px * var(--fs)); font-weight: bold; }
+    /* A 1-bit image made at the printer's dots: no smoothing, or the edges turn grey and print as a smudge. */
+    .logo img { display: block; margin: 0 auto 2mm; max-width: 100%; height: auto; image-rendering: pixelated; }
+    /* The wrapper is sized in whole printer dots by ReceiptExtras; the SVG simply fills it. */
+    .qr { margin-top: 3mm; }
+    .qr > div:first-child { margin: 0 auto 1mm; max-width: 100%; }
+    .qr svg { display: block; width: 100%; height: auto; }
+    /* Bars are stretched to the wrapper's mm width only (preserveAspectRatio none): one module = a whole number of dots. */
+    .bc > div { margin: 0 auto; max-width: 100%; }
+    .bc svg { display: block; width: 100%; height: 100%; }
     .actions { padding: 10mm 0; text-align: center; direction: ltr; }
     .actions button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
     @media print { .actions { display: none; } }
@@ -89,6 +100,9 @@
         $nameAr = $business['name_ar'] ?? null;
         $primaryName = $rtl && $nameAr ? $nameAr : $business['name'];
     @endphp
+    @if ($extras['logo'])
+        <div class="logo"><img src="{{ $extras['logo']['uri'] }}" alt="" style="width: {{ $extras['logo']['w_mm'] }}mm;"></div>
+    @endif
     <div class="center bold">{{ $primaryName }}</div>
     @if ($receiptLang === 'bilingual' && $nameAr) <div class="center" dir="rtl">{{ $nameAr }}</div> @endif
     @if ($business['address']) <div class="center small">{{ $business['address'] }}</div> @endif
@@ -194,7 +208,17 @@
         <div class="center small">{!! $L('loyalty_earned', ['count' => $sale->loyalty_points_earned]) !!}</div>
     @endif
 
-    <div class="center small" style="margin-top: 6mm;">{!! $L('receipt_no') !!} <bdi dir="ltr">{{ $sale->receipt_number }}</bdi></div>
+    @if ($extras['qr'])
+        {{-- The SVG is drawn by ReceiptExtras from numbers only (no customer text in it). Caption is escaped. --}}
+        <div class="qr"><div style="width: {{ $extras['qr']['mm'] }}mm;">{!! $extras['qr']['svg'] !!}</div>@if ($extras['qr']['caption'])<div class="center small" dir="auto">{{ $extras['qr']['caption'] }}</div>@endif</div>
+    @endif
+
+    {{-- Code 128 of the receipt number. The "Receipt #" line below is its readable text; it is printed with or
+         without the barcode (a number that cannot be encoded or does not fit prints as text only, never clipped). --}}
+    @if ($extras['barcode'])
+        <div class="bc" style="margin-top: 4mm;"><div style="width: {{ $extras['barcode']['w_mm'] }}mm; height: {{ $extras['barcode']['h_mm'] }}mm;">{!! $extras['barcode']['svg'] !!}</div></div>
+    @endif
+    <div class="center small" style="margin-top: {{ $extras['barcode'] ? '1' : '6' }}mm;">{!! $L('receipt_no') !!} <bdi dir="ltr">{{ $sale->receipt_number }}</bdi></div>
 
     @if ($banners)
         <hr>
@@ -215,10 +239,11 @@
     @if ($autoPrint && ! $embedded)
         <script>
             window.addEventListener('load', () => {
-                setTimeout(() => {
+                // The logo is a data: image: print only once it is decoded, or it comes out blank.
+                Promise.all([...document.images].map((i) => (i.decode ? i.decode().catch(() => {}) : null))).then(() => setTimeout(() => {
                     window.print();
                     setTimeout(() => { if (window.opener) window.close(); }, 500);
-                }, 250);
+                }, 250));
             });
         </script>
     @endif

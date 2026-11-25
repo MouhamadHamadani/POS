@@ -28,9 +28,8 @@
 <style>
     @include('receipts._fonts', ['embedded' => $embedded])
     :root { --fs: {{ $fontScale }}; }
-    @page { size: {{ $width }}mm auto; margin: 0; }
-    html, body { margin: 0; padding: 0; background: white; font-family: 'Cairo', 'Courier New', monospace; }
-    body { box-sizing: border-box; width: {{ $width }}mm; padding: 4mm; font-size: calc(11px * var(--fs)); color: #111; }
+    @include('receipts._paper', ['width' => $width])
+    body { font-size: calc(11px * var(--fs)); color: #111; }
     .center { text-align: center; }
     .amt { text-align: right; direction: ltr; unicode-bidi: isolate; white-space: nowrap; padding-inline-start: 2mm; }
     html[dir=rtl] .amt { text-align: left; }

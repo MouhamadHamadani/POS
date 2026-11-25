@@ -30,7 +30,7 @@ class TestPrintReceiptTest extends TestCase
 
         $this->post80($admin, ['receipt_width' => 58, 'receipt_header' => 'Unsaved header', 'receipt_footer' => 'Unsaved footer'])
             ->assertOk()
-            ->assertSee('size: 58mm', false)
+            ->assertSee('--rw: 48mm', false)
             ->assertSee('Unsaved header')
             ->assertDontSee('Saved header')
             ->assertSee('Unsaved footer')
