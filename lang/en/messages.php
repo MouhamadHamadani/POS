@@ -32,6 +32,8 @@ return [
     'logo_invalid' => 'The logo must be a PNG, JPG or WebP image up to 1 MB and no larger than 2500 × 2500 pixels. SVG files are not accepted.',
     'logo_unreadable' => 'That file could not be read as an image. Try saving the logo again as a PNG.',
     'logo_needs_gd' => 'This installation cannot process images, so a logo cannot be added.',
+    'qr_too_long' => 'That text is too long for a QR code that stays easy to scan on a receipt. Use a shorter link.',
+    'qr_content_required' => 'Type what the QR code should open, or switch the QR code off.',
     'exchange_rate_invalid' => 'The exchange rate must be a number greater than 0. The previous rate was kept.',
     'permissions_saved' => 'Permissions saved.',
     'plan_updated' => 'Plan updated to :plan.',

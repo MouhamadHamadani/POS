@@ -65,6 +65,10 @@
     .grand { font-size: calc(13px * var(--fs)); font-weight: bold; }
     /* A 1-bit image made at the printer's dots: no smoothing, or the edges turn grey and print as a smudge. */
     .logo img { display: block; margin: 0 auto 2mm; max-width: 100%; height: auto; image-rendering: pixelated; }
+    /* The wrapper is sized in whole printer dots by ReceiptExtras; the SVG simply fills it. */
+    .qr { margin-top: 3mm; }
+    .qr > div:first-child { margin: 0 auto 1mm; max-width: 100%; }
+    .qr svg { display: block; width: 100%; height: auto; }
     .actions { padding: 10mm 0; text-align: center; direction: ltr; }
     .actions button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
     @media print { .actions { display: none; } }
@@ -199,6 +203,11 @@
 
     @if ($sale->loyalty_points_earned > 0)
         <div class="center small">{!! $L('loyalty_earned', ['count' => $sale->loyalty_points_earned]) !!}</div>
+    @endif
+
+    @if ($extras['qr'])
+        {{-- The SVG is drawn by ReceiptExtras from numbers only (no customer text in it). Caption is escaped. --}}
+        <div class="qr"><div style="width: {{ $extras['qr']['mm'] }}mm;">{!! $extras['qr']['svg'] !!}</div>@if ($extras['qr']['caption'])<div class="center small" dir="auto">{{ $extras['qr']['caption'] }}</div>@endif</div>
     @endif
 
     <div class="center small" style="margin-top: 6mm;">{!! $L('receipt_no') !!} <bdi dir="ltr">{{ $sale->receipt_number }}</bdi></div>

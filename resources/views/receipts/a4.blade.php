@@ -61,6 +61,9 @@
     .notice { text-align: center; font-weight: 700; border: 1px solid #111; padding: 2mm; margin-bottom: 4mm; }
     .logo { text-align: center; margin-bottom: 4mm; }
     .logo img { display: inline-block; }
+    .qr { margin-top: 5mm; text-align: center; break-inside: avoid; }
+    .qr > div:first-child { margin: 0 auto 1.5mm; }
+    .qr svg { display: block; width: 100%; height: auto; }
     .top { display: flex; justify-content: space-between; gap: 10mm; padding-bottom: 4mm; border-bottom: 2px solid #124F4A; }
     .top .biz { flex: 1 1 auto; }
     .top .biz .name { font-size: calc(16pt * var(--fs)); font-weight: 700; color: #124F4A; }
@@ -226,6 +229,10 @@
             @if ($sale->loyalty_points_earned > 0)<div>{!! $L('loyalty_earned', ['count' => $sale->loyalty_points_earned], 'receipt') !!}</div>@endif
             @foreach ($banners as $b)<div class="bold" style="margin-top: 3mm">*** {{ $b['label'] }} *** {{ $b['en'] }} / <span dir="rtl">{{ $b['ar'] }}</span></div>@endforeach
         </div>
+
+        @if ($extras['qr'])
+            <div class="qr"><div style="width: {{ $extras['qr']['mm'] }}mm;">{!! $extras['qr']['svg'] !!}</div>@if ($extras['qr']['caption'])<div class="small" dir="auto">{{ $extras['qr']['caption'] }}</div>@endif</div>
+        @endif
     </div>
 </main>
 

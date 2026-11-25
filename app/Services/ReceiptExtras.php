@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Setting;
+use BaconQrCode\Common\ErrorCorrectionLevel;
+use BaconQrCode\Encoder\Encoder;
 use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -37,6 +39,18 @@ class ReceiptExtras
     private const DOTS_PER_MM = 8;
     /** Grey level (0 black .. 255 white) below which a pixel prints black. */
     private const THRESHOLD = 150;
+
+    /** One printer dot at 203 dpi (8 dots/mm), the unit QR modules and barcode bars are built from. */
+    private const DOT_MM = 0.125;
+    /** Longest QR content that stays scannable at ~28 mm (error correction M: ~version 10, 57 modules). */
+    public const QR_MAX_CHARS = 200;
+    public const QR_MAX_BYTES = 300;
+    public const QR_CAPTION_MAX = 60;
+    private const QR_QUIET_MODULES = 4;
+    /** The side a QR code aims for, in mm (24-30 on a roll, a little larger on A4). */
+    private const QR_TARGET_MM = ['thermal' => 28, 'a4' => 34];
+    /** Width of the A4 invoice's text column, in mm: what the QR code and barcode may use. */
+    private const A4_TEXT_MM = 80;
 
     // ---- the logo -------------------------------------------------------------
 
@@ -191,6 +205,69 @@ class ReceiptExtras
 
     // ---- what one receipt prints ----------------------------------------------
 
+    // ---- the QR code ----------------------------------------------------------
+
+    /**
+     * A QR code for $text as inline SVG, sized in whole printer dots, or null when there is nothing to
+     * print. The matrix comes from bacon/bacon-qr-code's encoder; its own SVG back end is not used because
+     * it needs ext-xmlwriter, which the PHP bundled in the desktop build does not have. So the drawing is
+     * done here: one path of horizontal runs, four modules of quiet zone, error correction M.
+     *
+     * Each module is a whole number (k >= 2) of 0.125 mm dots, k picked to land nearest $targetMm without
+     * passing $availableMm, so edges do not straddle dots; at 0.25 mm a module is still easy for a phone.
+     *
+     * @return array{svg:string,mm:float}|null
+     */
+    public function qr(string $text, float $targetMm, float $availableMm): ?array
+    {
+        $text = trim($text);
+        if ($text === '' || mb_strlen($text) > self::QR_MAX_CHARS || strlen($text) > self::QR_MAX_BYTES) {
+            return null;
+        }
+
+        $ascii = mb_check_encoding($text, 'ASCII');
+        $matrix = Encoder::encode($text, ErrorCorrectionLevel::M(), $ascii ? 'ISO-8859-1' : 'UTF-8')->getMatrix();
+        $n = $matrix->getWidth();
+        $total = $n + 2 * self::QR_QUIET_MODULES;
+
+        $k = max(2, (int) round($targetMm / ($total * self::DOT_MM)));
+        while ($k > 2 && $total * $k * self::DOT_MM > $availableMm) {
+            $k--;
+        }
+        if ($total * $k * self::DOT_MM > $availableMm) {
+            return null;
+        }
+
+        $d = '';
+        for ($y = 0; $y < $n; $y++) {
+            for ($x = 0; $x < $n; $x++) {
+                if ($matrix->get($x, $y) !== 1) {
+                    continue;
+                }
+                for ($run = 1; $x + $run < $n && $matrix->get($x + $run, $y) === 1; $run++);
+                $d .= 'M'.($x + self::QR_QUIET_MODULES).' '.($y + self::QR_QUIET_MODULES)."h{$run}v1h-{$run}z";
+                $x += $run;
+            }
+        }
+
+        return [
+            'svg' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '.$total.' '.$total.'" shape-rendering="crispEdges" role="img">'
+                .'<rect width="'.$total.'" height="'.$total.'" fill="#fff"/><path d="'.$d.'" fill="#000"/></svg>',
+            'mm' => round($total * $k * self::DOT_MM, 3),
+        ];
+    }
+
+    /** The QR block for one receipt: the code and its caption, or null when switched off, empty or unprintable. */
+    private function qrBlock(string $format, string $content, string $caption, int $paper): ?array
+    {
+        $textMm = $format === 'a4' ? self::A4_TEXT_MM : ReceiptPrintService::printableMm($paper) - 2 * ReceiptPrintService::PAGE_PAD_MM;
+        $qr = $this->qr($content, $format === 'a4' ? self::QR_TARGET_MM['a4'] : self::QR_TARGET_MM['thermal'], $textMm);
+
+        return $qr ? $qr + ['caption' => mb_substr(trim($caption), 0, self::QR_CAPTION_MAX) ?: null] : null;
+    }
+
+    // ---- what one receipt prints ----------------------------------------------
+
     /**
      * The extras a receipt carries, for 'thermal' (a roll of $paper mm) or 'a4'. Each is null when its
      * toggle is off (the default) or there is nothing to print, so a view prints what it finds and an
@@ -199,7 +276,7 @@ class ReceiptExtras
      * $input reads a form field, falling back to the saved setting: the Settings test print passes the
      * values typed but not yet saved.
      *
-     * @return array{logo: ?array}
+     * @return array{logo: ?array, qr: ?array}
      */
     public function forReceipt(string $format, string $number, int $paper, ?Closure $input = null): array
     {
@@ -208,6 +285,7 @@ class ReceiptExtras
 
         return [
             'logo' => $on($format === 'a4' ? 'receipt_logo_a4' : 'receipt_logo_thermal') ? $this->logo($format, $paper) : null,
+            'qr' => $on('receipt_qr_enabled') ? $this->qrBlock($format, (string) $read('receipt_qr_content', ''), (string) $read('receipt_qr_caption', ''), $paper) : null,
         ];
     }
 }

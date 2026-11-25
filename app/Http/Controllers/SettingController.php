@@ -70,6 +70,7 @@ class SettingController extends Controller
             // what a receipt prints besides the sale (ReceiptExtras): the logo itself is uploaded on its own
             // route, so only its two toggles are here
             'receipt_logo_thermal' => 'bool', 'receipt_logo_a4' => 'bool',
+            'receipt_qr_enabled' => 'bool', 'receipt_qr_content' => 'string', 'receipt_qr_caption' => 'string',
         ],
         'numbering' => [
             'receipt_prefix' => 'string', 'invoice_prefix' => 'string', 'po_prefix' => 'string', 'return_prefix' => 'string',
@@ -202,12 +203,24 @@ class SettingController extends Controller
             'settings.a4_printer_name' => 'nullable|string|max:255',
             'settings.thermal_printer_name' => 'nullable|string|max:255',
             'settings.receipt_font_size' => ['nullable', Rule::in(array_keys(ReceiptPrintService::FONT_SIZES))],
+            // The QR code must stay scannable at ~28 mm: bounded in characters and (Arabic is two bytes a letter) in
+            // bytes, and not switched on with nothing to encode.
+            'settings.receipt_qr_content' => [
+                'nullable', 'string', 'max:'.ReceiptExtras::QR_MAX_CHARS,
+                fn ($attr, $value, $fail) => strlen((string) $value) > ReceiptExtras::QR_MAX_BYTES ? $fail(__('messages.qr_too_long')) : null,
+                Rule::requiredIf(fn () => $request->has('settings.receipt_qr_content') && $request->boolean('settings.receipt_qr_enabled')),
+            ],
+            'settings.receipt_qr_caption' => ['nullable', 'string', 'max:'.ReceiptExtras::QR_CAPTION_MAX],
         ] + $this->numericSettingRules(), [
             // A rate of 0 prices everything at 0 LBP and counts every LBP note as $0 tendered.
             'settings.exchange_rate.required' => __('messages.exchange_rate_invalid'),
             'settings.exchange_rate.numeric' => __('messages.exchange_rate_invalid'),
             'settings.exchange_rate.gt' => __('messages.exchange_rate_invalid'),
-        ], $this->numericSettingLabels());
+            'settings.receipt_qr_content.required' => __('messages.qr_content_required'),
+        ], $this->numericSettingLabels() + [
+            'settings.receipt_qr_content' => __('settings.qr_content'),
+            'settings.receipt_qr_caption' => __('settings.qr_caption'),
+        ]);
 
         // The same lock, by key: which keys get written is decided by name, not by the posted
         // group, so `group=pos` carrying a key of a locked group must be refused too.

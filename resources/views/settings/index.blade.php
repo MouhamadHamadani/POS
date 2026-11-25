@@ -357,6 +357,23 @@
                                 <div class="md:col-span-2 text-xs text-gray-500">{{ __('settings.receipt_logo_toggle_help') }}</div>
                             @endunless
                         </div>
+                        <div class="md:col-span-2 border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <label class="md:col-span-2 flex items-center gap-2">
+                                <input type="hidden" name="settings[receipt_qr_enabled]" value="0">
+                                <input type="checkbox" name="settings[receipt_qr_enabled]" value="1" @checked((bool) $get('receipt_qr_enabled', false))>
+                                {{ __('settings.receipt_qr_enabled') }}
+                            </label>
+                            <div>
+                                <label class="block text-xs text-gray-500">{{ __('settings.qr_content') }}</label>
+                                <input type="text" name="settings[receipt_qr_content]" dir="ltr" maxlength="{{ \App\Services\ReceiptExtras::QR_MAX_CHARS }}" value="{{ $get('receipt_qr_content') }}" class="w-full border-gray-300 rounded text-sm" />
+                                <div class="text-xs text-gray-500 mt-1">{{ __('settings.qr_content_help') }}</div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500">{{ __('settings.qr_caption') }}</label>
+                                <input type="text" name="settings[receipt_qr_caption]" dir="auto" maxlength="{{ \App\Services\ReceiptExtras::QR_CAPTION_MAX }}" value="{{ $get('receipt_qr_caption') }}" class="w-full border-gray-300 rounded text-sm" />
+                                <div class="text-xs text-gray-500 mt-1">{{ __('settings.qr_caption_help') }}</div>
+                            </div>
+                        </div>
                         {{-- Save stays first: Enter in a field submits via the first submit button. --}}
                         <div class="md:col-span-2 flex justify-end items-center gap-2" x-data="{ state: '' }">
                             @if ($desktop)

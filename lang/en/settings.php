@@ -123,4 +123,9 @@ return [
     'receipt_logo_thermal' => 'Show the logo on the small receipt',
     'receipt_logo_a4' => 'Show the logo on the A4 invoice',
     'receipt_logo_toggle_help' => 'Upload a logo above first; these switches only matter once there is one.',
+    'receipt_qr_enabled' => 'Print a QR code at the bottom of the receipt',
+    'qr_content' => 'QR code content',
+    'qr_content_help' => 'A web address or any short text, up to 200 characters: your Instagram or Facebook page, a WhatsApp link, your website. Customers scan it with a phone camera.',
+    'qr_caption' => 'Text under the QR code (optional)',
+    'qr_caption_help' => 'For example "Follow us on Instagram". Up to 60 characters.',
 ];

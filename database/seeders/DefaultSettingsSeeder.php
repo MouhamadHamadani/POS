@@ -55,6 +55,10 @@ class DefaultSettingsSeeder extends Seeder
             // not seeded; see ReceiptExtras)
             ['receipt', 'receipt_logo_thermal', '0', 'bool'],
             ['receipt', 'receipt_logo_a4', '0', 'bool'],
+            // QR code at the bottom: off, and nothing to encode until the client types something
+            ['receipt', 'receipt_qr_enabled', '0', 'bool'],
+            ['receipt', 'receipt_qr_content', '', 'string'],
+            ['receipt', 'receipt_qr_caption', '', 'string'],
 
             // numbering
             ['numbering', 'receipt_prefix', 'REC-' . date('Y') . '-', 'string'],

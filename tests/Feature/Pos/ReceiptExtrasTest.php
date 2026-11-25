@@ -328,6 +328,174 @@ class ReceiptExtrasTest extends TestCase
         $this->assertSame($before + 1, AuditLog::where('action', 'settings_update')->count());
     }
 
+    // ============================ the QR code ============================
+
+    private const QR_URL = 'https://www.instagram.com/lebasouk';
+
+    private function qrOn(string $content = self::QR_URL, string $caption = 'Follow us on Instagram'): void
+    {
+        $this->save(['receipt_qr_enabled' => '1', 'receipt_qr_content' => $content, 'receipt_qr_caption' => $caption]);
+    }
+
+    /** The QR drawn in a receipt, as [svg, mm width of its box]. */
+    private function qrIn(string $html): array
+    {
+        $this->assertMatchesRegularExpression('/<div class="qr"><div style="width: ([\d.]+)mm;">(<svg .*?<\/svg>)<\/div>/s', $html);
+        preg_match('/<div class="qr"><div style="width: ([\d.]+)mm;">(<svg .*?<\/svg>)<\/div>/s', $html, $m);
+
+        return [$m[2], (float) $m[1]];
+    }
+
+    /** The module grid an SVG draws, quiet zone included. @return list<list<int>> */
+    private function gridOf(string $svg): array
+    {
+        preg_match('/viewBox="0 0 (\d+) \d+"/', $svg, $v);
+        preg_match('/<path d="([^"]*)"/', $svg, $p);
+        $grid = array_fill(0, (int) $v[1], array_fill(0, (int) $v[1], 0));
+        preg_match_all('/M(\d+) (\d+)h(\d+)v1h-\d+z/', $p[1], $runs, PREG_SET_ORDER);
+        foreach ($runs as [, $x, $y, $len]) {
+            for ($i = 0; $i < $len; $i++) {
+                $grid[(int) $y][(int) $x + $i] = 1;
+            }
+        }
+
+        return $grid;
+    }
+
+    /** What the encoder says the code for $text is, in the same shape, at error correction $ec. @return list<list<int>> */
+    private function expectedGrid(string $text, ?\BaconQrCode\Common\ErrorCorrectionLevel $ec = null): array
+    {
+        $m = \BaconQrCode\Encoder\Encoder::encode($text, $ec ?? \BaconQrCode\Common\ErrorCorrectionLevel::M())->getMatrix();
+        $grid = array_fill(0, $m->getWidth() + 8, array_fill(0, $m->getWidth() + 8, 0));
+        for ($y = 0; $y < $m->getWidth(); $y++) {
+            for ($x = 0; $x < $m->getWidth(); $x++) {
+                $grid[$y + 4][$x + 4] = $m->get($x, $y);
+            }
+        }
+
+        return $grid;
+    }
+
+    public function test_the_qr_code_is_off_by_default_and_is_on_every_kind_of_receipt_once_switched_on(): void
+    {
+        foreach (['thermal', 'a4'] as $format) {
+            $this->assertStringNotContainsString('class="qr"', $this->receipt($format));
+        }
+        $this->save(['receipt_qr_enabled' => '0', 'receipt_qr_content' => self::QR_URL]);                 // content saved, switch off
+        $this->assertStringNotContainsString('class="qr"', $this->receipt('thermal'));
+
+        $this->qrOn();
+        foreach (['thermal', 'a4'] as $format) {
+            $html = $this->receipt($format);
+            $this->assertStringContainsString('class="qr"', $html, $format);
+            $this->assertStringContainsString('Follow us on Instagram', $html, $format);
+        }
+        $this->assertStringContainsString('class="qr"', $this->testPrint());
+        $this->assertStringContainsString('class="qr"', $this->actingAs($this->cashier)->get("/pos/receipts/{$this->sale->id}/print?format=thermal&auto=0&copy=1")->getContent());
+    }
+
+    public function test_the_qr_code_is_exactly_the_saved_text_at_error_correction_m_with_a_quiet_zone(): void
+    {
+        $this->qrOn();
+        [$svg] = $this->qrIn($this->receipt('thermal'));
+        $grid = $this->gridOf($svg);
+
+        $this->assertSame($this->expectedGrid(self::QR_URL), $grid, 'the drawing is the encoder\'s matrix for the saved text');
+        $this->assertNotSame($this->expectedGrid(self::QR_URL, \BaconQrCode\Common\ErrorCorrectionLevel::H()), $grid, 'and it is level M, not H');
+
+        $n = count($grid);
+        for ($i = 0; $i < $n; $i++) {
+            foreach ([0, 1, 2, 3, $n - 1, $n - 2, $n - 3, $n - 4] as $edge) {
+                $this->assertSame(0, $grid[$edge][$i] + $grid[$i][$edge], 'four empty modules all round');
+            }
+        }
+        $this->assertStringNotContainsString('<script', $svg);
+        $this->assertStringNotContainsString('http', str_replace('http://www.w3.org/2000/svg', '', $svg), 'the SVG carries no URL of its own; the text is only in the modules');
+    }
+
+    public function test_the_qr_code_for_non_latin_text_is_still_the_encoders_matrix(): void
+    {
+        $text = 'تابعونا على إنستغرام';
+        $this->qrOn($text);
+        [$svg] = $this->qrIn($this->receipt('thermal'));
+
+        $m = \BaconQrCode\Encoder\Encoder::encode($text, \BaconQrCode\Common\ErrorCorrectionLevel::M(), 'UTF-8')->getMatrix();
+        $this->assertSame($m->getWidth() + 8, count($this->gridOf($svg)));
+    }
+
+    public function test_the_test_print_encodes_the_typed_unsaved_text(): void
+    {
+        $this->qrOn('https://saved.example/a');
+
+        [$svg] = $this->qrIn($this->testPrint(['receipt_qr_enabled' => '1', 'receipt_qr_content' => 'https://typed.example/b', 'receipt_qr_caption' => 'Typed']));
+        $this->assertSame($this->expectedGrid('https://typed.example/b'), $this->gridOf($svg));
+
+        [$svg] = $this->qrIn($this->testPrint());                                                           // nothing typed: the saved one
+        $this->assertSame($this->expectedGrid('https://saved.example/a'), $this->gridOf($svg));
+
+        $this->assertStringNotContainsString('class="qr"', $this->testPrint(['receipt_qr_enabled' => '0']));   // typed off
+        $this->assertSame('https://saved.example/a', Setting::get('receipt_qr_content'));
+    }
+
+    #[DataProvider('rolls')]
+    public function test_the_qr_code_is_scannable_size_in_whole_printer_dots_and_inside_the_printable_width(int $paper): void
+    {
+        foreach ([self::QR_URL, str_repeat('https://a.example/', 11)] as $content) {     // a short and a 198-character code
+            $this->qrOn($content);
+            $this->save(['receipt_width' => $paper]);
+
+            [$svg, $mm] = $this->qrIn($this->receipt('thermal'));
+            $total = count($this->gridOf($svg));
+            $module = $mm / $total;
+
+            $this->assertGreaterThanOrEqual(22.0, $mm, 'about 24-30 mm square');
+            $this->assertLessThanOrEqual(31.0, $mm);
+            $this->assertLessThanOrEqual(\App\Services\ReceiptPrintService::printableMm($paper) - 3, $mm, 'inside the printable width');
+            $this->assertGreaterThanOrEqual(0.25 - 1e-9, $module, 'a module is at least 2 printer dots');
+            $this->assertEqualsWithDelta(round($module / 0.125), $module / 0.125, 1e-6, 'a whole number of dots, so no edge straddles a dot');
+        }
+    }
+
+    public function test_the_caption_is_escaped_and_cut_to_length(): void
+    {
+        $this->qrOn(self::QR_URL, '<b>Follow</b> & <script>alert(1)</script>');
+        $html = $this->receipt('thermal');
+
+        $this->assertStringContainsString('&lt;b&gt;Follow&lt;/b&gt; &amp; &lt;script&gt;', $html);
+        $this->assertStringNotContainsString('<script>alert(1)', $html);
+
+        $this->qrOn(self::QR_URL, '');                                                                      // no caption: no empty line
+        $this->assertDoesNotMatchRegularExpression('/<\/svg><\/div><div class="center small" dir="auto">/', $this->receipt('thermal'));
+    }
+
+    public function test_qr_settings_are_trimmed_bounded_and_required_when_switched_on(): void
+    {
+        $this->qrOn("  https://example.com/x  \n", '  Hello  ');
+        $this->assertSame('https://example.com/x', Setting::get('receipt_qr_content'));
+        $this->assertSame('Hello', Setting::get('receipt_qr_caption'));
+
+        $post = fn (array $s) => $this->actingAs($this->admin)->post(route('settings.update'), ['group' => 'receipt', 'settings' => $s + ['receipt_width' => 80]]);
+
+        $post(['receipt_qr_enabled' => '1', 'receipt_qr_content' => str_repeat('a', 201)])->assertSessionHasErrors('settings.receipt_qr_content');
+        $post(['receipt_qr_enabled' => '1', 'receipt_qr_content' => str_repeat('ع', 160)])->assertSessionHasErrors('settings.receipt_qr_content');   // 160 letters, 320 bytes
+        $post(['receipt_qr_enabled' => '1', 'receipt_qr_content' => ''])->assertSessionHasErrors('settings.receipt_qr_content');
+        $post(['receipt_qr_enabled' => '0', 'receipt_qr_content' => ''])->assertSessionHasNoErrors();                                          // off: blank is fine
+        $post(['receipt_qr_enabled' => '1', 'receipt_qr_content' => 'https://x.example', 'receipt_qr_caption' => str_repeat('c', 61)])->assertSessionHasErrors('settings.receipt_qr_caption');
+        $post(['receipt_qr_enabled' => '1', 'receipt_qr_content' => str_repeat('a', 200)])->assertSessionHasNoErrors();                         // the limit itself
+
+        $this->assertSame(str_repeat('a', 200), Setting::get('receipt_qr_content'));
+    }
+
+    public function test_the_receipt_tab_has_the_qr_fields_in_both_languages(): void
+    {
+        $this->actingAs($this->admin)->get('/settings?tab=receipt')->assertOk()
+            ->assertSee('name="settings[receipt_qr_enabled]"', false)->assertSee('name="settings[receipt_qr_content]"', false)
+            ->assertSee('name="settings[receipt_qr_caption]"', false)->assertSee('QR code content');
+
+        $this->admin->update(['language' => 'ar']);
+        $this->actingAs($this->admin)->get('/settings?tab=receipt')->assertOk()->assertSee('محتوى رمز QR');
+    }
+
     // ===================== every plan, no plan check =====================
 
     /** @return array<string, array{string, bool}> */
@@ -337,7 +505,7 @@ class ReceiptExtrasTest extends TestCase
     }
 
     #[DataProvider('plans')]
-    public function test_the_logo_behaves_the_same_on_every_plan_and_with_overrides(string $plan, bool $overrides): void
+    public function test_the_extras_behave_the_same_on_every_plan_and_with_overrides(string $plan, bool $overrides): void
     {
         $features = app(FeatureService::class);
         $features->setPlan($plan);
@@ -346,12 +514,15 @@ class ReceiptExtrasTest extends TestCase
         }
 
         $this->upload()->assertSessionHasNoErrors();
-        $this->save(['receipt_logo_thermal' => '1', 'receipt_logo_a4' => '1']);
+        $this->save(['receipt_logo_thermal' => '1', 'receipt_logo_a4' => '1', 'receipt_qr_enabled' => '1', 'receipt_qr_content' => self::QR_URL]);
 
         foreach (['thermal', 'a4'] as $format) {
-            $this->assertStringContainsString('class="logo"', $this->receipt($format), "{$plan}/{$format}");
+            $html = $this->receipt($format);
+            $this->assertStringContainsString('class="logo"', $html, "{$plan}/{$format}");
+            $this->assertStringContainsString('class="qr"', $html, "{$plan}/{$format}");
         }
         $this->assertStringContainsString('class="logo"', $this->testPrint());
+        $this->assertStringContainsString('class="qr"', $this->testPrint());
     }
 
     public function test_no_plan_feature_key_or_route_gate_exists_for_these(): void
