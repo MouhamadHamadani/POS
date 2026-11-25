@@ -217,6 +217,17 @@ about this repo being read-only; they no longer apply.)
   (`overflow-wrap: anywhere`). Never give the body the paper's own width, never add `@page { size: Nmm auto }`
   (invalid CSS, dropped by Chromium, never read by the silent print), and only `.amt` may be `nowrap`.
   `ReceiptPrintableWidthTest` pins this. A printer whose real printable width differs is a one-line config edit.
+- Receipt logo, QR code and receipt-number barcode (`App\Services\ReceiptExtras`, Settings -> Receipt): client
+  settings on EVERY plan, all off by default. They are not plan features: no feature key, no `feature:`
+  middleware, nothing asks `Feature` / `License` (`ReceiptExtrasTest` pins that). `thermal.blade.php` and
+  `a4.blade.php` call `forReceipt()`; a test print passes the typed, unsaved form as `$extras`. All offline:
+  the logo is re-encoded by GD (PNG / JPG / WebP only, never SVG) and kept as data: URIs in ONE json setting,
+  `receipt_logo`, written only by `storeLogo()` / `removeLogo()` (so a backup, which is the database, has it, and
+  `Setting::all()` is never read with it); QR and barcode are SVG we draw ourselves from `bacon/bacon-qr-code`'s
+  Encoder (level M) and picqer's Code 128 encoder. Do NOT use Bacon's SVG back end or any renderer needing
+  ext-xmlwriter: the PHP bundled in the desktop build lacks it (see `App\Support\Spreadsheet`). QR modules and
+  bars are whole 0.125 mm printer dots (QR >= 2, bars 2-4); a barcode that will not fit at 0.25 mm, or a number
+  Code 128 cannot hold, is left off and the number prints as text. Auto-print waits for images to decode.
 - Two text-size options, kept apart on purpose. **Receipt text size** is the install-wide setting
   `receipt_font_size` (`small` 0.9 | `normal` 1 | `large` 1.2, `ReceiptPrintService::FONT_SIZES`,
   validated with `Rule::in`), saved with the rest of the Receipt group. `receipts/thermal` and
